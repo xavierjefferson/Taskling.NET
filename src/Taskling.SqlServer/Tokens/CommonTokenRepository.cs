@@ -1,59 +1,60 @@
-﻿using System.Data;
-using System.Data.SqlClient;
+﻿using System.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+using Taskling.Models123;
 using Taskling.Tasks;
 
 namespace Taskling.SqlServer.Tokens;
 
 public class CommonTokenRepository : ICommonTokenRepository
 {
-    public async Task AcquireRowLockAsync(int taskDefinitionId, int taskExecutionId, SqlCommand command)
+    public async Task AcquireRowLockAsync(int taskDefinitionId, int taskExecutionId,
+        TasklingDbContext dbContext)
     {
-        command.Parameters.Clear();
-        command.CommandText = TokensQueryBuilder.AcquireLockQuery;
-        command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-        command.Parameters.Add("@TaskExecutionId", SqlDbType.Int).Value = taskExecutionId;
-        await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+        var taskDefinitions =
+            await dbContext.TaskDefinitions.Where(i => i.TaskDefinitionId == taskDefinitionId).ToListAsync();
+        foreach (var taskDefinition in taskDefinitions)
+        {
+            taskDefinition.HoldLockTaskExecutionId = taskExecutionId;
+            dbContext.TaskDefinitions.Update(taskDefinition);
+        }
+
+        await dbContext.SaveChangesAsync();
     }
 
     public async Task<List<TaskExecutionState>> GetTaskExecutionStatesAsync(List<int> taskExecutionIds,
-        SqlCommand command)
+        TasklingDbContext dbContext)
     {
+        var taskExecutions = await dbContext.TaskExecutions.Where(i => taskExecutionIds.Contains(i.TaskExecutionId))
+            .ToListAsync().ConfigureAwait(false);
+
         var results = new List<TaskExecutionState>();
 
-        command.Parameters.Clear();
-        command.CommandText = TokensQueryBuilder.GetTaskExecutions(taskExecutionIds.Count);
 
-        for (var i = 0; i < taskExecutionIds.Count; i++)
-            command.Parameters.Add("@InParam" + i, SqlDbType.Int).Value = taskExecutionIds[i];
-
-        using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
+        var currentDateTime = DateTime.UtcNow;
+        foreach (var taskExecution in taskExecutions)
         {
-            while (await reader.ReadAsync().ConfigureAwait(false))
+            var teState = new TaskExecutionState
             {
-                var teState = new TaskExecutionState();
+                CompletedAt = taskExecution.CompletedAt,
+                KeepAliveDeathThreshold = taskExecution.KeepAliveDeathThreshold,
+                KeepAliveInterval = taskExecution.KeepAliveInterval,
+                LastKeepAlive = taskExecution.LastKeepAlive,
+                // reader.GetDateTimeEx("LastKeepAlive");
+                OverrideThreshold = taskExecution.OverrideThreshold,
+                //reader.GetTimeSpanEx("OverrideThreshold");
+                StartedAt = taskExecution.StartedAt,
+                // reader.GetDateTime("StartedAt");
+                TaskDeathMode = (TaskDeathMode)taskExecution.TaskDeathMode,
+                // reader.GetInt32("TaskDeathMode");
+                TaskExecutionId = taskExecution.TaskExecutionId,
+                //reader.GetInt32("TaskExecutionId");
+                CurrentDateTime = currentDateTime
+            };
 
 
-                teState.CompletedAt = reader.GetDateTimeEx("CompletedAt");
+            // reader.GetDateTime("CurrentDateTime");
 
-
-                teState.KeepAliveDeathThreshold = reader.GetTimeSpanEx("KeepAliveDeathThreshold");
-
-
-                teState.KeepAliveInterval = reader.GetTimeSpanEx("KeepAliveInterval");
-
-
-                teState.LastKeepAlive = reader.GetDateTimeEx("LastKeepAlive");
-
-
-                teState.OverrideThreshold = reader.GetTimeSpanEx("OverrideThreshold");
-
-                teState.StartedAt = reader.GetDateTime("StartedAt");
-                teState.TaskDeathMode = (TaskDeathMode)reader.GetInt32("TaskDeathMode");
-                teState.TaskExecutionId = reader.GetInt32("TaskExecutionId");
-                teState.CurrentDateTime = reader.GetDateTime("CurrentDateTime");
-
-                results.Add(teState);
-            }
+            results.Add(teState);
         }
 
         return results;

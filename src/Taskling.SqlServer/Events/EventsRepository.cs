@@ -10,22 +10,17 @@ public class EventsRepository : DbOperationsService, IEventsRepository
 {
     public async Task LogEventAsync(TaskId taskId, int taskExecutionId, EventType eventType, string message)
     {
-        using (var connection = await CreateNewConnectionAsync(taskId).ConfigureAwait(false))
+        using (var context = await GetDbContextAsync(taskId).ConfigureAwait(false))
         {
-            using (var command = new SqlCommand(EventsQueryBuilder.InsertTaskExecutionEventQuery, connection))
+            var taskExecutionEvent = new Models123.TaskExecutionEvent()
             {
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(taskId).QueryTimeoutSeconds;
-                command.Parameters.Add(new SqlParameter("@TaskExecutionId", SqlDbType.Int)).Value = taskExecutionId;
-                command.Parameters.Add(new SqlParameter("@EventType", SqlDbType.Int)).Value = (int)eventType;
-
-                if (message == null)
-                    command.Parameters.Add(new SqlParameter("@Message", SqlDbType.NVarChar, -1)).Value = DBNull.Value;
-                else
-                    command.Parameters.Add(new SqlParameter("@Message", SqlDbType.NVarChar, -1)).Value = message;
-
-                command.Parameters.Add(new SqlParameter("@EventDateTime", SqlDbType.DateTime)).Value = DateTime.UtcNow;
-                await command.ExecuteNonQueryAsync().ConfigureAwait(false);
-            }
+                TaskExecutionId = taskExecutionId,
+                EventType = (int)eventType,
+                Message = message,
+                EventDateTime = DateTime.UtcNow
+            };
+            context.TaskExecutionEvents.Add(taskExecutionEvent);
+            await context.SaveChangesAsync();
         }
     }
 }

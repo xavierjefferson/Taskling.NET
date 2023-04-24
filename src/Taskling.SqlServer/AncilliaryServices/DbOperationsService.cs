@@ -2,13 +2,27 @@
 using System.Data.SqlClient;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Taskling.Exceptions;
 using Taskling.InfrastructureContracts;
+using Taskling.Models123;
 
 namespace Taskling.SqlServer.AncilliaryServices;
 
 public class DbOperationsService
 {
+    protected async Task<TasklingDbContext> GetDbContextAsync(TaskId taskId)
+    {
+        DbContextOptionsBuilder<TasklingDbContext> builder = new DbContextOptionsBuilder<TasklingDbContext>();
+        var clientConnectionSettings = ConnectionStore.Instance.GetConnection(taskId);
+        builder.UseSqlServer(clientConnectionSettings.ConnectionString);
+        await Task.CompletedTask;
+
+        var tasklingDbContext = new TasklingDbContext(builder.Options);
+        tasklingDbContext.Database.SetCommandTimeout(clientConnectionSettings.QueryTimeout);
+        return tasklingDbContext;
+    }
     protected async Task<SqlConnection> CreateNewConnectionAsync(TaskId taskId)
     {
         try
@@ -84,7 +98,26 @@ public class DbOperationsService
             }
         }
     }
+    protected void TryRollBack(IDbContextTransaction transaction, SqlException sqlEx)
+    {
+        try
+        {
+            transaction.Rollback();
+        }
+        catch (Exception)
+        {
+            throw new Exception(
+                "Add failed. Error during transaction, then error during rollback. Rollback was NOT successfully executed",
+                sqlEx);
+        }
 
+        if (TransientErrorDetector.IsTransient(sqlEx))
+            throw new TransientException(
+                "A transient exception has occurred. Add failed. Error during transaction. Rollback successfully executed",
+                sqlEx);
+
+        throw new Exception("Add failed. Error during transaction. Rollback successfully executed", sqlEx);
+    }
     protected void TryRollBack(SqlTransaction transaction, SqlException sqlEx)
     {
         try
@@ -105,7 +138,21 @@ public class DbOperationsService
 
         throw new Exception("Add failed. Error during transaction. Rollback successfully executed", sqlEx);
     }
+    protected void TryRollback(IDbContextTransaction transaction, Exception ex)
+    {
+        try
+        {
+            transaction.Rollback();
+        }
+        catch (Exception)
+        {
+            throw new Exception(
+                "Add failed. Error during transaction, then error during rollback. Rollback was NOT successfully executed",
+                ex);
+        }
 
+        throw new Exception("Add failed. Error during transaction. Rollback successfully executed", ex);
+    }
     protected void TryRollback(SqlTransaction transaction, Exception ex)
     {
         try

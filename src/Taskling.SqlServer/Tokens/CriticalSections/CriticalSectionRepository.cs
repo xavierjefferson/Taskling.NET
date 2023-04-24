@@ -1,9 +1,11 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using Taskling.Exceptions;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.CriticalSections;
 using Taskling.InfrastructureContracts.TaskExecution;
+using Taskling.Models123;
 using Taskling.SqlServer.AncilliaryServices;
 using Taskling.Tasks;
 
@@ -99,22 +101,18 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
         CriticalSectionType criticalSectionType)
     {
         var granted = false;
-
-        using (var connection = await CreateNewConnectionAsync(taskId).ConfigureAwait(false))
+        using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
         {
-            var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
+            using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-            var command = connection.CreateCommand();
-            command.Transaction = transaction;
-            command.CommandTimeout = ConnectionStore.Instance.GetConnection(taskId).QueryTimeoutSeconds;
-            ;
 
             try
             {
-                await AcquireRowLockAsync(taskDefinitionId, taskExecutionId, command).ConfigureAwait(false);
-                var csState = await GetCriticalSectionStateAsync(taskDefinitionId, criticalSectionType, command)
-                    .ConfigureAwait(false);
-                await CleanseOfExpiredExecutionsAsync(csState, command).ConfigureAwait(false);
+                await AcquireRowLockAsync(taskDefinitionId, taskExecutionId, dbContext).ConfigureAwait(false);
+                var csState =
+                    await GetCriticalSectionStateAsync(taskDefinitionId, criticalSectionType, dbContext)
+                        .ConfigureAwait(false);
+                await CleanseOfExpiredExecutionsAsync(csState, dbContext).ConfigureAwait(false);
 
                 if (csState.IsGranted)
                 {
@@ -131,7 +129,7 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
                     {
                         if (csState.GetFirstExecutionIdInQueue() == taskExecutionId)
                         {
-                            GrantCriticalSection(csState, taskDefinitionId, taskExecutionId, command);
+                            GrantCriticalSection(csState, taskExecutionId);
                             csState.RemoveFirstInQueue();
                             granted = true;
                         }
@@ -143,13 +141,13 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
                     }
                     else
                     {
-                        GrantCriticalSection(csState, taskDefinitionId, taskExecutionId, command);
+                        GrantCriticalSection(csState, taskExecutionId);
                         granted = true;
                     }
                 }
 
                 if (csState.HasBeenModified)
-                    await UpdateCriticalSectionStateAsync(taskDefinitionId, csState, criticalSectionType, command)
+                    await UpdateCriticalSectionStateAsync(taskDefinitionId, csState, criticalSectionType, dbContext)
                         .ConfigureAwait(false);
 
                 transaction.Commit();
@@ -167,37 +165,64 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
         return granted;
     }
 
-    private async Task AcquireRowLockAsync(int taskDefinitionId, int taskExecutionId, SqlCommand command)
+    private async Task AcquireRowLockAsync(int taskDefinitionId, int taskExecutionId,
+        TasklingDbContext dbContext)
     {
-        await _commonTokenRepository.AcquireRowLockAsync(taskDefinitionId, taskExecutionId, command)
+        await _commonTokenRepository.AcquireRowLockAsync(taskDefinitionId, taskExecutionId, dbContext)
             .ConfigureAwait(false);
     }
 
     private async Task<CriticalSectionState> GetCriticalSectionStateAsync(int taskDefinitionId,
-        CriticalSectionType criticalSectionType, SqlCommand command)
+        CriticalSectionType criticalSectionType, TasklingDbContext dbContext)
     {
-        command.Parameters.Clear();
+        var tmp = dbContext.TaskDefinitions.Where(i => i.TaskDefinitionId == taskDefinitionId);
+
         if (criticalSectionType == CriticalSectionType.User)
-            command.CommandText = TokensQueryBuilder.GetUserCriticalSectionStateQuery;
-        else
-            command.CommandText = TokensQueryBuilder.GetClientCriticalSectionStateQuery;
-
-        command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-
-        using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
         {
-            var readSuccess = await reader.ReadAsync().ConfigureAwait(false);
-            if (readSuccess)
+            var tuple = await tmp.Select(i => new { i.UserCsQueue, i.UserCsStatus, i.UserCsTaskExecutionId })
+                .FirstOrDefaultAsync().ConfigureAwait(false);
+            if (tuple != null)
+
             {
                 var csState = new CriticalSectionState();
-                csState.IsGranted = reader.GetInt32(GetCsStatusColumnName(criticalSectionType)) == 0;
-                csState.GrantedToExecution = reader.GetInt32Ex(GetGrantedToColumnName(criticalSectionType));
-                csState.SetQueue(reader[GetQueueColumnName(criticalSectionType)].ToString());
-                csState.StartTrackingModifications();
-
+                csState.IsGranted = tuple.UserCsStatus == 0;
+                csState.GrantedToExecution = tuple.UserCsTaskExecutionId;
+                csState.SetQueue(tuple.UserCsQueue);
                 return csState;
             }
         }
+        else
+        {
+            var tuple = await tmp.Select(i => new { i.ClientCsQueue, i.ClientCsStatus, i.ClientCsTaskExecutionId })
+                .FirstOrDefaultAsync();
+            if (tuple != null)
+
+            {
+                var csState = new CriticalSectionState();
+                csState.IsGranted = tuple.ClientCsStatus == 0;
+                csState.GrantedToExecution = tuple.ClientCsTaskExecutionId;
+                csState.SetQueue(tuple.ClientCsQueue);
+                return csState;
+            }
+            //command.CommandText = TokensQueryBuilder.GetClientCriticalSectionStateQuery;
+        }
+
+        //command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
+
+        //using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
+        //{
+        //    var readSuccess = await reader.ReadAsync().ConfigureAwait(false);
+        //    if (readSuccess)
+        //    {
+        //        var csState = new CriticalSectionState();
+        //        csState.IsGranted = reader.GetInt32(GetCsStatusColumnName(criticalSectionType)) == 0;
+        //        csState.GrantedToExecution = reader.GetInt32Ex(GetGrantedToColumnName(criticalSectionType));
+        //        csState.SetQueue(reader[GetQueueColumnName(criticalSectionType)].ToString());
+        //        csState.StartTrackingModifications();
+
+        //        return csState;
+        //    }
+        //}
 
         throw new CriticalSectionException("No Task exists with id " + taskDefinitionId);
     }
@@ -215,14 +240,15 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
         return taskExecutionIds;
     }
 
-    private async Task CleanseOfExpiredExecutionsAsync(CriticalSectionState csState, SqlCommand command)
+    private async Task CleanseOfExpiredExecutionsAsync(CriticalSectionState csState,
+        TasklingDbContext dbContext)
     {
         var csQueue = csState.GetQueue();
         var activeExecutionIds = GetActiveTaskExecutionIds(csState);
         if (activeExecutionIds.Any())
         {
             var taskExecutionStates =
-                await GetTaskExecutionStatesAsync(activeExecutionIds, command).ConfigureAwait(false);
+                await GetTaskExecutionStatesAsync(activeExecutionIds, dbContext).ConfigureAwait(false);
 
             CleanseCurrentGranteeIfExpired(csState, taskExecutionStates);
             CleanseQueueOfExpiredExecutions(csState, taskExecutionStates, csQueue);
@@ -263,63 +289,47 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
         return csState.GrantedToExecution == null || csState.GrantedToExecution == 0;
     }
 
-    private void GrantCriticalSection(CriticalSectionState csState, int taskDefinitionId, int taskExecutionId,
-        SqlCommand command)
+    private void GrantCriticalSection(CriticalSectionState csState, int taskExecutionId)
     {
         csState.IsGranted = true;
         csState.GrantedToExecution = taskExecutionId;
     }
 
     private async Task UpdateCriticalSectionStateAsync(int taskDefinitionId, CriticalSectionState csState,
-        CriticalSectionType criticalSectionType, SqlCommand command)
+        CriticalSectionType criticalSectionType, TasklingDbContext dbContext)
     {
-        command.Parameters.Clear();
+        var taskDefinition =
+            await dbContext.TaskDefinitions.FirstOrDefaultAsync(i => i.TaskDefinitionId == taskDefinitionId)
+                .ConfigureAwait(false);
+        if (taskDefinition != null)
+        {
+            if (criticalSectionType == CriticalSectionType.User)
+            {
+                taskDefinition.UserCsQueue = csState.GetQueueString();
+                taskDefinition.UserCsStatus = csState.IsGranted ? 1 : 0;
+                taskDefinition.UserCsTaskExecutionId = taskDefinitionId;
+            }
+            else
+            {
+                taskDefinition.ClientCsQueue = csState.GetQueueString();
+                taskDefinition.ClientCsStatus = csState.IsGranted ? 1 : 0;
+                taskDefinition.ClientCsTaskExecutionId = taskDefinitionId;
+            }
 
-        if (criticalSectionType == CriticalSectionType.User)
-            command.CommandText = TokensQueryBuilder.SetUserCriticalSectionStateQuery;
-        else
-            command.CommandText = TokensQueryBuilder.SetClientCriticalSectionStateQuery;
-
-        command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-        command.Parameters.Add("@CsStatus", SqlDbType.Int).Value = csState.IsGranted ? 1 : 0;
-        command.Parameters.Add("@CsTaskExecutionId", SqlDbType.Int).Value = (object)csState.GrantedToExecution ?? System.DBNull.Value;
-        command.Parameters.Add("@CsQueue", SqlDbType.VarChar, 8000).Value = csState.GetQueueString();
-        await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+            dbContext.TaskDefinitions.Update(taskDefinition);
+            await dbContext.SaveChangesAsync();
+        }
     }
 
     private async Task<List<TaskExecutionState>> GetTaskExecutionStatesAsync(List<int> taskExecutionIds,
-        SqlCommand command)
+        TasklingDbContext dbContext)
     {
-        return await _commonTokenRepository.GetTaskExecutionStatesAsync(taskExecutionIds, command)
+        return await _commonTokenRepository.GetTaskExecutionStatesAsync(taskExecutionIds, dbContext)
             .ConfigureAwait(false);
     }
 
     private bool HasCriticalSectionExpired(TaskExecutionState taskExecutionState)
     {
         return _commonTokenRepository.HasExpired(taskExecutionState);
-    }
-
-    private string GetCsStatusColumnName(CriticalSectionType criticalSectionType)
-    {
-        if (criticalSectionType == CriticalSectionType.User)
-            return "UserCsStatus";
-
-        return "ClientCsStatus";
-    }
-
-    private string GetGrantedToColumnName(CriticalSectionType criticalSectionType)
-    {
-        if (criticalSectionType == CriticalSectionType.User)
-            return "UserCsTaskExecutionId";
-
-        return "ClientCsTaskExecutionId";
-    }
-
-    private string GetQueueColumnName(CriticalSectionType criticalSectionType)
-    {
-        if (criticalSectionType == CriticalSectionType.User)
-            return "UserCsQueue";
-
-        return "ClientCsQueue";
     }
 }

@@ -1,7 +1,9 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
 using Taskling.InfrastructureContracts.TaskExecution;
+using Taskling.Models123;
 using Taskling.SqlServer.AncilliaryServices;
 using Taskling.SqlServer.Configuration;
 
@@ -21,21 +23,20 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
         var response = new TokenResponse();
         response.StartedAt = DateTime.UtcNow;
 
-        using (var connection = await CreateNewConnectionAsync(tokenRequest.TaskId).ConfigureAwait(false))
+        using (var dbContext = await GetDbContextAsync(tokenRequest.TaskId))
         {
-            var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
+            using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-            var command = connection.CreateCommand();
-            command.Transaction = transaction;
-            command.CommandTimeout = ConnectionStore.Instance.GetConnection(tokenRequest.TaskId).QueryTimeoutSeconds;
 
             try
             {
-                await AcquireRowLockAsync(tokenRequest.TaskDefinitionId, tokenRequest.TaskExecutionId, command)
+                await AcquireRowLockAsync(tokenRequest.TaskDefinitionId, tokenRequest.TaskExecutionId,
+                        dbContext)
                     .ConfigureAwait(false);
-                var tokens = await GetTokensAsync(tokenRequest.TaskDefinitionId, command).ConfigureAwait(false);
+                var tokens = await GetTokensAsync(tokenRequest.TaskDefinitionId, dbContext)
+                    .ConfigureAwait(false);
                 var adjusted = AdjustTokenCount(tokens, tokenRequest.ConcurrencyLimit);
-                var assignableToken = await GetAssignableTokenAsync(tokens, command).ConfigureAwait(false);
+                var assignableToken = await GetAssignableTokenAsync(tokens, dbContext).ConfigureAwait(false);
                 if (assignableToken == null)
                 {
                     response.GrantStatus = GrantStatus.Denied;
@@ -50,9 +51,9 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
                 }
 
                 if (adjusted)
-                    await PersistTokensAsync(tokenRequest.TaskDefinitionId, tokens, command).ConfigureAwait(false);
+                    await PersistTokensAsync(tokenRequest.TaskDefinitionId, tokens, dbContext).ConfigureAwait(false);
 
-                transaction.Commit();
+                await transaction.CommitAsync();
                 return response;
             }
             catch (SqlException sqlEx)
@@ -70,45 +71,45 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
 
     public async Task ReturnExecutionTokenAsync(TokenRequest tokenRequest, Guid executionTokenId)
     {
-        using (var connection = await CreateNewConnectionAsync(tokenRequest.TaskId).ConfigureAwait(false))
+        using (var dbContext = await GetDbContextAsync(tokenRequest.TaskId).ConfigureAwait(false))
         {
-            var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
-
-            var command = connection.CreateCommand();
-            command.Transaction = transaction;
-            command.CommandTimeout = ConnectionStore.Instance.GetConnection(tokenRequest.TaskId).QueryTimeoutSeconds;
-
-            try
+            using (var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable))
             {
-                await AcquireRowLockAsync(tokenRequest.TaskDefinitionId, tokenRequest.TaskExecutionId, command)
-                    .ConfigureAwait(false);
-                var tokens = await GetTokensAsync(tokenRequest.TaskDefinitionId, command).ConfigureAwait(false);
-                SetTokenAsAvailable(tokens, executionTokenId);
-                await PersistTokensAsync(tokenRequest.TaskDefinitionId, tokens, command).ConfigureAwait(false);
-
-                transaction.Commit();
-            }
-            catch (SqlException sqlEx)
-            {
-                TryRollBack(transaction, sqlEx);
-            }
-            catch (Exception ex)
-            {
-                TryRollback(transaction, ex);
+                try
+                {
+                    await AcquireRowLockAsync(tokenRequest.TaskDefinitionId, tokenRequest.TaskExecutionId,
+                            dbContext)
+                        .ConfigureAwait(false);
+                    var tokens = await GetTokensAsync(tokenRequest.TaskDefinitionId, dbContext)
+                        .ConfigureAwait(false);
+                    SetTokenAsAvailable(tokens, executionTokenId);
+                    await PersistTokensAsync(tokenRequest.TaskDefinitionId, tokens, dbContext).ConfigureAwait(false);
+                    await transaction.CommitAsync();
+                }
+                catch (SqlException sqlEx)
+                {
+                    TryRollBack(transaction, sqlEx);
+                }
+                catch (Exception ex)
+                {
+                    TryRollback(transaction, ex);
+                }
             }
         }
     }
 
 
-    private async Task AcquireRowLockAsync(int taskDefinitionId, int taskExecutionId, SqlCommand command)
+    private async Task AcquireRowLockAsync(int taskDefinitionId, int taskExecutionId,
+        TasklingDbContext dbContext)
     {
-        await _commonTokenRepository.AcquireRowLockAsync(taskDefinitionId, taskExecutionId, command)
+        await _commonTokenRepository.AcquireRowLockAsync(taskDefinitionId, taskExecutionId, dbContext)
             .ConfigureAwait(false);
     }
 
-    private async Task<ExecutionTokenList> GetTokensAsync(int taskDefinitionId, SqlCommand command)
+    private async Task<ExecutionTokenList> GetTokensAsync(int taskDefinitionId,
+        TasklingDbContext dbContext)
     {
-        var tokensString = await GetTokensStringAsync(taskDefinitionId, command).ConfigureAwait(false);
+        var tokensString = await GetTokensStringAsync(taskDefinitionId, dbContext).ConfigureAwait(false);
         return ParseTokensString(tokensString);
     }
 
@@ -223,28 +224,19 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
         return list;
     }
 
-    private async Task<string> GetTokensStringAsync(int taskDefinitionId, SqlCommand command)
+    private async Task<string> GetTokensStringAsync(int taskDefinitionId,
+        TasklingDbContext dbContext)
     {
-        command.Parameters.Clear();
-        command.CommandText = TokensQueryBuilder.GetExecutionTokensQuery;
-        command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-
-        using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
-        {
-            if (await reader.ReadAsync().ConfigureAwait(false))
-                return reader[0].ToString();
-        }
-
-        return string.Empty;
+        var tokens = await dbContext.TaskDefinitions.Where(i => i.TaskDefinitionId == taskDefinitionId)
+            .Select(i => i.ExecutionTokens)
+            .FirstOrDefaultAsync().ConfigureAwait(false);
+        return tokens ?? string.Empty;
     }
 
-    private async Task<ExecutionToken> GetAssignableTokenAsync(ExecutionTokenList executionTokenList,
-        SqlCommand command)
+    private async Task<ExecutionToken?> GetAssignableTokenAsync(ExecutionTokenList executionTokenList,
+        TasklingDbContext dbContext)
     {
-        if (HasAvailableToken(executionTokenList))
-        {
-            return GetAvailableToken(executionTokenList);
-        }
+        if (HasAvailableToken(executionTokenList)) return GetAvailableToken(executionTokenList);
 
         var executionIds = executionTokenList.Tokens
             .Where(x => x.Status != ExecutionTokenStatus.Disabled && x.GrantedToExecution != 0)
@@ -254,7 +246,7 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
         if (!executionIds.Any())
             return null;
 
-        var executionStates = await GetTaskExecutionStatesAsync(executionIds, command).ConfigureAwait(false);
+        var executionStates = await GetTaskExecutionStatesAsync(executionIds, dbContext).ConfigureAwait(false);
         var expiredExecution = FindExpiredExecution(executionStates);
         if (expiredExecution == null)
             return null;
@@ -275,9 +267,9 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
     }
 
     private async Task<List<TaskExecutionState>> GetTaskExecutionStatesAsync(List<int> taskExecutionIds,
-        SqlCommand command)
+        TasklingDbContext dbContext)
     {
-        return await _commonTokenRepository.GetTaskExecutionStatesAsync(taskExecutionIds, command)
+        return await _commonTokenRepository.GetTaskExecutionStatesAsync(taskExecutionIds, dbContext)
             .ConfigureAwait(false);
     }
 
@@ -304,15 +296,18 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
     }
 
     private async Task PersistTokensAsync(int taskDefinitionId, ExecutionTokenList executionTokenList,
-        SqlCommand command)
+        TasklingDbContext dbContext)
     {
         var tokenString = GenerateTokenString(executionTokenList);
+        var taskDefinitions = await
+            dbContext.TaskDefinitions.Where(i => i.TaskDefinitionId == taskDefinitionId).ToListAsync();
+        foreach (var taskDefinition in taskDefinitions)
+        {
+            taskDefinition.ExecutionTokens = tokenString;
+            dbContext.TaskDefinitions.Update(taskDefinition);
+        }
 
-        command.Parameters.Clear();
-        command.CommandText = TokensQueryBuilder.UpdateExecutionTokensQuery;
-        command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-        command.Parameters.Add("@ExecutionTokens", SqlDbType.VarChar, 8000).Value = tokenString;
-        await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+        await dbContext.SaveChangesAsync().ConfigureAwait(false);
     }
 
     private string GenerateTokenString(ExecutionTokenList executionTokenList)
