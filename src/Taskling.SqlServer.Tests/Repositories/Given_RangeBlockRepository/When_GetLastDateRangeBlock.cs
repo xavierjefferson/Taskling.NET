@@ -1,133 +1,140 @@
-﻿using Xunit;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System;
 using System.Threading;
+using System.Threading.Tasks;
 using Taskling.Blocks.Common;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.SqlServer.Blocks;
-using Taskling.SqlServer.Tests.Helpers;
 using Taskling.SqlServer.Tasks;
-using System.Threading.Tasks;
+using Taskling.SqlServer.Tests.Helpers;
+using Xunit;
 
-namespace Taskling.SqlServer.Tests.Repositories.Given_RangeBlockRepository
+namespace Taskling.SqlServer.Tests.Repositories.Given_RangeBlockRepository;
+
+public class When_GetLastDateRangeBlock
 {
-    public class When_GetLastDateRangeBlock
+    private DateTime _baseDateTime;
+
+    private long _block1;
+    private long _block2;
+    private long _block3;
+    private long _block4;
+    private long _block5;
+    private readonly BlocksHelper _blocksHelper;
+    private readonly ExecutionsHelper _executionHelper;
+
+    private readonly int _taskDefinitionId;
+    private int _taskExecution1;
+
+    public When_GetLastDateRangeBlock()
     {
-        private ExecutionsHelper _executionHelper;
-        private BlocksHelper _blocksHelper;
+        _blocksHelper = new BlocksHelper();
+        _blocksHelper.DeleteBlocks(TestConstants.ApplicationName);
+        _executionHelper = new ExecutionsHelper();
+        _executionHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
 
-        private int _taskDefinitionId;
-        private string _taskExecution1;
-        private DateTime _baseDateTime;
+        _taskDefinitionId = _executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionHelper.InsertUnlimitedExecutionToken(_taskDefinitionId);
 
-        private string _block1;
-        private string _block2;
-        private string _block3;
-        private string _block4;
-        private string _block5;
+        TaskRepository.ClearCache();
+    }
 
-        public When_GetLastDateRangeBlock()
-        {
-            _blocksHelper = new BlocksHelper();
-            _blocksHelper.DeleteBlocks(TestConstants.ApplicationName);
-            _executionHelper = new ExecutionsHelper();
-            _executionHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+    private RangeBlockRepository CreateSut()
+    {
+        return new RangeBlockRepository(new TaskRepository());
+    }
 
-            _taskDefinitionId = _executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-            _executionHelper.InsertUnlimitedExecutionToken(_taskDefinitionId);
+    private void InsertBlocks()
+    {
+        _taskExecution1 = _executionHelper.InsertOverrideTaskExecution(_taskDefinitionId);
 
-            TaskRepository.ClearCache();
-        }
-        
-        private RangeBlockRepository CreateSut()
-        {
-            return new RangeBlockRepository(new TaskRepository());
-        }
+        _baseDateTime = new DateTime(2016, 1, 1);
+        _block1 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, _baseDateTime.AddMinutes(-20),
+            _baseDateTime.AddMinutes(-30), DateTime.UtcNow);
+        _blocksHelper.InsertBlockExecution(_taskExecution1, _block1, _baseDateTime.AddMinutes(-20),
+            _baseDateTime.AddMinutes(-20), _baseDateTime.AddMinutes(-25), BlockExecutionStatus.Failed);
+        Thread.Sleep(10);
+        _block2 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, _baseDateTime.AddMinutes(-10),
+            _baseDateTime.AddMinutes(-40), DateTime.UtcNow);
+        _blocksHelper.InsertBlockExecution(_taskExecution1, _block2, _baseDateTime.AddMinutes(-30),
+            _baseDateTime.AddMinutes(-30), _baseDateTime.AddMinutes(-35), BlockExecutionStatus.Started);
+        Thread.Sleep(10);
+        _block3 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, _baseDateTime.AddMinutes(-40),
+            _baseDateTime.AddMinutes(-50), DateTime.UtcNow);
+        _blocksHelper.InsertBlockExecution(_taskExecution1, _block3, _baseDateTime.AddMinutes(-40),
+            _baseDateTime.AddMinutes(-40), _baseDateTime.AddMinutes(-45), BlockExecutionStatus.NotStarted);
+        Thread.Sleep(10);
+        _block4 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, _baseDateTime.AddMinutes(-50),
+            _baseDateTime.AddMinutes(-60), DateTime.UtcNow);
+        _blocksHelper.InsertBlockExecution(_taskExecution1, _block4, _baseDateTime.AddMinutes(-50),
+            _baseDateTime.AddMinutes(-50), _baseDateTime.AddMinutes(-55), BlockExecutionStatus.Completed);
+        Thread.Sleep(10);
+        _block5 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, _baseDateTime.AddMinutes(-60),
+            _baseDateTime.AddMinutes(-70), DateTime.UtcNow);
+        _blocksHelper.InsertBlockExecution(_taskExecution1, _block5, _baseDateTime.AddMinutes(-60),
+            _baseDateTime.AddMinutes(-60), _baseDateTime.AddMinutes(-65), BlockExecutionStatus.Started);
+    }
 
-        private void InsertBlocks()
-        {
-            _taskExecution1 = _executionHelper.InsertOverrideTaskExecution(_taskDefinitionId);
+    [Fact]
+    [Trait("Speed", "Fast")]
+    [Trait("Area", "Blocks")]
+    public async Task If_OrderByLastCreated_ThenReturnLastCreated()
+    {
+        // ARRANGE
+        InsertBlocks();
 
-            _baseDateTime = new DateTime(2016, 1, 1);
-            _block1 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, _baseDateTime.AddMinutes(-20), _baseDateTime.AddMinutes(-30), DateTime.UtcNow).ToString();
-            _blocksHelper.InsertBlockExecution(_taskExecution1, long.Parse(_block1), _baseDateTime.AddMinutes(-20), _baseDateTime.AddMinutes(-20), _baseDateTime.AddMinutes(-25), BlockExecutionStatus.Failed);
-            Thread.Sleep(10);
-            _block2 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, _baseDateTime.AddMinutes(-10), _baseDateTime.AddMinutes(-40), DateTime.UtcNow).ToString();
-            _blocksHelper.InsertBlockExecution(_taskExecution1, long.Parse(_block2), _baseDateTime.AddMinutes(-30), _baseDateTime.AddMinutes(-30), _baseDateTime.AddMinutes(-35), BlockExecutionStatus.Started);
-            Thread.Sleep(10);
-            _block3 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, _baseDateTime.AddMinutes(-40), _baseDateTime.AddMinutes(-50), DateTime.UtcNow).ToString();
-            _blocksHelper.InsertBlockExecution(_taskExecution1, long.Parse(_block3), _baseDateTime.AddMinutes(-40), _baseDateTime.AddMinutes(-40), _baseDateTime.AddMinutes(-45), BlockExecutionStatus.NotStarted);
-            Thread.Sleep(10);
-            _block4 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, _baseDateTime.AddMinutes(-50), _baseDateTime.AddMinutes(-60), DateTime.UtcNow).ToString();
-            _blocksHelper.InsertBlockExecution(_taskExecution1, long.Parse(_block4), _baseDateTime.AddMinutes(-50), _baseDateTime.AddMinutes(-50), _baseDateTime.AddMinutes(-55), BlockExecutionStatus.Completed);
-            Thread.Sleep(10);
-            _block5 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, _baseDateTime.AddMinutes(-60), _baseDateTime.AddMinutes(-70), DateTime.UtcNow).ToString();
-            _blocksHelper.InsertBlockExecution(_taskExecution1, long.Parse(_block5), _baseDateTime.AddMinutes(-60), _baseDateTime.AddMinutes(-60), _baseDateTime.AddMinutes(-65), BlockExecutionStatus.Started);
-        }
+        // ACT
+        var sut = CreateSut();
+        var block = await sut.GetLastRangeBlockAsync(CreateRequest(LastBlockOrder.LastCreated));
 
-        [Fact]
-        [Trait("Speed", "Fast")]
-        [Trait("Area", "Blocks")]
-        public async Task If_OrderByLastCreated_ThenReturnLastCreated()
-        {
-            // ARRANGE
-            InsertBlocks();
+        // ASSERT
+        Assert.Equal(_block5, block.RangeBlockId);
+        Assert.Equal(_baseDateTime.AddMinutes(-60), block.RangeBeginAsDateTime());
+        Assert.Equal(_baseDateTime.AddMinutes(-70), block.RangeEndAsDateTime());
+    }
 
-            // ACT
-            var sut = CreateSut();
-            var block = await sut.GetLastRangeBlockAsync(CreateRequest(LastBlockOrder.LastCreated));
+    [Fact]
+    [Trait("Speed", "Fast")]
+    [Trait("Area", "Blocks")]
+    public async Task If_OrderByMaxFromDate_ThenReturnBlockWithMaxFromDate()
+    {
+        // ARRANGE
+        InsertBlocks();
 
-            // ASSERT
-            Assert.Equal(_block5, block.RangeBlockId);
-            Assert.Equal(_baseDateTime.AddMinutes(-60), block.RangeBeginAsDateTime());
-            Assert.Equal(_baseDateTime.AddMinutes(-70), block.RangeEndAsDateTime());
-        }
+        // ACT
+        var sut = CreateSut();
+        var block = await sut.GetLastRangeBlockAsync(CreateRequest(LastBlockOrder.MaxRangeStartValue));
 
-        [Fact]
-        [Trait("Speed", "Fast")]
-        [Trait("Area", "Blocks")]
-        public async Task If_OrderByMaxFromDate_ThenReturnBlockWithMaxFromDate()
-        {
-            // ARRANGE
-            InsertBlocks();
+        // ASSERT
+        Assert.Equal(_block2, block.RangeBlockId);
+        Assert.Equal(_baseDateTime.AddMinutes(-10), block.RangeBeginAsDateTime());
+        Assert.Equal(_baseDateTime.AddMinutes(-40), block.RangeEndAsDateTime());
+    }
 
-            // ACT
-            var sut = CreateSut();
-            var block = await sut.GetLastRangeBlockAsync(CreateRequest(LastBlockOrder.MaxRangeStartValue));
+    [Fact]
+    [Trait("Speed", "Fast")]
+    [Trait("Area", "Blocks")]
+    public async Task If_OrderByMaxToDate_ThenReturnBlockWithMaxToDate()
+    {
+        // ARRANGE
+        InsertBlocks();
 
-            // ASSERT
-            Assert.Equal(_block2, block.RangeBlockId);
-            Assert.Equal(_baseDateTime.AddMinutes(-10), block.RangeBeginAsDateTime());
-            Assert.Equal(_baseDateTime.AddMinutes(-40), block.RangeEndAsDateTime());
-        }
+        // ACT
+        var sut = CreateSut();
+        var block = await sut.GetLastRangeBlockAsync(CreateRequest(LastBlockOrder.MaxRangeEndValue));
 
-        [Fact]
-        [Trait("Speed", "Fast")]
-        [Trait("Area", "Blocks")]
-        public async Task If_OrderByMaxToDate_ThenReturnBlockWithMaxToDate()
-        {
-            // ARRANGE
-            InsertBlocks();
+        // ASSERT
+        Assert.Equal(_block1, block.RangeBlockId);
+        Assert.Equal(_baseDateTime.AddMinutes(-20), block.RangeBeginAsDateTime());
+        Assert.Equal(_baseDateTime.AddMinutes(-30), block.RangeEndAsDateTime());
+    }
 
-            // ACT
-            var sut = CreateSut();
-            var block = await sut.GetLastRangeBlockAsync(CreateRequest(LastBlockOrder.MaxRangeEndValue));
+    private LastBlockRequest CreateRequest(LastBlockOrder lastBlockOrder)
+    {
+        var request = new LastBlockRequest(new TaskId(TestConstants.ApplicationName, TestConstants.TaskName),
+            BlockType.DateRange);
+        request.LastBlockOrder = lastBlockOrder;
 
-            // ASSERT
-            Assert.Equal(_block1, block.RangeBlockId);
-            Assert.Equal(_baseDateTime.AddMinutes(-20), block.RangeBeginAsDateTime());
-            Assert.Equal(_baseDateTime.AddMinutes(-30), block.RangeEndAsDateTime());
-        }
-
-        private LastBlockRequest CreateRequest(LastBlockOrder lastBlockOrder)
-        {
-            var request = new LastBlockRequest(new TaskId(TestConstants.ApplicationName, TestConstants.TaskName), BlockType.DateRange);
-            request.LastBlockOrder = lastBlockOrder;
-
-            return request;
-        }
+        return request;
     }
 }

@@ -1,20 +1,13 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
-namespace Taskling.ExecutionContext
+namespace Taskling.ExecutionContext;
+
+public class TaskExecutionInstance
 {
-    public class TaskExecutionInstance
-    {
-        public TaskExecutionInstance()
-        { }
-
-        public string TaskExecutionId { get; set; }
-        public string ApplicationName { get; set; }
-        public string TaskName { get; set; }
-        public DateTime StartedAt { get; set; }
-        public DateTime? CompletedAt { get; set; }
-        public string ExecutionTokenId { get; set; }
-    }
+    public int TaskExecutionId { get; set; }
+    public string ApplicationName { get; set; }
+    public string TaskName { get; set; }
+    public DateTime StartedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public Guid ExecutionTokenId { get; set; }
 }

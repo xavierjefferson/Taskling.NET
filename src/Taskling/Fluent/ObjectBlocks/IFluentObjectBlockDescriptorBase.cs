@@ -1,14 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿namespace Taskling.Fluent;
 
-namespace Taskling.Fluent
+public interface IFluentObjectBlockDescriptorBase<T>
 {
-    public interface IFluentObjectBlockDescriptorBase<T>
-    {
-        IOverrideConfigurationDescriptor WithObject(T data);
-        IOverrideConfigurationDescriptor WithNoNewBlocks();
-        IReprocessScopeDescriptor Reprocess();
-    }
+    IOverrideConfigurationDescriptor WithObject(T data);
+    IOverrideConfigurationDescriptor WithNoNewBlocks();
+    IReprocessScopeDescriptor Reprocess();
 }

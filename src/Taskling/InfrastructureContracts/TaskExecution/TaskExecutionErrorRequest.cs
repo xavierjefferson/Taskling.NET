@@ -1,13 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿namespace Taskling.InfrastructureContracts.TaskExecution;
 
-namespace Taskling.InfrastructureContracts.TaskExecution
+public class TaskExecutionErrorRequest : RequestBase
 {
-    public class TaskExecutionErrorRequest : RequestBase
-    {
-        public string Error { get; set; }
-        public bool TreatTaskAsFailed { get; set; }
-    }
+    public string Error { get; set; }
+    public bool TreatTaskAsFailed { get; set; }
 }

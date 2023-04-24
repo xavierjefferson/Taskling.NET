@@ -1,14 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Taskling.InfrastructureContracts.TaskExecution;
+﻿using Taskling.InfrastructureContracts.TaskExecution;
 
-namespace Taskling.SqlServer.Tasks
+namespace Taskling.SqlServer.Tasks;
+
+internal class CachedTaskDefinition
 {
-    internal class CachedTaskDefinition
-    {
-        public TaskDefinition TaskDefinition { get; set; }
-        public DateTime CachedAt { get; set; }
-    }
+    public TaskDefinition TaskDefinition { get; set; }
+    public DateTime CachedAt { get; set; }
 }

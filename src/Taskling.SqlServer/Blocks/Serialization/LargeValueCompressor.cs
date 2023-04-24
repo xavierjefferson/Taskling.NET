@@ -1,74 +1,64 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.IO.Compression;
-using System.Linq;
+﻿using System.IO.Compression;
 using System.Text;
 
-namespace Taskling.SqlServer.Blocks.Serialization
+namespace Taskling.SqlServer.Blocks.Serialization;
+
+public class LargeValueCompressor
 {
-    public class LargeValueCompressor
+    public static byte[] Zip(string str)
     {
-        public static byte[] Zip(string str)
+        var bytes = Encoding.UTF8.GetBytes(str);
+
+        MemoryStream originalMemoryStream = null;
+        MemoryStream compressedMemoryStream = null;
+
+        try
         {
-            var bytes = Encoding.UTF8.GetBytes(str);
-
-            MemoryStream originalMemoryStream = null;
-            MemoryStream compressedMemoryStream = null;
-
-            try
+            originalMemoryStream = new MemoryStream(bytes);
+            compressedMemoryStream = new MemoryStream();
+            using (var compressionStream = new GZipStream(compressedMemoryStream, CompressionMode.Compress))
             {
-                originalMemoryStream = new MemoryStream(bytes);
-                compressedMemoryStream = new MemoryStream();
-                using (var compressionStream = new GZipStream(compressedMemoryStream, CompressionMode.Compress))
-                {
-                    CopyStream(originalMemoryStream, compressionStream);
-                    //originalMemoryStream.CopyTo(compressionStream);
-                }
+                CopyStream(originalMemoryStream, compressionStream);
+                //originalMemoryStream.CopyTo(compressionStream);
+            }
 
-                return compressedMemoryStream.ToArray();
-            }
-            finally
-            {
-                if (originalMemoryStream != null)
-                    originalMemoryStream.Dispose();
-            }
+            return compressedMemoryStream.ToArray();
         }
-
-        
-
-        public static string Unzip(byte[] bytes)
+        finally
         {
-            MemoryStream originalMemoryStream = null;
-            MemoryStream decompressedMemoryStream = null;
-
-            try
-            {
-                originalMemoryStream = new MemoryStream(bytes);
-                decompressedMemoryStream = new MemoryStream();
-                using (var decompressionStream = new GZipStream(originalMemoryStream, CompressionMode.Decompress))
-                {
-                    CopyStream(decompressionStream, decompressedMemoryStream);
-                    //decompressionStream.CopyTo(decompressedMemoryStream);
-                }
-
-                return Encoding.UTF8.GetString(decompressedMemoryStream.ToArray());
-            }
-            finally
-            {
-                if (decompressedMemoryStream != null)
-                    decompressedMemoryStream.Dispose();
-            }
+            if (originalMemoryStream != null)
+                originalMemoryStream.Dispose();
         }
+    }
 
-        private static void CopyStream(Stream input, Stream output)
+
+    public static string Unzip(byte[] bytes)
+    {
+        MemoryStream originalMemoryStream = null;
+        MemoryStream decompressedMemoryStream = null;
+
+        try
         {
-            byte[] buffer = new byte[4096];
-            int read;
-            while ((read = input.Read(buffer, 0, buffer.Length)) > 0)
+            originalMemoryStream = new MemoryStream(bytes);
+            decompressedMemoryStream = new MemoryStream();
+            using (var decompressionStream = new GZipStream(originalMemoryStream, CompressionMode.Decompress))
             {
-                output.Write(buffer, 0, read);
+                decompressionStream.CopyTo(decompressedMemoryStream);
             }
+
+            return Encoding.UTF8.GetString(decompressedMemoryStream.ToArray());
         }
+        finally
+        {
+            if (decompressedMemoryStream != null)
+                decompressedMemoryStream.Dispose();
+        }
+    }
+
+    private static void CopyStream(Stream input, Stream output)
+    {
+        var buffer = new byte[4096];
+        int read;
+        while ((read = input.Read(buffer, 0, buffer.Length)) > 0) output.Write(buffer, 0, read);
     }
 }

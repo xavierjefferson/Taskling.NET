@@ -1,20 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
-namespace Taskling.InfrastructureContracts.TaskExecution
+namespace Taskling.InfrastructureContracts.TaskExecution;
+
+public class TaskExecutionCompleteRequest : RequestBase
 {
-    public class TaskExecutionCompleteRequest : RequestBase
+    public TaskExecutionCompleteRequest(TaskId taskId, int taskExecutionId, Guid executionTokenId)
+        : base(taskId, taskExecutionId)
     {
-        public TaskExecutionCompleteRequest(TaskId taskId, string taskExecutionId, string executionTokenId)
-            : base(taskId, taskExecutionId)
-        {
-            ExecutionTokenId = executionTokenId;
-        }
-
-        public string ExecutionTokenId { get; set; }
-        public bool Failed { get; set; }
-
+        ExecutionTokenId = executionTokenId;
     }
+
+    public Guid ExecutionTokenId { get; set; }
+    public bool Failed { get; set; }
 }

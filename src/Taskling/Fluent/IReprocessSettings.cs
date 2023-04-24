@@ -1,15 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Taskling.Tasks;
+﻿using Taskling.Tasks;
 
-namespace Taskling.Fluent
+namespace Taskling.Fluent;
+
+public interface IReprocessSettings
 {
-    public interface IReprocessSettings
-    {
-        string CurrentReferenceValue { get; set; }
-        ReprocessOption ReprocessOption { get; set; }
-        string ReferenceValueToReprocess { get; set; }
-    }
+    string CurrentReferenceValue { get; set; }
+    ReprocessOption ReprocessOption { get; set; }
+    string ReferenceValueToReprocess { get; set; }
 }

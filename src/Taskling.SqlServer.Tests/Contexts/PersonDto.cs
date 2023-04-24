@@ -1,11 +1,10 @@
 ﻿using System;
 
-namespace Taskling.SqlServer.Tests.Contexts
+namespace Taskling.SqlServer.Tests.Contexts;
+
+public class PersonDto
 {
-    public class PersonDto
-    {
-        public string Id { get; set; }
-        public string Name { get; set; }
-        public DateTime DateOfBirth { get; set; }
-    }
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public DateTime DateOfBirth { get; set; }
 }

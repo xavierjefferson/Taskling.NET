@@ -1,13 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿namespace Taskling.Tasks;
 
-namespace Taskling.Tasks
+public enum ReprocessOption
 {
-    public enum ReprocessOption
-    {
-        Everything,
-        PendingOrFailed
-    }
+    Everything,
+    PendingOrFailed
 }

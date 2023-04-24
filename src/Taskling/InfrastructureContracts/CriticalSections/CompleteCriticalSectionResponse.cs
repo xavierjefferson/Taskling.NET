@@ -1,12 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Taskling.InfrastructureContracts.TaskExecution;
+﻿using Taskling.InfrastructureContracts.TaskExecution;
 
-namespace Taskling.InfrastructureContracts.CriticalSections
+namespace Taskling.InfrastructureContracts.CriticalSections;
+
+public class CompleteCriticalSectionResponse : ResponseBase
 {
-    public class CompleteCriticalSectionResponse : ResponseBase
-    {
-    }
 }

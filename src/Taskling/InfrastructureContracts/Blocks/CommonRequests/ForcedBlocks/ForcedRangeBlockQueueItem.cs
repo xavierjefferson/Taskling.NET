@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Taskling.Blocks.RangeBlocks;
+﻿using Taskling.Blocks.RangeBlocks;
 
-namespace Taskling.InfrastructureContracts.Blocks.CommonRequests.ForcedBlocks
+namespace Taskling.InfrastructureContracts.Blocks.CommonRequests.ForcedBlocks;
+
+public class ForcedRangeBlockQueueItem : ForcedBlockQueueItem
 {
-    public class ForcedRangeBlockQueueItem : ForcedBlockQueueItem
-    {
-        public RangeBlock RangeBlock { get; set; }
-    }
+    public RangeBlock RangeBlock { get; set; }
 }

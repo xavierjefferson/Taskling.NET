@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿namespace Taskling.SqlServer.Blocks;
 
-namespace Taskling.SqlServer.Blocks
+internal class FailedBlocksQueryBuilder
 {
-    internal class FailedBlocksQueryBuilder
-    {
-        private const string FindFailedBlocksQuery = @"
+    private const string FindFailedBlocksQuery = @"
 WITH OrderedBlocks As (
 	SELECT ROW_NUMBER() OVER (PARTITION BY BE.BlockId ORDER BY BE.BlockExecutionId DESC) AS RowNo
 			,BE.[BlockExecutionId]
@@ -36,24 +31,23 @@ AND BE.Attempt < @AttemptLimit
 AND OB.RowNo = 1
 ORDER BY B.CreatedDate ASC";
 
-        public static string GetFindFailedDateRangeBlocksQuery(int top)
-        {
-            return string.Format(FindFailedBlocksQuery, top, ",B.FromDate,B.ToDate");
-        }
+    public static string GetFindFailedDateRangeBlocksQuery(int top)
+    {
+        return string.Format(FindFailedBlocksQuery, top, ",B.FromDate,B.ToDate");
+    }
 
-        public static string GetFindFailedNumericRangeBlocksQuery(int top)
-        {
-            return string.Format(FindFailedBlocksQuery, top, ",B.FromNumber,B.ToNumber");
-        }
+    public static string GetFindFailedNumericRangeBlocksQuery(int top)
+    {
+        return string.Format(FindFailedBlocksQuery, top, ",B.FromNumber,B.ToNumber");
+    }
 
-        public static string GetFindFailedListBlocksQuery(int top)
-        {
-            return string.Format(FindFailedBlocksQuery, top, "");
-        }
+    public static string GetFindFailedListBlocksQuery(int top)
+    {
+        return string.Format(FindFailedBlocksQuery, top, "");
+    }
 
-        public static string GetFindFailedObjectBlocksQuery(int top)
-        {
-            return string.Format(FindFailedBlocksQuery, top, ",B.ObjectData");
-        }
+    public static string GetFindFailedObjectBlocksQuery(int top)
+    {
+        return string.Format(FindFailedBlocksQuery, top, ",B.ObjectData");
     }
 }

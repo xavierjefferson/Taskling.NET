@@ -1,11 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿namespace Taskling.Fluent;
 
-namespace Taskling.Fluent
+public interface IComplete
 {
-    public interface IComplete
-    {
-    }
 }

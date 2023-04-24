@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿namespace Taskling.SqlServer.Blocks;
 
-namespace Taskling.SqlServer.Blocks
+internal class DeadBlocksQueryBuilder
 {
-    internal class DeadBlocksQueryBuilder
-    {
-        private const string FindDeadBlocksQuery = @"WITH OrderedBlocks As (
+    private const string FindDeadBlocksQuery = @"WITH OrderedBlocks As (
 	SELECT ROW_NUMBER() OVER (PARTITION BY BE.BlockId ORDER BY BE.BlockExecutionId DESC) AS RowNo
 			,BE.[BlockExecutionId]
 	FROM [Taskling].[BlockExecution] BE WITH(NOLOCK)
@@ -35,7 +30,7 @@ AND BE.Attempt < @AttemptLimit
 AND OB.RowNo = 1
 ORDER BY B.CreatedDate ASC";
 
-        private const string FindDeadBlocksWithKeepAliveQuery = @"WITH OrderedBlocks As (
+    private const string FindDeadBlocksWithKeepAliveQuery = @"WITH OrderedBlocks As (
 	SELECT ROW_NUMBER() OVER (PARTITION BY BE.BlockId ORDER BY BE.BlockExecutionId DESC) AS RowNo
 			,BE.[BlockExecutionId]
 	FROM [Taskling].[BlockExecution] BE WITH(NOLOCK)
@@ -63,44 +58,43 @@ AND BE.Attempt < @AttemptLimit
 AND OB.RowNo = 1
 ORDER BY B.CreatedDate ASC";
 
-        public static string GetFindDeadDateRangeBlocksQuery(int top)
-        {
-            return String.Format(FindDeadBlocksQuery, top, ",B.FromDate,B.ToDate");
-        }
+    public static string GetFindDeadDateRangeBlocksQuery(int top)
+    {
+        return string.Format(FindDeadBlocksQuery, top, ",B.FromDate,B.ToDate");
+    }
 
-        public static string GetFindDeadNumericRangeBlocksQuery(int top)
-        {
-            return String.Format(FindDeadBlocksQuery, top, ",B.FromNumber,B.ToNumber");
-        }
+    public static string GetFindDeadNumericRangeBlocksQuery(int top)
+    {
+        return string.Format(FindDeadBlocksQuery, top, ",B.FromNumber,B.ToNumber");
+    }
 
-        public static string GetFindDeadListBlocksQuery(int top)
-        {
-            return String.Format(FindDeadBlocksQuery, top, "");
-        }
+    public static string GetFindDeadListBlocksQuery(int top)
+    {
+        return string.Format(FindDeadBlocksQuery, top, "");
+    }
 
-        public static string GetFindDeadObjectBlocksQuery(int top)
-        {
-            return String.Format(FindDeadBlocksQuery, top, ",B.ObjectData");
-        }
+    public static string GetFindDeadObjectBlocksQuery(int top)
+    {
+        return string.Format(FindDeadBlocksQuery, top, ",B.ObjectData");
+    }
 
-        public static string GetFindDeadDateRangeBlocksWithKeepAliveQuery(int top)
-        {
-            return String.Format(FindDeadBlocksWithKeepAliveQuery, top, ",B.FromDate,B.ToDate");
-        }
+    public static string GetFindDeadDateRangeBlocksWithKeepAliveQuery(int top)
+    {
+        return string.Format(FindDeadBlocksWithKeepAliveQuery, top, ",B.FromDate,B.ToDate");
+    }
 
-        public static string GetFindDeadNumericRangeBlocksWithKeepAliveQuery(int top)
-        {
-            return String.Format(FindDeadBlocksWithKeepAliveQuery, top, ",B.FromNumber,B.ToNumber");
-        }
+    public static string GetFindDeadNumericRangeBlocksWithKeepAliveQuery(int top)
+    {
+        return string.Format(FindDeadBlocksWithKeepAliveQuery, top, ",B.FromNumber,B.ToNumber");
+    }
 
-        public static string GetFindDeadListBlocksWithKeepAliveQuery(int top)
-        {
-            return String.Format(FindDeadBlocksWithKeepAliveQuery, top, "");
-        }
+    public static string GetFindDeadListBlocksWithKeepAliveQuery(int top)
+    {
+        return string.Format(FindDeadBlocksWithKeepAliveQuery, top, "");
+    }
 
-        public static string GetFindDeadObjectBlocksWithKeepAliveQuery(int top)
-        {
-            return String.Format(FindDeadBlocksWithKeepAliveQuery, top, ",B.ObjectData");
-        }
+    public static string GetFindDeadObjectBlocksWithKeepAliveQuery(int top)
+    {
+        return string.Format(FindDeadBlocksWithKeepAliveQuery, top, ",B.ObjectData");
     }
 }

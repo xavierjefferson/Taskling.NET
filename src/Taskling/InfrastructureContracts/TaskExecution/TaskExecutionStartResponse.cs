@@ -1,28 +1,25 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
-namespace Taskling.InfrastructureContracts.TaskExecution
+namespace Taskling.InfrastructureContracts.TaskExecution;
+
+public class TaskExecutionStartResponse : ResponseBase
 {
-    public class TaskExecutionStartResponse : ResponseBase
+    public TaskExecutionStartResponse()
     {
-        public TaskExecutionStartResponse()
-        { }
-
-        public TaskExecutionStartResponse(string executionTokenId,
-            DateTime startedAt,
-            GrantStatus grantStatus)
-        {
-            ExecutionTokenId = executionTokenId;
-            StartedAt = startedAt;
-            GrantStatus = grantStatus;
-        }
-
-        public string TaskExecutionId { get; set; }
-        public string ExecutionTokenId { get; set; }
-        public DateTime StartedAt { get; set; }
-        public GrantStatus GrantStatus { get; set; }
-        public Exception Ex { get; set; }
     }
+
+    public TaskExecutionStartResponse(Guid executionTokenId,
+        DateTime startedAt,
+        GrantStatus grantStatus)
+    {
+        ExecutionTokenId = executionTokenId;
+        StartedAt = startedAt;
+        GrantStatus = grantStatus;
+    }
+
+    public int TaskExecutionId { get; set; }
+    public Guid ExecutionTokenId { get; set; }
+    public DateTime StartedAt { get; set; }
+    public GrantStatus GrantStatus { get; set; }
+    public Exception Ex { get; set; }
 }

@@ -1,23 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿namespace Taskling.SqlServer.TaskExecution.QueryBuilders;
 
-namespace Taskling.SqlServer.TaskExecution.QueryBuilders
+internal class CleanUpQueryBuilder
 {
-    internal class CleanUpQueryBuilder
-    {
-        public const string IdentifyOldBlocksQuery = @"
+    public const string IdentifyOldBlocksQuery = @"
 SELECT [BlockId]
 FROM [Taskling].[Block] WITH(NOLOCK)
 WHERE [TaskDefinitionId] = @TaskDefinitionId
 AND [CreatedDate] < @OlderThanDate";
 
-        public const string DeleteListItemsOfBlockQuery = @"
+    public const string DeleteListItemsOfBlockQuery = @"
 DELETE FROM [Taskling].[ListBlockItem]
 WHERE BlockId = @BlockId";
 
-        public const string DeleteOldDataQuery = @"
+    public const string DeleteOldDataQuery = @"
 DELETE FROM [Taskling].[BlockExecution]
 WHERE BlockExecutionId IN (
     SELECT BlockExecutionId
@@ -56,5 +51,4 @@ WHERE TaskExecutionId IN (
 
 DELETE FROM [Taskling].[ForceBlockQueue]
 WHERE ForcedDate < @OlderThanDate;";
-    }
 }

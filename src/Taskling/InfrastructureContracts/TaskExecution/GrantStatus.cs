@@ -1,13 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿namespace Taskling.InfrastructureContracts.TaskExecution;
 
-namespace Taskling.InfrastructureContracts.TaskExecution
+public enum GrantStatus
 {
-    public enum GrantStatus
-    {
-        Denied = 0,
-        Granted = 1
-    }
+    Denied = 0,
+    Granted = 1
 }

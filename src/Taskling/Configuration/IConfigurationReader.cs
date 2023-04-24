@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿namespace Taskling.Configuration;
 
-namespace Taskling.Configuration
+public interface IConfigurationReader
 {
-    public interface IConfigurationReader
-    {
-        string GetTaskConfigurationString(string applicationName, string taskName);
-    }
+    string GetTaskConfigurationString(string applicationName, string taskName);
 }

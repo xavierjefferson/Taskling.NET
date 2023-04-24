@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿namespace Taskling.SqlServer.Events;
 
-namespace Taskling.SqlServer.Events
+internal class EventsQueryBuilder
 {
-    internal class EventsQueryBuilder
-    {
-        public const string InsertTaskExecutionEventQuery = @"
+    public const string InsertTaskExecutionEventQuery = @"
 INSERT INTO [Taskling].[TaskExecutionEvent]
            ([TaskExecutionId]
            ,[EventType]
@@ -18,5 +13,4 @@ INSERT INTO [Taskling].[TaskExecutionEvent]
            ,@EventType
            ,@Message
            ,@EventDateTime)";
-    }
 }

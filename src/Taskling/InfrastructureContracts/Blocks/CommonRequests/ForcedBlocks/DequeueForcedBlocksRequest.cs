@@ -1,22 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Collections.Generic;
 using Taskling.Blocks.Common;
 
-namespace Taskling.InfrastructureContracts.Blocks.CommonRequests.ForcedBlocks
-{
-    public class DequeueForcedBlocksRequest : BlockRequestBase
-    {
-        public DequeueForcedBlocksRequest(TaskId taskId,
-            string taskExecutionId,
-            BlockType blockType,
-            List<string> forcedBlockQueueIds)
-            : base(taskId, taskExecutionId, blockType)
-        {
-            ForcedBlockQueueIds = forcedBlockQueueIds;
-        }
+namespace Taskling.InfrastructureContracts.Blocks.CommonRequests.ForcedBlocks;
 
-        public List<string> ForcedBlockQueueIds { get; set; }
+public class DequeueForcedBlocksRequest : BlockRequestBase
+{
+    public DequeueForcedBlocksRequest(TaskId taskId,
+        int taskExecutionId,
+        BlockType blockType,
+        List<int> forcedBlockQueueIds)
+        : base(taskId, taskExecutionId, blockType)
+    {
+        ForcedBlockQueueIds = forcedBlockQueueIds;
     }
+
+    public List<int> ForcedBlockQueueIds { get; set; }
 }

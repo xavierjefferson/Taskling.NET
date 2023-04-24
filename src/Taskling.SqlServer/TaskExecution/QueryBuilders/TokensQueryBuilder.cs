@@ -1,15 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿namespace Taskling.SqlServer.TaskExecution.QueryBuilders;
 
-namespace Taskling.SqlServer.TaskExecution.QueryBuilders
+internal class TokensQueryBuilder
 {
-    internal class TokensQueryBuilder
-    {
-        #region .: Base Queries :.
+    #region .: Base Queries :.
 
-        public const string OverrideBasedRequestExecutionTokenQuery = @"
+    public const string OverrideBasedRequestExecutionTokenQuery = @"
     ----------------------------
 -- Get an exclusive lock on the records of this process
 ----------------------------
@@ -105,7 +100,7 @@ BEGIN
 END
 ";
 
-        public const string KeepAliveBasedRequestExecutionTokenQuery = @"----------------------------
+    public const string KeepAliveBasedRequestExecutionTokenQuery = @"----------------------------
 -- Get an exclusive lock on the records of this process
 ----------------------------
 UPDATE ET
@@ -198,7 +193,7 @@ BEGIN
 
 END";
 
-        public const string ReturnExecutionTokenQuery = @"
+    public const string ReturnExecutionTokenQuery = @"
     UPDATE [Taskling].[ExecutionToken] 
 	SET [DateReturned] = GETUTCDATE()
 		,[Status] = 1
@@ -208,10 +203,7 @@ END";
 
     SELECT GETUTCDATE() AS CompletedAt;";
 
-        public const string GetCurrentDateQuery = @"SELECT GETUTCDATE() AS CurrentDate;";
+    public const string GetCurrentDateQuery = @"SELECT GETUTCDATE() AS CurrentDate;";
 
-        #endregion .: Executions :.
-
-
-    }
+    #endregion .: Executions :.
 }

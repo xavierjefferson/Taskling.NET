@@ -1,7 +1,9 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net45</TargetFrameworks>
-    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
     <PackageLicenseUrl>https://opensource.org/licenses/MIT</PackageLicenseUrl>
     <Authors>Jack Vanlightly</Authors>
     <Version>2.0.0</Version>
@@ -10,18 +12,14 @@
     <RepositoryType>git</RepositoryType>
     <Description>SQL Server backend for Taskling</Description>
   </PropertyGroup>
+
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="9.0.1" />
+    <PackageReference Include="newtonsoft.json" Version="9.0.1" />
+    <PackageReference Include="system.data.sqlclient" Version="4.8.5" />
   </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Taskling\Taskling.csproj" />
   </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <PackageReference Include="System.Data.SqlClient">
-      <Version>4.6.0</Version>
-    </PackageReference>
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Properties\" />
-  </ItemGroup>
+
 </Project>

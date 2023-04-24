@@ -1,15 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Taskling.Blocks;
+﻿namespace Taskling.InfrastructureContracts.Blocks.ListBlocks;
 
-namespace Taskling.InfrastructureContracts.Blocks.ListBlocks
+public class SingleUpdateRequest
 {
-    public class SingleUpdateRequest
-    {
-        public TaskId TaskId { get; set; }
-        public string ListBlockId { get; set; }
-        public ProtoListBlockItem ListBlockItem { get; set; }
-    }
+    public TaskId TaskId { get; set; }
+    public long ListBlockId { get; set; }
+    public ProtoListBlockItem ListBlockItem { get; set; }
 }

@@ -1,24 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿namespace Taskling.Configuration;
 
-namespace Taskling.Configuration
+public class ConfigElement<T>
 {
-    public class ConfigElement<T>
+    public ConfigElement()
     {
-        public ConfigElement()
-        {
-            Exists = false;
-        }
-
-        public ConfigElement(T value)
-        {
-            Value = value;
-            Exists = true;
-        }
-
-        public T Value { get; set; }
-        public bool Exists { get; set; }
+        Exists = false;
     }
+
+    public ConfigElement(T value)
+    {
+        Value = value;
+        Exists = true;
+    }
+
+    public T Value { get; set; }
+    public bool Exists { get; set; }
 }

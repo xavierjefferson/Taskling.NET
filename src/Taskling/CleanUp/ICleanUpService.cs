@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿namespace Taskling.CleanUp;
 
-namespace Taskling.CleanUp
+public interface ICleanUpService
 {
-    public interface ICleanUpService
-    {
-        void CleanOldData(string applicationName, string taskName, string taskExecutionId);
-    }
+    void CleanOldData(string applicationName, string taskName, int taskExecutionId);
 }

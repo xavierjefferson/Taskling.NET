@@ -1,14 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿namespace Taskling.Blocks.ListBlocks;
 
-namespace Taskling.Blocks.ListBlocks
+public enum ListUpdateMode
 {
-    public enum ListUpdateMode
-    {
-        SingleItemCommit,
-        PeriodicBatchCommit,
-        BatchCommitAtEnd
-    }
+    SingleItemCommit,
+    PeriodicBatchCommit,
+    BatchCommitAtEnd
 }

@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿namespace Taskling.SqlServer.Blocks.QueryBuilders;
 
-namespace Taskling.SqlServer.Blocks.QueryBuilders
+internal class ListBlockQueryBuilder
 {
-    internal class ListBlockQueryBuilder
-    {
-        public const string InsertListBlock = @"INSERT INTO [Taskling].[Block]
+    public const string InsertListBlock = @"INSERT INTO [Taskling].[Block]
            ([TaskDefinitionId]
            ,[BlockType]
            ,[CreatedDate]
@@ -22,7 +17,7 @@ namespace Taskling.SqlServer.Blocks.QueryBuilders
 
 SELECT CAST(SCOPE_IDENTITY() AS BIGINT);";
 
-        public const string GetListBlockItems = @"SELECT [ListBlockItemId]
+    public const string GetListBlockItems = @"SELECT [ListBlockItemId]
       ,[BlockId]
       ,[Value]
       ,[CompressedValue]
@@ -33,7 +28,7 @@ SELECT CAST(SCOPE_IDENTITY() AS BIGINT);";
 FROM [Taskling].[ListBlockItem]
 WHERE [BlockId] = @BlockId";
 
-        public const string UpdateSingleBlockListItemStatus = @"UPDATE [Taskling].[ListBlockItem]
+    public const string UpdateSingleBlockListItemStatus = @"UPDATE [Taskling].[ListBlockItem]
    SET [Status] = @Status
         ,[StatusReason] = @StatusReason
         ,[Step] = @Step
@@ -41,14 +36,14 @@ WHERE [BlockId] = @BlockId";
 WHERE BlockId = @BlockId
 AND ListBlockItemId = @ListBlockItemId";
 
-        private const string CreateTemporaryTable = @"CREATE TABLE {0}(
+    private const string CreateTemporaryTable = @"CREATE TABLE {0}(
     [ListBlockItemId] bigint NOT NULL,
     [BlockId] bigint NOT NULL,
     [Status] tinyint NOT NULL,
     [StatusReason] nvarchar(max) NULL,
     [Step] tinyint NULL);";
 
-        private const string BulkUpdateBlockListItemStatus = @"UPDATE LBI
+    private const string BulkUpdateBlockListItemStatus = @"UPDATE LBI
    SET [Status] = T.[Status]
     ,[StatusReason] = T.[StatusReason]
     ,[Step] = T.[Step]
@@ -57,7 +52,7 @@ FROM [Taskling].[ListBlockItem] LBI
 JOIN {0} AS T ON LBI.BlockId = T.BlockId
 	AND LBI.ListBlockItemId = T.ListBlockItemId";
 
-        public const string GetLastListBlock = @"
+    public const string GetLastListBlock = @"
 SELECT TOP 1 [BlockId]
       ,[TaskDefinitionId]
       ,[FromDate]
@@ -73,15 +68,13 @@ WHERE [TaskDefinitionId] = @TaskDefinitionId
 AND [IsPhantom] = 0
 ORDER BY [BlockId] DESC";
 
-        public static string GetCreateTemporaryTableQuery(string tableName)
-        {
-            return string.Format(CreateTemporaryTable, tableName);
-        }
+    public static string GetCreateTemporaryTableQuery(string tableName)
+    {
+        return string.Format(CreateTemporaryTable, tableName);
+    }
 
-        public static string GetBulkUpdateBlockListItemStatus(string tableName)
-        {
-            return string.Format(BulkUpdateBlockListItemStatus, tableName);
-        }
-
+    public static string GetBulkUpdateBlockListItemStatus(string tableName)
+    {
+        return string.Format(BulkUpdateBlockListItemStatus, tableName);
     }
 }

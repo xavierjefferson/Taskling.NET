@@ -1,16 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data.SqlClient;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Data.SqlClient;
 
-namespace Taskling.SqlServer.Tokens
+namespace Taskling.SqlServer.Tokens;
+
+public interface ICommonTokenRepository
 {
-    public interface ICommonTokenRepository
-    {
-        Task AcquireRowLockAsync(int taskDefinitionId, string taskExecutionId, SqlCommand command);
-        Task<List<TaskExecutionState>> GetTaskExecutionStatesAsync(List<string> taskExecutionIds, SqlCommand command);
-        bool HasExpired(TaskExecutionState taskExecutionState);
-    }
+    Task AcquireRowLockAsync(int taskDefinitionId, int taskExecutionId, SqlCommand command);
+    Task<List<TaskExecutionState>> GetTaskExecutionStatesAsync(List<int> taskExecutionIds, SqlCommand command);
+    bool HasExpired(TaskExecutionState taskExecutionState);
 }

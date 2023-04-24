@@ -1,17 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
-namespace Taskling.Exceptions
+namespace Taskling.Exceptions;
+
+[Serializable]
+public class CouldNotStartException : Exception
 {
-    [Serializable]
-    public class CouldNotStartException : Exception
+    public CouldNotStartException(string message)
+        : base(message)
     {
-        public CouldNotStartException(string message)
-            : base(message)
-        {
-        }
-
     }
 }

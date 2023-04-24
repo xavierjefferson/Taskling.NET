@@ -1,17 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Collections.Generic;
 
-namespace Taskling.InfrastructureContracts.TaskExecution
+namespace Taskling.InfrastructureContracts.TaskExecution;
+
+public class TaskExecutionMetaResponse
 {
-    public class TaskExecutionMetaResponse
+    public TaskExecutionMetaResponse()
     {
-        public TaskExecutionMetaResponse()
-        {
-            Executions = new List<TaskExecutionMetaItem>();
-        }
-
-        public List<TaskExecutionMetaItem> Executions { get; set; }
+        Executions = new List<TaskExecutionMetaItem>();
     }
+
+    public List<TaskExecutionMetaItem> Executions { get; set; }
 }

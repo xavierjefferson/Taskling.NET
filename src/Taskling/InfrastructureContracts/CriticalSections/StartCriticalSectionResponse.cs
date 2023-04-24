@@ -1,14 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Taskling.ExecutionContext;
-using Taskling.InfrastructureContracts.TaskExecution;
+﻿using Taskling.InfrastructureContracts.TaskExecution;
 
-namespace Taskling.InfrastructureContracts.CriticalSections
+namespace Taskling.InfrastructureContracts.CriticalSections;
+
+public class StartCriticalSectionResponse : ResponseBase
 {
-    public class StartCriticalSectionResponse : ResponseBase
-    {
-        public GrantStatus GrantStatus { get; set; }
-    }
+    public GrantStatus GrantStatus { get; set; }
 }

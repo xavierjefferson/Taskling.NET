@@ -1,14 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Taskling.Blocks.ObjectBlocks;
+﻿using Taskling.Blocks.ObjectBlocks;
 
-namespace Taskling.Contexts
+namespace Taskling.Contexts;
+
+public interface IObjectBlockContext<T> : IBlockContext
 {
-    public interface IObjectBlockContext<T> : IBlockContext
-    {
-        IObjectBlock<T> Block { get; }
-        string ForcedBlockQueueId { get; }
-    }
+    IObjectBlock<T> Block { get; }
+    int ForcedBlockQueueId { get; }
 }
