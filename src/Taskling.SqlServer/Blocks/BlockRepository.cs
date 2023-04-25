@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
 using Taskling.Blocks.ObjectBlocks;
@@ -15,8 +16,8 @@ using Taskling.InfrastructureContracts.Blocks.RangeBlocks;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.Serialization;
 using Taskling.SqlServer.AncilliaryServices;
-using Taskling.SqlServer.Blocks.QueryBuilders;
 using Taskling.SqlServer.Blocks.Serialization;
+using Taskling.SqlServer.Models;
 using Taskling.Tasks;
 
 namespace Taskling.SqlServer.Blocks;
@@ -32,12 +33,91 @@ public class BlockRepository : DbOperationsService, IBlockRepository
 
     #endregion .: Constructor :.
 
+    public static string GetFindDateRangeBlocksOfTaskQuery(ReprocessOption reprocessOption)
+    {
+        if (reprocessOption == ReprocessOption.Everything)
+            return string.Format(GetBlocksOfTaskQuery, ",B.FromDate,B.ToDate", "");
+
+        if (reprocessOption == ReprocessOption.PendingOrFailed)
+            return string.Format(GetBlocksOfTaskQuery, ",B.FromDate,B.ToDate",
+                "AND BE.BlockExecutionStatus IN (0, 1, 3)");
+
+        throw new ArgumentException("ReprocessOption not supported");
+    }
+
+    public static string GetFindNumericRangeBlocksOfTaskQuery(ReprocessOption reprocessOption)
+    {
+        if (reprocessOption == ReprocessOption.Everything)
+            return string.Format(GetBlocksOfTaskQuery, ",B.FromNumber,B.ToNumber", "");
+
+        if (reprocessOption == ReprocessOption.PendingOrFailed)
+            return string.Format(GetBlocksOfTaskQuery, ",B.FromNumber,B.ToNumber",
+                "AND BE.BlockExecutionStatus IN (0, 1, 3)");
+
+        throw new ArgumentException("ReprocessOption not supported");
+    }
+
+    public static string GetFindListBlocksOfTaskQuery(ReprocessOption reprocessOption)
+    {
+        if (reprocessOption == ReprocessOption.Everything)
+            return string.Format(GetBlocksOfTaskQuery, "", "");
+
+        if (reprocessOption == ReprocessOption.PendingOrFailed)
+            return string.Format(GetBlocksOfTaskQuery, "",
+                "AND BE.BlockExecutionStatus IN (@NotStarted, @Started, @Failed)");
+
+        throw new ArgumentException("ReprocessOption not supported");
+    }
+
+    public static string GetFindObjectBlocksOfTaskQuery(ReprocessOption reprocessOption)
+    {
+        if (reprocessOption == ReprocessOption.Everything)
+            return string.Format(GetBlocksOfTaskQuery, ",B.ObjectData", "");
+
+        if (reprocessOption == ReprocessOption.PendingOrFailed)
+            return string.Format(GetBlocksOfTaskQuery, ",B.ObjectData",
+                "AND BE.BlockExecutionStatus IN (@NotStarted, @Started, @Failed)");
+
+        throw new ArgumentException("ReprocessOption not supported");
+    }
+
     #region .: Fields and services :.
 
     private readonly ITaskRepository _taskRepository;
 
     private const string UnexpectedBlockTypeMessage =
         "This block type was not expected. This can occur when changing the block type of an existing process or combining different block types in a single process - which is not supported";
+
+    private const string GetForcedBlocksQuery = @"SELECT B.[BlockId]
+    {0}
+    ,COALESCE(MaxAttempt, 0) AS Attempt
+    ,B.BlockType
+    ,FBQ.ForceBlockQueueId
+    ,B.ObjectData
+    ,B.CompressedObjectData
+FROM [Taskling].[Block] B WITH(NOLOCK)
+JOIN [Taskling].[ForceBlockQueue] FBQ ON B.BlockId = FBQ.BlockId
+OUTER APPLY (
+	SELECT MAX(Attempt) MaxAttempt
+	FROM [Taskling].[BlockExecution] WITH(NOLOCK) WHERE BlockId = FBQ.BlockId
+) _
+WHERE B.TaskDefinitionId = @TaskDefinitionId
+AND FBQ.ProcessingStatus = 'Pending'";
+
+    private const string GetBlocksOfTaskQuery = @"
+SELECT B.[BlockId]
+        {0}
+        ,BE.Attempt
+        ,B.BlockType
+        ,B.ObjectData
+        ,B.CompressedObjectData
+FROM [Taskling].[Block] B WITH(NOLOCK)
+JOIN [Taskling].[BlockExecution] BE WITH(NOLOCK) ON B.BlockId = BE.BlockId
+LEFT JOIN [Taskling].[TaskExecution] TE WITH(NOLOCK) ON BE.TaskExecutionId = TE.TaskExecutionId
+WHERE B.TaskDefinitionId = @TaskDefinitionId
+AND TE.ReferenceValue = @ReferenceValue
+{1}
+ORDER BY B.CreatedDate ASC";
 
     #endregion .: Fields and services :.
 
@@ -133,10 +213,10 @@ public class BlockRepository : DbOperationsService, IBlockRepository
         switch (blocksOfTaskRequest.BlockType)
         {
             case BlockType.DateRange:
-                query = BlocksOfTaskQueryBuilder.GetFindDateRangeBlocksOfTaskQuery(blocksOfTaskRequest.ReprocessOption);
+                query = GetFindDateRangeBlocksOfTaskQuery(blocksOfTaskRequest.ReprocessOption);
                 break;
             case BlockType.NumericRange:
-                query = BlocksOfTaskQueryBuilder.GetFindNumericRangeBlocksOfTaskQuery(blocksOfTaskRequest
+                query = GetFindNumericRangeBlocksOfTaskQuery(blocksOfTaskRequest
                     .ReprocessOption);
                 break;
             default:
@@ -212,7 +292,7 @@ public class BlockRepository : DbOperationsService, IBlockRepository
     {
         if (blocksOfTaskRequest.BlockType == BlockType.List)
         {
-            var query = BlocksOfTaskQueryBuilder.GetFindListBlocksOfTaskQuery(blocksOfTaskRequest.ReprocessOption);
+            var query = GetFindListBlocksOfTaskQuery(blocksOfTaskRequest.ReprocessOption);
             return await FindListBlocksOfTaskAsync(blocksOfTaskRequest, query, blocksOfTaskRequest.ReprocessOption)
                 .ConfigureAwait(false);
         }
@@ -258,7 +338,7 @@ public class BlockRepository : DbOperationsService, IBlockRepository
     {
         if (blocksOfTaskRequest.BlockType == BlockType.Object)
         {
-            var query = BlocksOfTaskQueryBuilder.GetFindObjectBlocksOfTaskQuery(blocksOfTaskRequest.ReprocessOption);
+            var query = GetFindObjectBlocksOfTaskQuery(blocksOfTaskRequest.ReprocessOption);
             return await FindObjectBlocksOfTaskAsync<T>(blocksOfTaskRequest, query, blocksOfTaskRequest.ReprocessOption)
                 .ConfigureAwait(false);
         }
@@ -522,22 +602,21 @@ public class BlockRepository : DbOperationsService, IBlockRepository
     {
         try
         {
-            using (var connection =
-                   await CreateNewConnectionAsync(dateRangeBlockCreateRequest.TaskId).ConfigureAwait(false))
-            {
-                var command = connection.CreateCommand();
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(dateRangeBlockCreateRequest.TaskId)
-                    .QueryTimeoutSeconds;
-                command.CommandText = RangeBlockQueryBuilder.InsertDateRangeBlock;
-                command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-                command.Parameters.Add("@FromDate", SqlDbType.DateTime).Value =
-                    new DateTime(dateRangeBlockCreateRequest.From);
-                command.Parameters.Add("@ToDate", SqlDbType.DateTime).Value =
-                    new DateTime(dateRangeBlockCreateRequest.To);
-                command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.DateRange;
-                var id = (long)await command.ExecuteScalarAsync().ConfigureAwait(false);
+            using (var dbContext = await GetDbContextAsync(dateRangeBlockCreateRequest.TaskId))
 
-                return new RangeBlock(id,
+            {
+                var block = new Block
+                {
+                    TaskDefinitionId = taskDefinitionId,
+                    FromDate = new DateTime(dateRangeBlockCreateRequest.From),
+                    ToDate = new DateTime(dateRangeBlockCreateRequest.To),
+                    BlockType = (int)BlockType.DateRange,
+                    CreatedDate = DateTime.UtcNow
+                };
+                await dbContext.Blocks.AddAsync(block).ConfigureAwait(false);
+                await dbContext.SaveChangesAsync().ConfigureAwait(false);
+
+                return new RangeBlock(block.BlockId,
                     0,
                     dateRangeBlockCreateRequest.From,
                     dateRangeBlockCreateRequest.To,
@@ -558,20 +637,21 @@ public class BlockRepository : DbOperationsService, IBlockRepository
     {
         try
         {
-            using (var connection =
-                   await CreateNewConnectionAsync(dateRangeBlockCreateRequest.TaskId).ConfigureAwait(false))
+            using (var dbContext = await GetDbContextAsync(dateRangeBlockCreateRequest.TaskId))
             {
-                var command = connection.CreateCommand();
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(dateRangeBlockCreateRequest.TaskId)
-                    .QueryTimeoutSeconds;
-                command.CommandText = RangeBlockQueryBuilder.InsertNumericRangeBlock;
-                command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-                command.Parameters.Add("@FromNumber", SqlDbType.BigInt).Value = dateRangeBlockCreateRequest.From;
-                command.Parameters.Add("@ToNumber", SqlDbType.BigInt).Value = dateRangeBlockCreateRequest.To;
-                command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.NumericRange;
-                var id = (long)await command.ExecuteScalarAsync().ConfigureAwait(false);
+                var block = new Block
+                {
+                    TaskDefinitionId = taskDefinitionId,
+                    FromNumber = dateRangeBlockCreateRequest.From,
+                    ToNumber = dateRangeBlockCreateRequest.To,
+                    BlockType = (int)BlockType.NumericRange,
+                    CreatedDate = DateTime.UtcNow
+                };
+                await dbContext.Blocks.AddAsync(block).ConfigureAwait(false);
+                await dbContext.SaveChangesAsync().ConfigureAwait(false);
 
-                return new RangeBlock(id, 0, dateRangeBlockCreateRequest.From, dateRangeBlockCreateRequest.To,
+                return new RangeBlock(block.BlockId, 0, dateRangeBlockCreateRequest.From,
+                    dateRangeBlockCreateRequest.To,
                     dateRangeBlockCreateRequest.BlockType);
             }
         }
@@ -768,26 +848,31 @@ public class BlockRepository : DbOperationsService, IBlockRepository
 
         try
         {
-            using (var connection = await CreateNewConnectionAsync(taskId).ConfigureAwait(false))
-            {
-                var command = connection.CreateCommand();
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(taskId).QueryTimeoutSeconds;
-                command.CommandText = ListBlockQueryBuilder.InsertListBlock;
-                command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-                command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.List;
+            using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
 
+            {
+                var block = new Block
+                {
+                    TaskDefinitionId = taskDefinitionId,
+
+                    BlockType = (int)BlockType.List,
+                    CreatedDate = DateTime.UtcNow
+                };
                 if (isLargeTextValue)
                 {
-                    command.Parameters.Add("@ObjectData", SqlDbType.NVarChar, -1).Value = DBNull.Value;
-                    command.Parameters.Add("@CompressedObjectData", SqlDbType.VarBinary, -1).Value = compressedData;
+                    block.ObjectData = null;
+                    block.CompressedObjectData = compressedData;
                 }
                 else
                 {
-                    command.Parameters.Add("@ObjectData", SqlDbType.NVarChar, -1).Value = header;
-                    command.Parameters.Add("@CompressedObjectData", SqlDbType.VarBinary, -1).Value = DBNull.Value;
+                    block.ObjectData = header;
+                    block.CompressedObjectData = null;
                 }
 
-                return (long)await command.ExecuteScalarAsync().ConfigureAwait(false);
+                await dbContext.Blocks.AddAsync(block).ConfigureAwait(false);
+                await dbContext.SaveChangesAsync().ConfigureAwait(false);
+
+                return block.BlockId;
             }
         }
         catch (SqlException sqlEx)
@@ -801,21 +886,42 @@ public class BlockRepository : DbOperationsService, IBlockRepository
 
     private async Task AddListBlockItemsAsync(long blockId, ListBlockCreateRequest createRequest)
     {
-        using (var connection = await CreateNewConnectionAsync(createRequest.TaskId).ConfigureAwait(false))
+        using (var dbContext = await GetDbContextAsync(createRequest.TaskId).ConfigureAwait(false))
+
         {
-            var command = connection.CreateCommand();
-            var transaction = connection.BeginTransaction();
-            command.Connection = connection;
-            command.Transaction = transaction;
-            command.CommandTimeout = ConnectionStore.Instance.GetConnection(createRequest.TaskId).QueryTimeoutSeconds;
+            var transaction = await dbContext.Database.BeginTransactionAsync();
+
 
             try
             {
-                var dt = GenerateDataTable(blockId, createRequest.SerializedValues, createRequest.CompressionThreshold);
-                await BulkLoadInTransactionOperationAsync(dt, "Taskling.ListBlockItem", connection, transaction)
-                    .ConfigureAwait(false);
+                foreach (var value in (List<string>)createRequest.SerializedValues)
+                {
+                    var item = new ListBlockItem
+                    {
+                        BlockId = blockId
+                    };
 
-                transaction.Commit();
+
+                    if (value.Length > createRequest.CompressionThreshold)
+                    {
+                        item.Value = null;
+                        item.CompressedValue = LargeValueCompressor.Zip(value);
+                    }
+                    else
+                    {
+                        item.Value = value;
+                        item.CompressedValue = null;
+                    }
+
+                    item.Status = (int)ItemStatus.Pending;
+                    item.LastUpdated = DateTime.UtcNow;
+                    await dbContext.ListBlockItems.AddAsync(item);
+                }
+
+                await dbContext.SaveChangesAsync().ConfigureAwait(false);
+
+
+                await transaction.CommitAsync();
             }
             catch (SqlException sqlEx)
             {
@@ -846,26 +952,31 @@ public class BlockRepository : DbOperationsService, IBlockRepository
 
         try
         {
-            using (var connection = await CreateNewConnectionAsync(taskId).ConfigureAwait(false))
-            {
-                var command = connection.CreateCommand();
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(taskId).QueryTimeoutSeconds;
-                command.CommandText = ObjectBlockQueryBuilder.InsertObjectBlock;
-                command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
+            using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
 
+            {
+                var block = new Block
+                {
+                    TaskDefinitionId = taskDefinitionId,
+
+                    BlockType = (int)BlockType.Object,
+                    CreatedDate = DateTime.UtcNow
+                };
                 if (isLargeTextValue)
                 {
-                    command.Parameters.Add("@ObjectData", SqlDbType.NVarChar, -1).Value = DBNull.Value;
-                    command.Parameters.Add("@CompressedObjectData", SqlDbType.VarBinary, -1).Value = compressedData;
+                    block.ObjectData = null;
+                    block.CompressedObjectData = compressedData;
                 }
                 else
                 {
-                    command.Parameters.Add("@ObjectData", SqlDbType.NVarChar, -1).Value = jsonValue;
-                    command.Parameters.Add("@CompressedObjectData", SqlDbType.VarBinary, -1).Value = DBNull.Value;
+                    block.ObjectData = jsonValue;
+                    block.CompressedObjectData = null;
                 }
 
-                command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.Object;
-                return (long)await command.ExecuteScalarAsync().ConfigureAwait(false);
+                await dbContext.Blocks.AddAsync(block).ConfigureAwait(false);
+                await dbContext.SaveChangesAsync().ConfigureAwait(false);
+
+                return block.BlockId;
             }
         }
         catch (SqlException sqlEx)
@@ -1055,14 +1166,14 @@ public class BlockRepository : DbOperationsService, IBlockRepository
     private async Task<IList<ForcedRangeBlockQueueItem>> GetForcedDateRangeBlocksAsync(
         QueuedForcedBlocksRequest queuedForcedBlocksRequest)
     {
-        var query = ForcedBlockQueueQueryBuilder.GetDateRangeBlocksQuery();
+        var query = string.Format(GetForcedBlocksQuery, ",B.FromDate,B.ToDate");
         return await GetForcedRangeBlocksAsync(queuedForcedBlocksRequest, query).ConfigureAwait(false);
     }
 
     private async Task<IList<ForcedRangeBlockQueueItem>> GetForcedNumericRangeBlocksAsync(
         QueuedForcedBlocksRequest queuedForcedBlocksRequest)
     {
-        var query = ForcedBlockQueueQueryBuilder.GetNumericRangeBlocksQuery();
+        var query = string.Format(GetForcedBlocksQuery, ",B.FromNumber,B.ToNumber");
         return await GetForcedRangeBlocksAsync(queuedForcedBlocksRequest, query).ConfigureAwait(false);
     }
 
@@ -1159,7 +1270,7 @@ This could occur if the block type of the process has been changed during a new 
                    await CreateNewConnectionAsync(queuedForcedBlocksRequest.TaskId).ConfigureAwait(false))
             {
                 var command = connection.CreateCommand();
-                command.CommandText = ForcedBlockQueueQueryBuilder.GetListBlocksQuery();
+                command.CommandText = string.Format(GetForcedBlocksQuery, "");
                 ;
                 command.CommandTimeout = ConnectionStore.Instance.GetConnection(queuedForcedBlocksRequest.TaskId)
                     .QueryTimeoutSeconds;
@@ -1227,7 +1338,7 @@ This could occur if the block type of the process has been changed during a new 
                    await CreateNewConnectionAsync(queuedForcedBlocksRequest.TaskId).ConfigureAwait(false))
             {
                 var command = connection.CreateCommand();
-                command.CommandText = ForcedBlockQueueQueryBuilder.GetObjectBlocksQuery();
+                command.CommandText = string.Format(GetForcedBlocksQuery, ",B.ObjectData");
                 command.CommandTimeout = ConnectionStore.Instance.GetConnection(queuedForcedBlocksRequest.TaskId)
                     .QueryTimeoutSeconds;
                 command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinition.TaskDefinitionId;
@@ -1284,23 +1395,20 @@ This could occur if the block type of the process has been changed during a new 
 
     private async Task UpdateForcedBlocksAsync(DequeueForcedBlocksRequest dequeueForcedBlocksRequest)
     {
-        var blockCount = dequeueForcedBlocksRequest.ForcedBlockQueueIds.Count;
-
         try
         {
-            using (var connection =
-                   await CreateNewConnectionAsync(dequeueForcedBlocksRequest.TaskId).ConfigureAwait(false))
+            using (var dbContext = await GetDbContextAsync(dequeueForcedBlocksRequest.TaskId).ConfigureAwait(false))
             {
-                var command = connection.CreateCommand();
-                command.CommandText = ForcedBlockQueueQueryBuilder.GetUpdateQuery(blockCount);
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(dequeueForcedBlocksRequest.TaskId)
-                    .QueryTimeoutSeconds;
+                var forceBlockQueues = await dbContext.ForceBlockQueues
+                    .Where(i => dequeueForcedBlocksRequest.ForcedBlockQueueIds.Contains(i.ForceBlockQueueId))
+                    .ToListAsync().ConfigureAwait(false);
+                foreach (var forceBlockQueueId in forceBlockQueues)
+                {
+                    forceBlockQueueId.ProcessingStatus = "Execution Created";
+                    dbContext.ForceBlockQueues.Update(forceBlockQueueId);
+                }
 
-                for (var i = 0; i < blockCount; i++)
-                    command.Parameters.Add("@P" + i, SqlDbType.Int).Value =
-                        dequeueForcedBlocksRequest.ForcedBlockQueueIds[i];
-
-                await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+                await dbContext.SaveChangesAsync().ConfigureAwait(false);
             }
         }
         catch (SqlException sqlEx)
@@ -1313,34 +1421,6 @@ This could occur if the block type of the process has been changed during a new 
     }
 
     #endregion .: Force Block Queue :.
-
-    private DataTable GenerateDataTable(long blockId, List<string> values, int compressionThreshold)
-    {
-        var dt = GenerateEmptyDataTable();
-
-        foreach (var value in values)
-        {
-            var dr = dt.NewRow();
-            dr["BlockId"] = blockId;
-
-            if (value.Length > compressionThreshold)
-            {
-                dr["Value"] = DBNull.Value;
-                dr["CompressedValue"] = LargeValueCompressor.Zip(value);
-            }
-            else
-            {
-                dr["Value"] = value;
-                dr["CompressedValue"] = DBNull.Value;
-            }
-
-            dr["Status"] = (int)ItemStatus.Pending;
-            dr["LastUpdated"] = DateTime.UtcNow;
-            dt.Rows.Add(dr);
-        }
-
-        return dt;
-    }
 
     private DataTable GenerateEmptyDataTable()
     {
@@ -1367,18 +1447,19 @@ This could occur if the block type of the process has been changed during a new 
         long blockExecutionId = 0;
         try
         {
-            using (var connection = await CreateNewConnectionAsync(executionCreateRequest.TaskId).ConfigureAwait(false))
+            using (var dbContext = await GetDbContextAsync(executionCreateRequest.TaskId).ConfigureAwait(false))
+
             {
-                var command = connection.CreateCommand();
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(executionCreateRequest.TaskId)
-                    .QueryTimeoutSeconds;
-                command.CommandText = RangeBlockQueryBuilder.InsertBlockExecution;
-                command.Parameters.Add("@TaskExecutionId", SqlDbType.Int).Value =
-                    executionCreateRequest.TaskExecutionId;
-                command.Parameters.Add("@BlockId", SqlDbType.BigInt).Value = executionCreateRequest.BlockId;
-                command.Parameters.Add("@Attempt", SqlDbType.Int).Value = executionCreateRequest.Attempt;
-                command.Parameters.Add("@Status", SqlDbType.Int).Value = (int)BlockExecutionStatus.NotStarted;
-                blockExecutionId = (long)await command.ExecuteScalarAsync().ConfigureAwait(false);
+                var blockExecution = new BlockExecution
+                {
+                    TaskExecutionId = executionCreateRequest.TaskExecutionId,
+                    BlockId = executionCreateRequest.BlockId,
+                    Attempt = executionCreateRequest.Attempt,
+                    BlockExecutionStatus = (int)BlockExecutionStatus.NotStarted,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await dbContext.BlockExecutions.AddAsync(blockExecution).ConfigureAwait(false);
+                return blockExecution.BlockExecutionId;
             }
         }
         catch (SqlException sqlEx)
@@ -1390,14 +1471,6 @@ This could occur if the block type of the process has been changed during a new 
         }
 
         return blockExecutionId;
-    }
-
-    private List<string> Serialize<T>(List<T> values)
-    {
-        var jsonValues = new List<string>();
-        foreach (var value in values) jsonValues.Add(JsonGenericSerializer.Serialize(value));
-
-        return jsonValues;
     }
 
     #endregion .: Private Methods :.

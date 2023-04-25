@@ -5,6 +5,7 @@ using System.Data.SqlClient;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
 using Taskling.Serialization;
+using Taskling.SqlServer.Tests.Repositories.Given_RangeBlockRepository;
 
 namespace Taskling.SqlServer.Tests.Helpers;
 
@@ -39,7 +40,7 @@ public class BlocksHelper
     public List<ListBlockItem<T>> GetListBlockItems<T>(long blockId, ItemStatus status)
     {
         var items = new List<ListBlockItem<T>>();
-
+        
         using (var connection = new SqlConnection(TestConstants.TestConnectionString))
         {
             connection.Open();
@@ -52,7 +53,7 @@ public class BlocksHelper
             while (reader.Read())
             {
                 var item = new ListBlockItem<T>();
-                item.ListBlockItemId = reader.GetInt64(0).ToString();
+                item.ListBlockItemId = reader.GetInt64(0) ;
                 item.Value = JsonGenericSerializer.Deserialize<T>(reader.GetString(1));
                 item.Status = (ItemStatus)reader.GetInt32(2);
 

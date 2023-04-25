@@ -1,8 +1,7 @@
-﻿using System.Data;
-using System.Data.SqlClient;
-using Taskling.Events;
+﻿using Taskling.Events;
 using Taskling.InfrastructureContracts;
 using Taskling.SqlServer.AncilliaryServices;
+using Taskling.SqlServer.Models;
 
 namespace Taskling.SqlServer.Events;
 
@@ -12,7 +11,7 @@ public class EventsRepository : DbOperationsService, IEventsRepository
     {
         using (var context = await GetDbContextAsync(taskId).ConfigureAwait(false))
         {
-            var taskExecutionEvent = new Models123.TaskExecutionEvent()
+            var taskExecutionEvent = new TaskExecutionEvent
             {
                 TaskExecutionId = taskExecutionId,
                 EventType = (int)eventType,

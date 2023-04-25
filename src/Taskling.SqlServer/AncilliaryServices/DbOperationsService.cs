@@ -2,27 +2,14 @@
 using System.Data.SqlClient;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Taskling.Exceptions;
 using Taskling.InfrastructureContracts;
-using Taskling.Models123;
 
 namespace Taskling.SqlServer.AncilliaryServices;
 
-public class DbOperationsService
+public abstract class DbOperationsService : DbOperationsBase
 {
-    protected async Task<TasklingDbContext> GetDbContextAsync(TaskId taskId)
-    {
-        DbContextOptionsBuilder<TasklingDbContext> builder = new DbContextOptionsBuilder<TasklingDbContext>();
-        var clientConnectionSettings = ConnectionStore.Instance.GetConnection(taskId);
-        builder.UseSqlServer(clientConnectionSettings.ConnectionString);
-        await Task.CompletedTask;
-
-        var tasklingDbContext = new TasklingDbContext(builder.Options);
-        tasklingDbContext.Database.SetCommandTimeout(clientConnectionSettings.QueryTimeout);
-        return tasklingDbContext;
-    }
     protected async Task<SqlConnection> CreateNewConnectionAsync(TaskId taskId)
     {
         try
@@ -98,6 +85,7 @@ public class DbOperationsService
             }
         }
     }
+
     protected void TryRollBack(IDbContextTransaction transaction, SqlException sqlEx)
     {
         try
@@ -118,6 +106,7 @@ public class DbOperationsService
 
         throw new Exception("Add failed. Error during transaction. Rollback successfully executed", sqlEx);
     }
+
     protected void TryRollBack(SqlTransaction transaction, SqlException sqlEx)
     {
         try
@@ -138,6 +127,7 @@ public class DbOperationsService
 
         throw new Exception("Add failed. Error during transaction. Rollback successfully executed", sqlEx);
     }
+
     protected void TryRollback(IDbContextTransaction transaction, Exception ex)
     {
         try
@@ -153,6 +143,7 @@ public class DbOperationsService
 
         throw new Exception("Add failed. Error during transaction. Rollback successfully executed", ex);
     }
+
     protected void TryRollback(SqlTransaction transaction, Exception ex)
     {
         try

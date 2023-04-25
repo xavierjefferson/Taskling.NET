@@ -9,7 +9,7 @@ public class ListBlockItem<T> : IListBlockItem<T>
     private Func<IListBlockItem<T>, Task> _itemComplete;
     private Func<IListBlockItem<T>, string, int?, Task> _itemFailed;
 
-    public string ListBlockItemId { get; set; }
+    public long ListBlockItemId { get; set; }
     public T Value { get; set; }
     public ItemStatus Status { get; set; }
     public string StatusReason { get; set; }

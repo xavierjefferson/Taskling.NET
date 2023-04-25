@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
 using Taskling.Exceptions;
@@ -9,9 +10,13 @@ using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.Blocks.ListBlocks;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.AncilliaryServices;
-using Taskling.SqlServer.Blocks.QueryBuilders;
 using Taskling.SqlServer.Blocks.Serialization;
-
+using System;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Collections.Generic;
+using Taskling.SqlServer.Models;
+ 
 namespace Taskling.SqlServer.Blocks;
 
 public class ListBlockRepository : DbOperationsService, IListBlockRepository
@@ -27,17 +32,31 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
     {
         try
         {
-            using (var connection = await CreateNewConnectionAsync(changeStatusRequest.TaskId).ConfigureAwait(false))
+            using (var dbContext = await GetDbContextAsync(changeStatusRequest.TaskId))
             {
-                var command = connection.CreateCommand();
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(changeStatusRequest.TaskId)
-                    .QueryTimeoutSeconds;
-                command.CommandText = GetListUpdateQuery(changeStatusRequest.BlockExecutionStatus);
-                command.Parameters.Add("@BlockExecutionId", SqlDbType.BigInt).Value =
-                    changeStatusRequest.BlockExecutionId;
-                command.Parameters.Add("@BlockExecutionStatus", SqlDbType.Int).Value =
-                    (int)changeStatusRequest.BlockExecutionStatus;
-                await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+                var blockExecution = await dbContext.BlockExecutions.FirstOrDefaultAsync(i =>
+                    i.BlockExecutionId == changeStatusRequest.BlockExecutionId).ConfigureAwait(false);
+                if (blockExecution != null)
+                {
+
+
+                    blockExecution.BlockExecutionStatus = (int)changeStatusRequest.BlockExecutionStatus;
+                    switch (changeStatusRequest.BlockExecutionStatus)
+                    {
+                        case BlockExecutionStatus.Completed:
+                        case BlockExecutionStatus.Failed:
+                            blockExecution.CompletedAt = DateTime.UtcNow;
+
+                            break;
+                        default:
+                            blockExecution.StartedAt = DateTime.UtcNow;
+                            break;
+                    }
+
+                    dbContext.BlockExecutions.Update(blockExecution);
+                    await dbContext.SaveChangesAsync().ConfigureAwait(false);
+
+                }
             }
         }
         catch (SqlException sqlEx)
@@ -55,39 +74,26 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
 
         try
         {
-            using (var connection = await CreateNewConnectionAsync(taskId).ConfigureAwait(false))
+            using (var dbContext = await GetDbContextAsync(taskId))
             {
-                var command = connection.CreateCommand();
-                command.CommandText = ListBlockQueryBuilder.GetListBlockItems;
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(taskId).QueryTimeoutSeconds;
-                command.Parameters.Add("@BlockId", SqlDbType.BigInt).Value = listBlockId;
+                var items = await dbContext.ListBlockItems.Where(i => i.BlockId == listBlockId).ToListAsync()
+                    .ConfigureAwait(false);
 
-                using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
+
+                foreach (var item in items)
                 {
-                    while (await reader.ReadAsync().ConfigureAwait(false))
+                    var listBlock = new ProtoListBlockItem
                     {
-                        var listBlock = new ProtoListBlockItem();
-                        listBlock.ListBlockItemId = reader["ListBlockItemId"].ToString();
-                        listBlock.Value = SerializedValueReader.ReadValueAsString(reader, "Value", "CompressedValue");
-                        listBlock.Status = (ItemStatus)reader.GetInt32("Status");
+                        ListBlockItemId = item.ListBlockItemId,
+                        Value = SerializedValueReader.ReadValueAsString(item, i => i.Value, i => i.CompressedValue),
+                        Status = (ItemStatus)item.Status,
+                        LastUpdated = item.LastUpdated ?? DateTime.MinValue,
+                        StatusReason = item.StatusReason,
+                        Step = item.Step
+                    };
 
-                        if (reader["LastUpdated"] == DBNull.Value)
-                            listBlock.LastUpdated = DateTime.MinValue;
-                        else
-                            listBlock.LastUpdated = reader.GetDateTime(5);
 
-                        if (reader["StatusReason"] == DBNull.Value)
-                            listBlock.StatusReason = null;
-                        else
-                            listBlock.StatusReason = reader.GetString(6);
-
-                        if (reader["Step"] == DBNull.Value)
-                            listBlock.Step = null;
-                        else
-                            listBlock.Step = reader.GetInt32(7);
-
-                        results.Add(listBlock);
-                    }
+                    results.Add(listBlock);
                 }
             }
         }
@@ -102,33 +108,80 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
         return results;
     }
 
+    //private async Task UpdateListBlockItemAsync(List<SingleUpdateRequest> singeUpdateRequest)
+    //{
+    //    try
+    //    {
+    //        using (var dbContext = await GetDbContextAsync(singeUpdateRequest.TaskId))
+    //        {
+    //            var listBlockItems = await dbContext.ListBlockItems.Where(i =>
+    //                    i.BlockId == singeUpdateRequest.ListBlockId &&
+    //                    i.ListBlockItemId == singeUpdateRequest.ListBlockItem.ListBlockItemId)
+    //                .ToListAsync().ConfigureAwait(false);
+    //            foreach (var listBlockItem in listBlockItems)
+    //            {
+    //                listBlockItem.Status = (int)singeUpdateRequest.ListBlockItem.Status;
+    //                listBlockItem.StatusReason = singeUpdateRequest.ListBlockItem.StatusReason;
+    //                listBlockItem.Step = singeUpdateRequest.ListBlockItem.Step;
+    //                dbContext.ListBlockItems.Update(listBlockItem);
+    //            }
+
+    //            await dbContext.SaveChangesAsync().ConfigureAwait(false);
+    //        }
+    //    }
+    //    catch (SqlException sqlEx)
+    //    {
+    //        if (TransientErrorDetector.IsTransient(sqlEx))
+    //            throw new TransientException("A transient exception has occurred", sqlEx);
+
+    //        throw;
+    //    }
+    //}
     public async Task UpdateListBlockItemAsync(SingleUpdateRequest singeUpdateRequest)
+    {
+        await BatchUpdateListBlockItemsAsync(new BatchUpdateRequest()
+        {
+            ListBlockId = singeUpdateRequest.ListBlockId,
+            ListBlockItems = new List<ProtoListBlockItem>() { singeUpdateRequest.ListBlockItem },
+            TaskId = singeUpdateRequest.TaskId
+        });
+
+
+    }
+
+    public async Task BatchUpdateListBlockItemsAsync(BatchUpdateRequest batchUpdateRequest)
     {
         try
         {
-            using (var connection = await CreateNewConnectionAsync(singeUpdateRequest.TaskId).ConfigureAwait(false))
+            using (var dbContext = await GetDbContextAsync(batchUpdateRequest.TaskId))
             {
-                var command = connection.CreateCommand();
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(singeUpdateRequest.TaskId)
-                    .QueryTimeoutSeconds;
-                command.CommandText = ListBlockQueryBuilder.UpdateSingleBlockListItemStatus;
-                command.Parameters.Add("@BlockId", SqlDbType.BigInt).Value = singeUpdateRequest.ListBlockId;
-                command.Parameters.Add("@ListBlockItemId", SqlDbType.BigInt).Value =
-                    singeUpdateRequest.ListBlockItem.ListBlockItemId;
-                command.Parameters.Add("@Status", SqlDbType.Int).Value = (int)singeUpdateRequest.ListBlockItem.Status;
+                using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable).ConfigureAwait(false);
 
-                if (singeUpdateRequest.ListBlockItem.StatusReason == null)
-                    command.Parameters.Add("@StatusReason", SqlDbType.NVarChar, -1).Value = DBNull.Value;
-                else
-                    command.Parameters.Add("@StatusReason", SqlDbType.NVarChar, -1).Value =
-                        singeUpdateRequest.ListBlockItem.StatusReason;
 
-                if (!singeUpdateRequest.ListBlockItem.Step.HasValue)
-                    command.Parameters.Add("@Step", SqlDbType.Int).Value = DBNull.Value;
-                else
-                    command.Parameters.Add("@Step", SqlDbType.Int).Value = singeUpdateRequest.ListBlockItem.Step;
+                var listBlockItemIds = batchUpdateRequest.ListBlockItems.Select(i => i.ListBlockItemId).ToList();
+                var listBlockItems = await dbContext.ListBlockItems.Where(i => i.BlockId == batchUpdateRequest.ListBlockId)
+                    .Where(i => listBlockItemIds.Contains(i.ListBlockItemId)).ToListAsync().ConfigureAwait(false);
+                if (!listBlockItems.Any())
+                {
+                    await transaction.RollbackAsync();
+                    return;
+                }
+                foreach (var item in batchUpdateRequest.ListBlockItems)
+                {
+                    var listBlockItem = listBlockItems.FirstOrDefault(i =>
+                        i.ListBlockItemId == item.ListBlockItemId && i.BlockId == batchUpdateRequest.ListBlockId);
+                    if (listBlockItem != null)
+                    {
+                        var singeUpdateRequest = item;
+                        listBlockItem.Status = (int)singeUpdateRequest.Status;
+                        listBlockItem.StatusReason = singeUpdateRequest.StatusReason;
+                        listBlockItem.Step = singeUpdateRequest.Step;
+                        dbContext.ListBlockItems.Update(listBlockItem);
+                    }
+                }
 
-                await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+                await dbContext.SaveChangesAsync().ConfigureAwait(false);
+                await transaction.CommitAsync();
             }
         }
         catch (SqlException sqlEx)
@@ -138,38 +191,34 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
 
             throw;
         }
-    }
+        //using (var connection = await CreateNewConnectionAsync(batchUpdateRequest.TaskId).ConfigureAwait(false))
+        //{
+        //    var command = connection.CreateCommand();
+        //    var transaction = connection.BeginTransaction();
+        //    command.Connection = connection;
+        //    command.Transaction = transaction;
+        //    command.CommandTimeout =
+        //        ConnectionStore.Instance.GetConnection(batchUpdateRequest.TaskId).QueryTimeoutSeconds;
+        //    ;
 
-    public async Task BatchUpdateListBlockItemsAsync(BatchUpdateRequest batchUpdateRequest)
-    {
-        using (var connection = await CreateNewConnectionAsync(batchUpdateRequest.TaskId).ConfigureAwait(false))
-        {
-            var command = connection.CreateCommand();
-            var transaction = connection.BeginTransaction();
-            command.Connection = connection;
-            command.Transaction = transaction;
-            command.CommandTimeout =
-                ConnectionStore.Instance.GetConnection(batchUpdateRequest.TaskId).QueryTimeoutSeconds;
-            ;
+        //    try
+        //    {
+        //        var tableName = await CreateTemporaryTableAsync(command).ConfigureAwait(false);
+        //        var dt = GenerateDataTable(batchUpdateRequest.ListBlockId, batchUpdateRequest.ListBlockItems);
+        //        await BulkLoadInTransactionOperationAsync(dt, tableName, connection, transaction).ConfigureAwait(false);
+        //        await PerformBulkUpdateAsync(command, tableName).ConfigureAwait(false);
 
-            try
-            {
-                var tableName = await CreateTemporaryTableAsync(command).ConfigureAwait(false);
-                var dt = GenerateDataTable(batchUpdateRequest.ListBlockId, batchUpdateRequest.ListBlockItems);
-                await BulkLoadInTransactionOperationAsync(dt, tableName, connection, transaction).ConfigureAwait(false);
-                await PerformBulkUpdateAsync(command, tableName).ConfigureAwait(false);
-
-                transaction.Commit();
-            }
-            catch (SqlException sqlEx)
-            {
-                TryRollBack(transaction, sqlEx);
-            }
-            catch (Exception ex)
-            {
-                TryRollback(transaction, ex);
-            }
-        }
+        //        transaction.Commit();
+        //    }
+        //    catch (SqlException sqlEx)
+        //    {
+        //        TryRollBack(transaction, sqlEx);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        TryRollback(transaction, ex);
+        //    }
+        //}
     }
 
     public async Task<ProtoListBlock> GetLastListBlockAsync(LastBlockRequest lastRangeBlockRequest)
@@ -179,27 +228,24 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
 
         try
         {
-            using (var connection = await CreateNewConnectionAsync(lastRangeBlockRequest.TaskId).ConfigureAwait(false))
+            using (var dbContext = await GetDbContextAsync(lastRangeBlockRequest.TaskId))
             {
-                var command = connection.CreateCommand();
-                command.CommandText = ListBlockQueryBuilder.GetLastListBlock;
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(lastRangeBlockRequest.TaskId)
-                    .QueryTimeoutSeconds;
-                command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinition.TaskDefinitionId;
-                using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
+                var blockData = await dbContext.Blocks.OrderByDescending(i => i.BlockId).Where(i =>
+                        i.TaskDefinitionId == taskDefinition.TaskDefinitionId && i.IsPhantom == false)
+                    .Select(i => new { i.BlockId, i.ObjectData, i.CompressedObjectData }).FirstOrDefaultAsync()
+                    .ConfigureAwait(false);
+                if (blockData != null)
                 {
-                    while (await reader.ReadAsync().ConfigureAwait(false))
-                    {
-                        var listBlock = new ProtoListBlock();
-                        listBlock.ListBlockId = reader.GetInt64("BlockId");
-                        listBlock.Items =
-                            await GetListBlockItemsAsync(lastRangeBlockRequest.TaskId, listBlock.ListBlockId)
-                                .ConfigureAwait(false);
-                        listBlock.Header =
-                            SerializedValueReader.ReadValueAsString(reader, "ObjectData", "CompressedObjectData");
+                    var listBlock = new ProtoListBlock();
+                    listBlock.ListBlockId = blockData.BlockId;
+                    listBlock.Items =
+                        await GetListBlockItemsAsync(lastRangeBlockRequest.TaskId, listBlock.ListBlockId)
+                            .ConfigureAwait(false);
+                    listBlock.Header =
+                        SerializedValueReader.ReadValueAsString(blockData, i => i.ObjectData,
+                            i => i.CompressedObjectData);
 
-                        return listBlock;
-                    }
+                    return listBlock;
                 }
             }
         }
@@ -215,60 +261,9 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
     }
 
 
-    private string GetListUpdateQuery(BlockExecutionStatus executionStatus)
-    {
-        if (executionStatus == BlockExecutionStatus.Completed || executionStatus == BlockExecutionStatus.Failed)
-            return BlockExecutionQueryBuilder.SetListBlockExecutionAsCompleted;
+    
 
-        return BlockExecutionQueryBuilder.SetBlockExecutionStatusToStarted;
-    }
-
-    private async Task<string> CreateTemporaryTableAsync(SqlCommand command)
-    {
-        var tableName = "#TempTable" + Guid.NewGuid().ToString().Replace('-', '0');
-        command.Parameters.Clear();
-        command.CommandText = ListBlockQueryBuilder.GetCreateTemporaryTableQuery(tableName);
-        await command.ExecuteNonQueryAsync().ConfigureAwait(false);
-
-        return tableName;
-    }
-
-    private DataTable GenerateDataTable(long listBlockId, IList<ProtoListBlockItem> items)
-    {
-        var dt = new DataTable();
-        dt.Columns.Add("BlockId", typeof(long));
-        dt.Columns.Add("ListBlockItemId", typeof(long));
-        dt.Columns.Add("Status", typeof(int));
-        dt.Columns.Add("StatusReason", typeof(string));
-        dt.Columns.Add("Step", typeof(int));
-
-        foreach (var item in items)
-        {
-            var dr = dt.NewRow();
-            dr["BlockId"] = listBlockId;
-            dr["ListBlockItemId"] = item.ListBlockItemId;
-            dr["Status"] = (int)item.Status;
-
-            if (item.StatusReason == null)
-                dr["StatusReason"] = DBNull.Value;
-            else
-                dr["StatusReason"] = item.StatusReason;
-
-            if (item.Step.HasValue)
-                dr["Step"] = item.Step;
-            else
-                dr["Step"] = DBNull.Value;
-
-            dt.Rows.Add(dr);
-        }
-
-        return dt;
-    }
-
-    private async Task PerformBulkUpdateAsync(SqlCommand command, string tableName)
-    {
-        command.Parameters.Clear();
-        command.CommandText = ListBlockQueryBuilder.GetBulkUpdateBlockListItemStatus(tableName);
-        await command.ExecuteNonQueryAsync().ConfigureAwait(false);
-    }
+   
+ 
+     
 }

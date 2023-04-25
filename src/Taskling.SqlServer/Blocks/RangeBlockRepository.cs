@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.RangeBlocks;
 using Taskling.Exceptions;
@@ -39,44 +40,73 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
         var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(lastRangeBlockRequest.TaskId)
             .ConfigureAwait(false);
 
-        var query = string.Empty;
-        if (lastRangeBlockRequest.BlockType == BlockType.DateRange)
-            query = RangeBlockQueryBuilder.GetLastDateRangeBlock(lastRangeBlockRequest.LastBlockOrder);
-        else if (lastRangeBlockRequest.BlockType == BlockType.NumericRange)
-            query = RangeBlockQueryBuilder.GetLastNumericRangeBlock(lastRangeBlockRequest.LastBlockOrder);
-        else
-            throw new ArgumentException("An invalid BlockType was supplied: " + lastRangeBlockRequest.BlockType);
 
         try
         {
-            using (var connection = await CreateNewConnectionAsync(lastRangeBlockRequest.TaskId).ConfigureAwait(false))
+            using (var dbContext = await GetDbContextAsync(lastRangeBlockRequest.TaskId))
             {
-                var command = connection.CreateCommand();
-                command.CommandText = query;
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(lastRangeBlockRequest.TaskId)
-                    .QueryTimeoutSeconds;
-                command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinition.TaskDefinitionId;
-                using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
+                var blockQueryable = dbContext.Blocks.Where(i =>
+                    i.IsPhantom == false && i.TaskDefinitionId == taskDefinition.TaskDefinitionId);
+                switch (lastRangeBlockRequest.BlockType)
                 {
-                    while (await reader.ReadAsync().ConfigureAwait(false))
+                    case BlockType.NumericRange:
+                        switch (lastRangeBlockRequest.LastBlockOrder)
+                        {
+                            default:
+                            case LastBlockOrder.LastCreated:
+                                blockQueryable = blockQueryable.OrderByDescending(i => i.CreatedDate);
+                                break;
+                            case LastBlockOrder.MaxRangeEndValue:
+                                blockQueryable = blockQueryable.OrderByDescending(i => i.ToNumber);
+                                break;
+                            case LastBlockOrder.MaxRangeStartValue:
+                                blockQueryable = blockQueryable.OrderByDescending(i => i.FromNumber);
+                                break;
+                        }
+
+                        break;
+                    case BlockType.DateRange:
+                        switch (lastRangeBlockRequest.LastBlockOrder)
+                        {
+                            default:
+                            case LastBlockOrder.LastCreated:
+                                blockQueryable = blockQueryable.OrderByDescending(i => i.CreatedDate);
+                                break;
+                            case LastBlockOrder.MaxRangeEndValue:
+                                blockQueryable = blockQueryable.OrderByDescending(i => i.ToDate);
+                                break;
+                            case LastBlockOrder.MaxRangeStartValue:
+                                blockQueryable = blockQueryable.OrderByDescending(i => i.FromDate);
+                                break;
+                        }
+
+                        break;
+                    default:
+                        throw new ArgumentException("An invalid BlockType was supplied: " +
+                                                    lastRangeBlockRequest.BlockType);
+                }
+
+                var block = await blockQueryable.FirstOrDefaultAsync().ConfigureAwait(false);
+
+                if (block != null)
+                {
+                    var rangeBlockId = block.BlockId;
+                    long rangeBegin;
+                    long rangeEnd;
+
+                    if (lastRangeBlockRequest.BlockType == BlockType.DateRange)
                     {
-                        var rangeBlockId = reader.GetInt64("BlockId");
-                        long rangeBegin;
-                        long rangeEnd;
-
-                        if (lastRangeBlockRequest.BlockType == BlockType.DateRange)
-                        {
-                            rangeBegin = reader.GetDateTime(2).Ticks; //reader.GetDateTime("FromDate").Ticks; 
-                            rangeEnd = reader.GetDateTime(3).Ticks; //reader.GetDateTime("ToDate").Ticks;
-                        }
-                        else
-                        {
-                            rangeBegin = reader.GetInt64("FromNumber");
-                            rangeEnd = reader.GetInt64("ToNumber");
-                        }
-
-                        return new RangeBlock(rangeBlockId, 0, rangeBegin, rangeEnd, lastRangeBlockRequest.BlockType);
+                        rangeBegin = block.FromDate.Value.Ticks; //reader.GetDateTime("FromDate").Ticks; 
+                        rangeEnd = block.ToDate.Value.Ticks; //reader.GetDateTime("ToDate").Ticks;
                     }
+                    else
+                    {
+                        rangeBegin = block.FromNumber.Value;
+                        rangeEnd = block.ToNumber.Value;
+                    }
+
+                    return new RangeBlock(rangeBlockId, 0, rangeBegin, rangeEnd,
+                        lastRangeBlockRequest.BlockType);
                 }
             }
         }
@@ -94,48 +124,64 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
 
     private async Task ChangeStatusOfDateRangeExecutionAsync(BlockExecutionChangeStatusRequest changeStatusRequest)
     {
-        try
-        {
-            using (var connection = await CreateNewConnectionAsync(changeStatusRequest.TaskId).ConfigureAwait(false))
-            {
-                var command = connection.CreateCommand();
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(changeStatusRequest.TaskId)
-                    .QueryTimeoutSeconds;
-                command.CommandText = GetDateRangeUpdateQuery(changeStatusRequest.BlockExecutionStatus);
-                command.Parameters.Add("@BlockExecutionId", SqlDbType.BigInt).Value =
-                    changeStatusRequest.BlockExecutionId;
-                command.Parameters.Add("@BlockExecutionStatus", SqlDbType.Int).Value =
-                    (int)changeStatusRequest.BlockExecutionStatus;
-                command.Parameters.Add("@ItemsCount", SqlDbType.Int).Value = changeStatusRequest.ItemsProcessed;
+        await ChangeStatusOfNumericRangeExecutionAsync(changeStatusRequest);
+        //try
+        //{
+        //    using (var connection = await CreateNewConnectionAsync(changeStatusRequest.TaskId).ConfigureAwait(false))
+        //    {
+        //        var command = connection.CreateCommand();
+        //        command.CommandTimeout = ConnectionStore.Instance.GetConnection(changeStatusRequest.TaskId)
+        //            .QueryTimeoutSeconds;
+        //        if (changeStatusRequest.BlockExecutionStatus == BlockExecutionStatus.Completed ||
+        //            changeStatusRequest.BlockExecutionStatus == BlockExecutionStatus.Failed)
+        //            command.CommandText = BlockExecutionQueryBuilder.SetRangeBlockExecutionAsCompleted;
+        //        else
+        //            command.CommandText = BlockExecutionQueryBuilder.SetBlockExecutionStatusToStarted;
 
-                await command.ExecuteNonQueryAsync().ConfigureAwait(false);
-            }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
+        //        command.Parameters.Add("@BlockExecutionId", SqlDbType.BigInt).Value =
+        //            changeStatusRequest.BlockExecutionId;
+        //        command.Parameters.Add("@BlockExecutionStatus", SqlDbType.Int).Value =
+        //            (int)changeStatusRequest.BlockExecutionStatus;
+        //        command.Parameters.Add("@ItemsCount", SqlDbType.Int).Value = changeStatusRequest.ItemsProcessed;
 
-            throw;
-        }
+        //        await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+        //    }
+        //}
+        //catch (SqlException sqlEx)
+        //{
+        //    if (TransientErrorDetector.IsTransient(sqlEx))
+        //        throw new TransientException("A transient exception has occurred", sqlEx);
+
+        //    throw;
+        //}
     }
 
     private async Task ChangeStatusOfNumericRangeExecutionAsync(BlockExecutionChangeStatusRequest changeStatusRequest)
     {
         try
         {
-            using (var connection = await CreateNewConnectionAsync(changeStatusRequest.TaskId).ConfigureAwait(false))
+            using (var dbContext = await GetDbContextAsync(changeStatusRequest.TaskId).ConfigureAwait(false))
             {
-                var command = connection.CreateCommand();
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(changeStatusRequest.TaskId)
-                    .QueryTimeoutSeconds;
-                command.CommandText = GetNumericRangeUpdateQuery(changeStatusRequest.BlockExecutionStatus);
-                command.Parameters.Add("@BlockExecutionId", SqlDbType.BigInt).Value =
-                    changeStatusRequest.BlockExecutionId;
-                command.Parameters.Add("@BlockExecutionStatus", SqlDbType.Int).Value =
-                    (int)changeStatusRequest.BlockExecutionStatus;
-                command.Parameters.Add("@ItemsCount", SqlDbType.Int).Value = changeStatusRequest.ItemsProcessed;
-                await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+                var blockExecution = await dbContext.BlockExecutions.FirstOrDefaultAsync(i =>
+                    i.BlockExecutionId == changeStatusRequest.BlockExecutionId).ConfigureAwait(false);
+                if (blockExecution != null)
+                {
+                    blockExecution.BlockExecutionStatus = (int)changeStatusRequest.BlockExecutionStatus;
+                    switch (changeStatusRequest.BlockExecutionStatus)
+                    {
+                        case BlockExecutionStatus.Completed:
+                        case BlockExecutionStatus.Failed:
+                            blockExecution.ItemsCount = changeStatusRequest.ItemsProcessed;
+                            blockExecution.CompletedAt = DateTime.UtcNow;
+                            break;
+                        default:
+                            blockExecution.StartedAt = DateTime.UtcNow;
+                            break;
+                    }
+
+                    dbContext.BlockExecutions.Update(blockExecution);
+                    await dbContext.SaveChangesAsync().ConfigureAwait(false);
+                }
             }
         }
         catch (SqlException sqlEx)
@@ -145,21 +191,5 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
 
             throw;
         }
-    }
-
-    private string GetDateRangeUpdateQuery(BlockExecutionStatus executionStatus)
-    {
-        if (executionStatus == BlockExecutionStatus.Completed || executionStatus == BlockExecutionStatus.Failed)
-            return BlockExecutionQueryBuilder.SetRangeBlockExecutionAsCompleted;
-
-        return BlockExecutionQueryBuilder.SetBlockExecutionStatusToStarted;
-    }
-
-    private string GetNumericRangeUpdateQuery(BlockExecutionStatus executionStatus)
-    {
-        if (executionStatus == BlockExecutionStatus.Completed || executionStatus == BlockExecutionStatus.Failed)
-            return BlockExecutionQueryBuilder.SetRangeBlockExecutionAsCompleted;
-
-        return BlockExecutionQueryBuilder.SetBlockExecutionStatusToStarted;
     }
 }

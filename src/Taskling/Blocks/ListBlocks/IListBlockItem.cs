@@ -5,7 +5,7 @@ namespace Taskling.Blocks.ListBlocks;
 
 public interface IListBlockItem<T>
 {
-    string ListBlockItemId { get; }
+    long ListBlockItemId { get; }
     T Value { get; }
     ItemStatus Status { get; set; }
     string StatusReason { get; set; }

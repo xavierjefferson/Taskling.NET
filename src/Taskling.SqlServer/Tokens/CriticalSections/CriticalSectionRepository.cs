@@ -5,8 +5,8 @@ using Taskling.Exceptions;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.CriticalSections;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.Models123;
 using Taskling.SqlServer.AncilliaryServices;
+using Taskling.SqlServer.Models;
 using Taskling.Tasks;
 
 namespace Taskling.SqlServer.Tokens.CriticalSections;
@@ -63,27 +63,29 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
     {
         var response = new CompleteCriticalSectionResponse();
 
-        using (var connection = await CreateNewConnectionAsync(taskId).ConfigureAwait(false))
+        using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
         {
-            var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
+            using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-            var command = connection.CreateCommand();
-            command.Transaction = transaction;
-
-            if (criticalSectionType == CriticalSectionType.User)
-                command.CommandText = TokensQueryBuilder.ReturnUserCriticalSectionTokenQuery;
-            else
-                command.CommandText = TokensQueryBuilder.ReturnClientCriticalSectionTokenQuery;
-
-            command.CommandTimeout = ConnectionStore.Instance.GetConnection(taskId).QueryTimeoutSeconds;
-            command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-            command.Parameters.Add("@TaskExecutionId", SqlDbType.Int).Value = taskExecutionId;
 
             try
             {
-                await command.ExecuteNonQueryAsync().ConfigureAwait(false);
-                transaction.Commit();
+                var taskDefinition = await
+                    dbContext.TaskDefinitions.FirstOrDefaultAsync(i => i.TaskDefinitionId == taskDefinitionId);
+                if (taskDefinition != null)
+                {
+                    if (criticalSectionType == CriticalSectionType.User)
+                        taskDefinition.UserCsStatus = 1;
+                    else
+                        taskDefinition.ClientCsStatus = 1;
+
+                    dbContext.TaskDefinitions.Update(taskDefinition);
+                    await dbContext.SaveChangesAsync().ConfigureAwait(false);
+                    await transaction.CommitAsync().ConfigureAwait(false);
+                }
             }
+
+
             catch (SqlException sqlEx)
             {
                 TryRollBack(transaction, sqlEx);
@@ -204,25 +206,8 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
                 csState.SetQueue(tuple.ClientCsQueue);
                 return csState;
             }
-            //command.CommandText = TokensQueryBuilder.GetClientCriticalSectionStateQuery;
         }
 
-        //command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-
-        //using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
-        //{
-        //    var readSuccess = await reader.ReadAsync().ConfigureAwait(false);
-        //    if (readSuccess)
-        //    {
-        //        var csState = new CriticalSectionState();
-        //        csState.IsGranted = reader.GetInt32(GetCsStatusColumnName(criticalSectionType)) == 0;
-        //        csState.GrantedToExecution = reader.GetInt32Ex(GetGrantedToColumnName(criticalSectionType));
-        //        csState.SetQueue(reader[GetQueueColumnName(criticalSectionType)].ToString());
-        //        csState.StartTrackingModifications();
-
-        //        return csState;
-        //    }
-        //}
 
         throw new CriticalSectionException("No Task exists with id " + taskDefinitionId);
     }
@@ -269,9 +254,9 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
         List<TaskExecutionState> taskExecutionStates, List<CriticalSectionQueueItem> csQueue)
     {
         var validQueuedExecutions = (from tes in taskExecutionStates
-                                     join q in csQueue on tes.TaskExecutionId equals q.TaskExecutionId
-                                     where HasCriticalSectionExpired(tes) == false
-                                     select q).ToList();
+            join q in csQueue on tes.TaskExecutionId equals q.TaskExecutionId
+            where HasCriticalSectionExpired(tes) == false
+            select q).ToList();
 
         if (validQueuedExecutions.Count != csQueue.Count)
         {

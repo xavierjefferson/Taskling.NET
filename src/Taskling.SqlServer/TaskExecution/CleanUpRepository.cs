@@ -1,10 +1,7 @@
-﻿using System.Data;
-using System.Data.SqlClient;
-using Taskling.InfrastructureContracts;
+﻿using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.CleanUp;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.AncilliaryServices;
-using Taskling.SqlServer.TaskExecution.QueryBuilders;
 
 namespace Taskling.SqlServer.TaskExecution;
 
@@ -40,57 +37,32 @@ public class CleanUpRepository : DbOperationsService, ICleanUpRepository
 
     private async Task CleanListItemsAsync(TaskId taskId, int taskDefinitionId, DateTime listItemDateThreshold)
     {
-        using (var connection = await CreateNewConnectionAsync(taskId).ConfigureAwait(false))
+        using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
         {
-            var blockIds = await IdentifyOldBlocksAsync(taskId, connection, taskDefinitionId, listItemDateThreshold)
-                .ConfigureAwait(false);
-            foreach (var blockId in blockIds)
-                await DeleteListItemsOfBlockAsync(connection, blockId).ConfigureAwait(false);
-        }
-    }
-
-    private async Task<List<long>> IdentifyOldBlocksAsync(TaskId taskId, SqlConnection connection, int taskDefinitionId,
-        DateTime listItemDateThreshold)
-    {
-        var blockIds = new List<long>();
-        using (var command = new SqlCommand(CleanUpQueryBuilder.IdentifyOldBlocksQuery, connection))
-        {
-            command.CommandTimeout = ConnectionStore.Instance.GetConnection(taskId).QueryTimeoutSeconds;
-            command.Parameters.Add(new SqlParameter("@TaskDefinitionId", SqlDbType.Int)).Value = taskDefinitionId;
-            command.Parameters.Add(new SqlParameter("@OlderThanDate", SqlDbType.DateTime)).Value =
-                listItemDateThreshold;
-
-            using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
-            {
-                while (await reader.ReadAsync().ConfigureAwait(false)) blockIds.Add(reader.GetInt64("BlockId"));
-            }
-        }
-
-        return blockIds;
-    }
-
-    private async Task DeleteListItemsOfBlockAsync(SqlConnection connection, long blockId)
-    {
-        using (var command = new SqlCommand(CleanUpQueryBuilder.DeleteListItemsOfBlockQuery, connection))
-        {
-            command.CommandTimeout = 120;
-            command.Parameters.Add(new SqlParameter("@BlockId", SqlDbType.BigInt)).Value = blockId;
-            await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+            dbContext.ListBlockItems.RemoveRange(dbContext.ListBlockItems.Where(i =>
+                i.Block.TaskDefinitionId == taskDefinitionId && i.Block.CreatedDate <= listItemDateThreshold));
+            await dbContext.SaveChangesAsync().ConfigureAwait(false);
         }
     }
 
     private async Task CleanOldDataAsync(TaskId taskId, int taskDefinitionId, DateTime generalDateThreshold)
     {
-        using (var connection = await CreateNewConnectionAsync(taskId).ConfigureAwait(false))
+        using (var dbContext = await GetDbContextAsync(taskId))
         {
-            using (var command = new SqlCommand(CleanUpQueryBuilder.DeleteOldDataQuery, connection))
-            {
-                command.CommandTimeout = 120;
-                command.Parameters.Add(new SqlParameter("@TaskDefinitionId", SqlDbType.Int)).Value = taskDefinitionId;
-                command.Parameters.Add(new SqlParameter("@OlderThanDate", SqlDbType.DateTime)).Value =
-                    generalDateThreshold;
-                await command.ExecuteNonQueryAsync().ConfigureAwait(false);
-            }
+            dbContext.BlockExecutions.RemoveRange(dbContext.BlockExecutions.Where(i =>
+                i.Block.TaskDefinitionId == taskDefinitionId && i.Block.CreatedDate < generalDateThreshold));
+            dbContext.ForceBlockQueues.RemoveRange(dbContext.ForceBlockQueues.Where(i =>
+                i.Block.TaskDefinitionId == taskDefinitionId && i.Block.CreatedDate < generalDateThreshold));
+            dbContext.Blocks.RemoveRange(dbContext.Blocks.Where(i =>
+                i.TaskDefinitionId == taskDefinitionId && i.CreatedDate < generalDateThreshold));
+            dbContext.TaskExecutionEvents.RemoveRange(dbContext.TaskExecutionEvents.Where(i =>
+                i.TaskExecution.TaskDefinitionId == taskDefinitionId &&
+                i.TaskExecution.StartedAt < generalDateThreshold));
+            dbContext.TaskExecutions.RemoveRange(dbContext.TaskExecutions.Where(i =>
+                i.TaskDefinitionId == taskDefinitionId && i.StartedAt < generalDateThreshold));
+            dbContext.ForceBlockQueues.RemoveRange(
+                dbContext.ForceBlockQueues.Where(i => i.ForcedDate < generalDateThreshold));
+            await dbContext.SaveChangesAsync().ConfigureAwait(false);
         }
     }
 }

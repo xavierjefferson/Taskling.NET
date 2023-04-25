@@ -1,5 +1,5 @@
-﻿using System.Data;
-using System.Data.SqlClient;
+﻿using System.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ObjectBlocks;
 using Taskling.Exceptions;
@@ -7,7 +7,6 @@ using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.AncilliaryServices;
-using Taskling.SqlServer.Blocks.QueryBuilders;
 using Taskling.SqlServer.Blocks.Serialization;
 
 namespace Taskling.SqlServer.Blocks;
@@ -33,28 +32,22 @@ public class ObjectBlockRepository : DbOperationsService, IObjectBlockRepository
 
         try
         {
-            using (var connection = await CreateNewConnectionAsync(lastRangeBlockRequest.TaskId).ConfigureAwait(false))
+            using (var dbContext = await GetDbContextAsync(lastRangeBlockRequest.TaskId).ConfigureAwait(false))
             {
-                var command = connection.CreateCommand();
-                command.CommandText = ObjectBlockQueryBuilder.GetLastObjectBlock;
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(lastRangeBlockRequest.TaskId)
-                    .QueryTimeoutSeconds;
-                command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinition.TaskDefinitionId;
-                using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
+                var blockData = await dbContext.Blocks.Where(i => i.TaskDefinitionId == taskDefinition.TaskDefinitionId && i.IsPhantom == false)
+                    .OrderByDescending(i => i.BlockId)
+                    .Select(i => new { i.ObjectData, i.BlockId, i.CompressedObjectData }).FirstOrDefaultAsync()
+                    .ConfigureAwait(false);
+                if (blockData != null)
                 {
-                    while (await reader.ReadAsync().ConfigureAwait(false))
-                    {
-                        var blockId = reader.GetInt64("BlockId");
-                        var objectDataXml = reader["ObjectData"].ToString();
-                        var objectData =
-                            SerializedValueReader.ReadValue<T>(reader, "ObjectData", "CompressedObjectData");
+                    var objectData =
+                        SerializedValueReader.ReadValue<T>(blockData.ObjectData, blockData.CompressedObjectData);
 
-                        return new ObjectBlock<T>
-                        {
-                            Object = objectData,
-                            ObjectBlockId = blockId
-                        };
-                    }
+                    return new ObjectBlock<T>
+                    {
+                        Object = objectData,
+                        ObjectBlockId = blockData.BlockId
+                    };
                 }
             }
         }
@@ -74,19 +67,27 @@ public class ObjectBlockRepository : DbOperationsService, IObjectBlockRepository
     {
         try
         {
-            using (var connection = await CreateNewConnectionAsync(changeStatusRequest.TaskId).ConfigureAwait(false))
+            using (var dbContext = await GetDbContextAsync(changeStatusRequest.TaskId))
             {
-                var command = connection.CreateCommand();
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(changeStatusRequest.TaskId)
-                    .QueryTimeoutSeconds;
-                command.CommandText = GetUpdateQuery(changeStatusRequest.BlockExecutionStatus);
-                command.Parameters.Add("@BlockExecutionId", SqlDbType.BigInt).Value =
-                    changeStatusRequest.BlockExecutionId;
-                command.Parameters.Add("@BlockExecutionStatus", SqlDbType.Int).Value =
-                    (int)changeStatusRequest.BlockExecutionStatus;
-                command.Parameters.Add("@ItemsCount", SqlDbType.Int).Value = changeStatusRequest.ItemsProcessed;
+                var blockExecution = await dbContext.BlockExecutions
+                    .FirstOrDefaultAsync(i => i.BlockExecutionId == changeStatusRequest.BlockExecutionId)
+                    .ConfigureAwait(false);
+                if (blockExecution != null)
+                {
+                    blockExecution.BlockExecutionStatus = (int)changeStatusRequest.BlockExecutionStatus;
+                    if (changeStatusRequest.BlockExecutionStatus == BlockExecutionStatus.Completed ||
+                        changeStatusRequest.BlockExecutionStatus == BlockExecutionStatus.Failed)
+                    {
+                        blockExecution.ItemsCount = changeStatusRequest.ItemsProcessed;
+                        blockExecution.CompletedAt = DateTime.UtcNow;
+                    }
+                    else
+                    {
+                        blockExecution.StartedAt = DateTime.UtcNow;
+                    }
 
-                await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+                    await dbContext.SaveChangesAsync().ConfigureAwait(false);
+                }
             }
         }
         catch (SqlException sqlEx)
@@ -96,13 +97,5 @@ public class ObjectBlockRepository : DbOperationsService, IObjectBlockRepository
 
             throw;
         }
-    }
-
-    private string GetUpdateQuery(BlockExecutionStatus executionStatus)
-    {
-        if (executionStatus == BlockExecutionStatus.Completed || executionStatus == BlockExecutionStatus.Failed)
-            return BlockExecutionQueryBuilder.SetRangeBlockExecutionAsCompleted;
-
-        return BlockExecutionQueryBuilder.SetBlockExecutionStatusToStarted;
     }
 }

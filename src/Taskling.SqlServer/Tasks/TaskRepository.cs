@@ -1,22 +1,20 @@
-﻿using System.Data;
-using System.Data.SqlClient;
-using System.Transactions;
+﻿using System.Transactions;
+using Microsoft.EntityFrameworkCore;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.AncilliaryServices;
-using Taskling.SqlServer.TaskExecution.QueryBuilders;
 
 namespace Taskling.SqlServer.Tasks;
 
 public class TaskRepository : DbOperationsService, ITaskRepository
 {
-    private static readonly SemaphoreSlim _cacheSemaphore = new(1, 1);
-    private static readonly SemaphoreSlim _getTaskSemaphore = new(1, 1);
-    private static readonly Dictionary<string, CachedTaskDefinition> _cachedTaskDefinitions = new();
+    private static readonly SemaphoreSlim CacheSemaphore = new(1, 1);
+    private static readonly SemaphoreSlim GetTaskSemaphore = new(1, 1);
+    private static readonly Dictionary<string, CachedTaskDefinition> CachedTaskDefinitions = new();
 
     public async Task<TaskDefinition> EnsureTaskDefinitionAsync(TaskId taskId)
     {
-        await _getTaskSemaphore.WaitAsync().ConfigureAwait(false);
+        await GetTaskSemaphore.WaitAsync().ConfigureAwait(false);
 
         try
         {
@@ -30,7 +28,7 @@ public class TaskRepository : DbOperationsService, ITaskRepository
                 // wait a random amount of time in case two threads or two instances of this repository 
                 // independently belive that the task doesn't exist
                 await Task.Delay(new Random(Guid.NewGuid().GetHashCode()).Next(2000)).ConfigureAwait(false);
-                using (var ts = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+                using (var transactionScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
                 {
                     try
                     {
@@ -41,37 +39,26 @@ public class TaskRepository : DbOperationsService, ITaskRepository
                     }
                     finally
                     {
-                        ts.Complete();
+                        transactionScope.Complete();
                     }
                 }
             }
         }
         finally
         {
-            _getTaskSemaphore.Release();
+            GetTaskSemaphore.Release();
         }
     }
 
     public async Task<DateTime> GetLastTaskCleanUpTimeAsync(TaskId taskId)
     {
-        using (var connection = await CreateNewConnectionAsync(taskId).ConfigureAwait(false))
+        using (var dbContext = await GetDbContextAsync(taskId))
         {
-            using (var command = new SqlCommand(TaskQueryBuilder.GetLastCleanUpTimeQuery, connection))
-            {
-                command.Parameters.Add(new SqlParameter("@ApplicationName", SqlDbType.VarChar, 200)).Value =
-                    taskId.ApplicationName;
-                command.Parameters.Add(new SqlParameter("@TaskName", SqlDbType.VarChar, 200)).Value = taskId.TaskName;
-                using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
-                {
-                    while (await reader.ReadAsync().ConfigureAwait(false))
-                    {
-                        if (reader["LastCleaned"] == DBNull.Value)
-                            return DateTime.MinValue;
-
-                        return reader.GetDateTime("LastCleaned");
-                    }
-                }
-            }
+            var tuple = await dbContext.TaskDefinitions
+                .Where(i => i.TaskName == taskId.TaskName && i.ApplicationName == taskId.ApplicationName)
+                .Select(i => new { i.LastCleaned }).FirstOrDefaultAsync().ConfigureAwait(false);
+            if (tuple == null) return DateTime.MinValue;
+            return tuple.LastCleaned ?? DateTime.MinValue;
         }
 
         return DateTime.MinValue;
@@ -79,46 +66,49 @@ public class TaskRepository : DbOperationsService, ITaskRepository
 
     public async Task SetLastCleanedAsync(TaskId taskId)
     {
-        using (var connection = await CreateNewConnectionAsync(taskId).ConfigureAwait(false))
+        using (var dbContext = await GetDbContextAsync(taskId))
         {
-            using (var command = new SqlCommand(TaskQueryBuilder.SetLastCleanUpTimeQuery, connection))
+            var taskDefinitions = await dbContext.TaskDefinitions
+                .Where(i => i.TaskName == taskId.TaskName && i.ApplicationName == taskId.ApplicationName).ToListAsync()
+                .ConfigureAwait(false);
+            foreach (var taskDefinition in taskDefinitions)
             {
-                command.Parameters.Add(new SqlParameter("@ApplicationName", SqlDbType.VarChar, 200)).Value =
-                    taskId.ApplicationName;
-                command.Parameters.Add(new SqlParameter("@TaskName", SqlDbType.VarChar, 200)).Value = taskId.TaskName;
-                await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+                taskDefinition.LastCleaned = DateTime.UtcNow;
+                dbContext.TaskDefinitions.Update(taskDefinition);
             }
+
+            await dbContext.SaveChangesAsync();
         }
     }
 
     public static void ClearCache()
     {
-        _cacheSemaphore.Wait();
+        CacheSemaphore.Wait();
         try
         {
-            _cachedTaskDefinitions.Clear();
+            CachedTaskDefinitions.Clear();
         }
         finally
         {
-            _cacheSemaphore.Release();
+            CacheSemaphore.Release();
         }
     }
 
-    private async Task<TaskDefinition> GetTaskAsync(TaskId taskId)
+    private async Task<TaskDefinition?> GetTaskAsync(TaskId taskId)
     {
         return await GetCachedDefinitionAsync(taskId).ConfigureAwait(false);
     }
 
     private async Task<TaskDefinition> GetCachedDefinitionAsync(TaskId taskId)
     {
-        await _cacheSemaphore.WaitAsync().ConfigureAwait(false);
+        await CacheSemaphore.WaitAsync().ConfigureAwait(false);
         try
         {
             var key = taskId.ApplicationName + "::" + taskId.TaskName;
 
-            if (_cachedTaskDefinitions.ContainsKey(key))
+            if (CachedTaskDefinitions.ContainsKey(key))
             {
-                var definition = _cachedTaskDefinitions[key];
+                var definition = CachedTaskDefinitions[key];
                 if ((definition.CachedAt - DateTime.UtcNow).TotalSeconds < 300)
                     return definition.TaskDefinition;
             }
@@ -131,32 +121,24 @@ public class TaskRepository : DbOperationsService, ITaskRepository
         }
         finally
         {
-            _cacheSemaphore.Release();
+            CacheSemaphore.Release();
         }
 
         return null;
     }
 
-    private async Task<TaskDefinition> LoadTaskAsync(TaskId taskId)
+    private async Task<TaskDefinition?> LoadTaskAsync(TaskId taskId)
     {
-        using (var connection = await CreateNewConnectionAsync(taskId).ConfigureAwait(false))
+        using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
         {
-            using (var command = new SqlCommand(TaskQueryBuilder.GetTaskQuery, connection))
-            {
-                command.Parameters.Add(new SqlParameter("@ApplicationName", SqlDbType.VarChar, 200)).Value =
-                    taskId.ApplicationName;
-                command.Parameters.Add(new SqlParameter("@TaskName", SqlDbType.VarChar, 200)).Value = taskId.TaskName;
-                using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
+            var tuple = await dbContext.TaskDefinitions
+                .Where(i => i.ApplicationName == taskId.ApplicationName && i.TaskName == taskId.TaskName)
+                .Select(i => new { i.TaskDefinitionId }).FirstOrDefaultAsync().ConfigureAwait(false);
+            if (tuple != null)
+                return new TaskDefinition
                 {
-                    while (await reader.ReadAsync().ConfigureAwait(false))
-                    {
-                        var task = new TaskDefinition();
-                        task.TaskDefinitionId = reader.GetInt32("TaskDefinitionId");
-
-                        return task;
-                    }
-                }
-            }
+                    TaskDefinitionId = tuple.TaskDefinitionId
+                };
         }
 
         return null;
@@ -164,14 +146,14 @@ public class TaskRepository : DbOperationsService, ITaskRepository
 
     private void CacheTaskDefinition(string taskKey, TaskDefinition taskDefinition)
     {
-        if (_cachedTaskDefinitions.ContainsKey(taskKey))
-            _cachedTaskDefinitions[taskKey] = new CachedTaskDefinition
+        if (CachedTaskDefinitions.ContainsKey(taskKey))
+            CachedTaskDefinitions[taskKey] = new CachedTaskDefinition
             {
                 TaskDefinition = taskDefinition,
                 CachedAt = DateTime.UtcNow
             };
         else
-            _cachedTaskDefinitions.Add(taskKey, new CachedTaskDefinition
+            CachedTaskDefinitions.Add(taskKey, new CachedTaskDefinition
             {
                 TaskDefinition = taskDefinition,
                 CachedAt = DateTime.UtcNow
@@ -180,31 +162,30 @@ public class TaskRepository : DbOperationsService, ITaskRepository
 
     private async Task<TaskDefinition> InsertNewTaskAsync(TaskId taskId)
     {
-        using (var connection = await CreateNewConnectionAsync(taskId).ConfigureAwait(false))
+        using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
         {
-            using (var command = new SqlCommand(TaskQueryBuilder.InsertTaskQuery, connection))
+            var taskDefinition = new Models.TaskDefinition
+                { ApplicationName = taskId.ApplicationName, TaskName = taskId.TaskName };
+            await dbContext.TaskDefinitions.AddAsync(taskDefinition);
+            await dbContext.SaveChangesAsync();
+
+
+            var task = new TaskDefinition();
+            task.TaskDefinitionId = taskDefinition.TaskDefinitionId;
+
+            var key = taskId.ApplicationName + "::" + taskId.TaskName;
+
+            await CacheSemaphore.WaitAsync().ConfigureAwait(false);
+            try
             {
-                command.Parameters.Add(new SqlParameter("@ApplicationName", SqlDbType.VarChar, 200)).Value =
-                    taskId.ApplicationName;
-                command.Parameters.Add(new SqlParameter("@TaskName", SqlDbType.VarChar, 200)).Value = taskId.TaskName;
-
-                var task = new TaskDefinition();
-                task.TaskDefinitionId = (int)await command.ExecuteScalarAsync().ConfigureAwait(false);
-
-                var key = taskId.ApplicationName + "::" + taskId.TaskName;
-
-                await _cacheSemaphore.WaitAsync().ConfigureAwait(false);
-                try
-                {
-                    CacheTaskDefinition(key, task);
-                }
-                finally
-                {
-                    _cacheSemaphore.Release();
-                }
-
-                return task;
+                CacheTaskDefinition(key, task);
             }
+            finally
+            {
+                CacheSemaphore.Release();
+            }
+
+            return task;
         }
     }
 }

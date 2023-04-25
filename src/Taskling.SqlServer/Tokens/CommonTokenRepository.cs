@@ -1,6 +1,5 @@
-﻿using System.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
-using Taskling.Models123;
+﻿using Microsoft.EntityFrameworkCore;
+using Taskling.SqlServer.Models;
 using Taskling.Tasks;
 
 namespace Taskling.SqlServer.Tokens;

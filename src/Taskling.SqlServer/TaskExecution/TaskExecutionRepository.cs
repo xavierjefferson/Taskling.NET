@@ -1,11 +1,13 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using Taskling.Events;
 using Taskling.Exceptions;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.AncilliaryServices;
 using Taskling.SqlServer.Events;
+using Taskling.SqlServer.Models;
 using Taskling.SqlServer.TaskExecution.QueryBuilders;
 using Taskling.SqlServer.Tokens.Executions;
 using Taskling.Tasks;
@@ -70,16 +72,35 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
 
     public async Task SendKeepAliveAsync(SendKeepAliveRequest sendKeepAliveRequest)
     {
-        using (var connection = await CreateNewConnectionAsync(sendKeepAliveRequest.TaskId).ConfigureAwait(false))
+        Action<Models.TaskExecution> action = i =>
         {
-            using (var command = new SqlCommand(TaskQueryBuilder.KeepAliveQuery, connection))
+            i.LastKeepAlive = DateTime.UtcNow;
+        };
+        await UpdateTaskExecution(sendKeepAliveRequest, action);
+    }
+
+    private async Task UpdateTaskExecution(RequestBase keepAliveRequest, Action<Models.TaskExecution> action)
+    {
+        var taskId = keepAliveRequest.TaskId;
+        var taskExecutionId = keepAliveRequest.TaskExecutionId;
+        await UpdateTaskExecution(action, taskExecutionId, taskId);
+    }
+
+    private async Task UpdateTaskExecution(Action<Models.TaskExecution> action, int taskExecutionId, TaskId taskId)
+    {
+        var c = taskExecutionId;
+        using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
+        {
+            var taskExecutions = await dbContext.TaskExecutions
+                .Where(i => i.TaskExecutionId == taskExecutionId)
+                .ToListAsync().ConfigureAwait(false);
+            foreach (var taskExecution in taskExecutions)
             {
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(sendKeepAliveRequest.TaskId)
-                    .QueryTimeoutSeconds;
-                command.Parameters.Add(new SqlParameter("@TaskExecutionId", SqlDbType.Int)).Value =
-                    sendKeepAliveRequest.TaskExecutionId;
-                await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+                action(taskExecution);
+                dbContext.TaskExecutions.Update(taskExecution);
             }
+
+            await dbContext.SaveChangesAsync().ConfigureAwait(false);
         }
     }
 
@@ -89,29 +110,28 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
         var response = new TaskExecutionMetaResponse();
         var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(taskExecutionMetaRequest.TaskId)
             .ConfigureAwait(false);
+        using (var dbContext = await GetDbContextAsync(taskExecutionMetaRequest.TaskId))
 
-        using (var connection = await CreateNewConnectionAsync(taskExecutionMetaRequest.TaskId).ConfigureAwait(false))
         {
-            var command = connection.CreateCommand();
-            command.CommandTimeout = ConnectionStore.Instance.GetConnection(taskExecutionMetaRequest.TaskId)
-                .QueryTimeoutSeconds;
-            command.CommandText = TaskQueryBuilder.GetLastExecutionQuery;
-            command.Parameters.Add("Top", SqlDbType.Int).Value = taskExecutionMetaRequest.ExecutionsToRetrieve;
-            command.Parameters.Add("TaskDefinitionId", SqlDbType.Int).Value = taskDefinition.TaskDefinitionId;
+            var items = await dbContext.TaskExecutions.Where(i => i.TaskDefinitionId == taskDefinition.TaskDefinitionId)
+                .Take(taskExecutionMetaRequest.ExecutionsToRetrieve).OrderByDescending(i => i.TaskExecutionId).ToListAsync()
+                .ConfigureAwait(false);
 
-            using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
+
+            var now = DateTime.UtcNow;
+
             {
-                while (await reader.ReadAsync().ConfigureAwait(false))
+                foreach (var reader in items)
                 {
                     var executionMeta = new TaskExecutionMetaItem();
-                    executionMeta.StartedAt = reader.GetDateTime("StartedAt");
+                    executionMeta.StartedAt = reader.StartedAt;
 
-                    if (reader["CompletedAt"] != DBNull.Value)
+                    if (reader.CompletedAt != null)
                     {
-                        executionMeta.CompletedAt = reader.GetDateTime("CompletedAt");
+                        executionMeta.CompletedAt = reader.CompletedAt;
 
-                        var failed = (bool)reader["Failed"];
-                        var blocked = (bool)reader["Blocked"];
+                        var failed = reader.Failed;
+                        var blocked = reader.Blocked;
 
                         if (failed)
                             executionMeta.Status = TaskExecutionStatus.Failed;
@@ -122,12 +142,12 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
                     }
                     else
                     {
-                        var taskDeathMode = (TaskDeathMode)reader.GetInt32("TaskDeathMode");
+                        var taskDeathMode = (TaskDeathMode)reader.TaskDeathMode;
                         if (taskDeathMode == TaskDeathMode.KeepAlive)
                         {
-                            var lastKeepAlive = reader.GetDateTime("LastKeepAlive");
-                            var keepAliveThreshold = (TimeSpan)reader["KeepAliveDeathThreshold"];
-                            var dbServerUtcNow = reader.GetDateTime("DbServerUtcNow");
+                            var lastKeepAlive = reader.LastKeepAlive;
+                            var keepAliveThreshold = reader.KeepAliveDeathThreshold;
+                            var dbServerUtcNow = now;
 
                             var timeSinceLastKeepAlive = dbServerUtcNow - lastKeepAlive;
                             if (timeSinceLastKeepAlive > keepAliveThreshold)
@@ -137,12 +157,9 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
                         }
                     }
 
-                    if (reader["ExecutionHeader"] != DBNull.Value)
-                        executionMeta.Header = reader["ExecutionHeader"].ToString();
 
-                    if (reader["ReferenceValue"] != DBNull.Value)
-                        executionMeta.ReferenceValue = reader["ReferenceValue"].ToString();
-
+                    executionMeta.Header = reader.ExecutionHeader;
+                    executionMeta.ReferenceValue = reader.ReferenceValue;
                     response.Executions.Add(executionMeta);
                 }
             }
@@ -269,44 +286,26 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
         TimeSpan keepAliveInterval, TimeSpan keepAliveDeathThreshold, string referenceValue,
         short failedTaskRetryLimit, short deadTaskRetryLimit, string tasklingVersion, string executionHeader)
     {
-        using (var connection = await CreateNewConnectionAsync(taskId).ConfigureAwait(false))
+        using (var dbContext = await GetDbContextAsync(taskId))
         {
-            using (var command = new SqlCommand(TaskQueryBuilder.InsertKeepAliveTaskExecution, connection))
+            var taskExecution = new Models.TaskExecution
             {
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(taskId).QueryTimeoutSeconds;
-                command.Parameters.Add(new SqlParameter("@TaskDefinitionId", SqlDbType.Int)).Value = taskDefinitionId;
-                command.Parameters.Add(new SqlParameter("@ServerName", SqlDbType.VarChar, 200)).Value =
-                    Environment.MachineName;
-                command.Parameters.Add(new SqlParameter("@TaskDeathMode", SqlDbType.Int)).Value =
-                    (int)TaskDeathMode.KeepAlive;
-                command.Parameters.Add(new SqlParameter("@KeepAliveInterval", SqlDbType.Time)).Value =
-                    keepAliveInterval;
-                command.Parameters.Add(new SqlParameter("@KeepAliveDeathThreshold", SqlDbType.Time)).Value =
-                    keepAliveDeathThreshold;
-                command.Parameters.Add(new SqlParameter("@FailedTaskRetryLimit", SqlDbType.Int)).Value =
-                    failedTaskRetryLimit;
-                command.Parameters.Add(new SqlParameter("@DeadTaskRetryLimit", SqlDbType.Int)).Value =
-                    deadTaskRetryLimit;
-                command.Parameters.Add(new SqlParameter("@TasklingVersion", SqlDbType.VarChar)).Value = tasklingVersion;
-
-                if (executionHeader == null)
-                    command.Parameters.Add(new SqlParameter("@ExecutionHeader", SqlDbType.NVarChar, -1)).Value =
-                        DBNull.Value;
-                else
-                    command.Parameters.Add(new SqlParameter("@ExecutionHeader", SqlDbType.NVarChar, -1)).Value =
-                        executionHeader;
-
-                if (referenceValue == null)
-                    command.Parameters.Add(new SqlParameter("@ReferenceValue", SqlDbType.NVarChar, 2000)).Value =
-                        DBNull.Value;
-                else
-                    command.Parameters.Add(new SqlParameter("@ReferenceValue", SqlDbType.NVarChar, 2000)).Value =
-                        referenceValue;
-
-                var taskExecutionId = (int)await command.ExecuteScalarAsync().ConfigureAwait(false);
-
-                return taskExecutionId;
-            }
+                TaskDefinitionId = taskDefinitionId,
+                ServerName = Environment.MachineName,
+                TaskDeathMode = (int)TaskDeathMode.KeepAlive,
+                KeepAliveInterval = keepAliveInterval,
+                KeepAliveDeathThreshold = keepAliveDeathThreshold,
+                FailedTaskRetryLimit = failedTaskRetryLimit,
+                DeadTaskRetryLimit = deadTaskRetryLimit,
+                TasklingVersion = tasklingVersion,
+                ExecutionHeader = executionHeader,
+                ReferenceValue = referenceValue,
+                LastKeepAlive = DateTime.UtcNow,
+                StartedAt = DateTime.UtcNow
+            };
+            await dbContext.TaskExecutions.AddAsync(taskExecution).ConfigureAwait(false);
+            await dbContext.SaveChangesAsync().ConfigureAwait(false);
+            return taskExecution.TaskExecutionId;
         }
     }
 
@@ -314,41 +313,29 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
         TimeSpan overrideThreshold, string referenceValue,
         short failedTaskRetryLimit, short deadTaskRetryLimit, string tasklingVersion, string executionHeader)
     {
-        using (var connection = await CreateNewConnectionAsync(taskId).ConfigureAwait(false))
+        using (var dbContext = await GetDbContextAsync(taskId))
         {
-            using (var command = new SqlCommand(TaskQueryBuilder.InsertKeepAliveTaskExecution, connection))
+            var lastKeepAlive = DateTime.UtcNow;
+            var taskExecution = new Models.TaskExecution
             {
-                command.CommandText = TaskQueryBuilder.InsertOverrideTaskExecution;
-                command.Parameters.Clear();
-                command.Parameters.Add(new SqlParameter("@TaskDefinitionId", SqlDbType.Int)).Value = taskDefinitionId;
-                command.Parameters.Add(new SqlParameter("@ServerName", SqlDbType.VarChar, 200)).Value =
-                    Environment.MachineName;
-                command.Parameters.Add(new SqlParameter("@TaskDeathMode", SqlDbType.Int)).Value =
-                    (int)TaskDeathMode.Override;
-                command.Parameters.Add(new SqlParameter("@OverrideThreshold", SqlDbType.Time)).Value =
-                    overrideThreshold;
-                command.Parameters.Add(new SqlParameter("@FailedTaskRetryLimit", SqlDbType.Int)).Value =
-                    failedTaskRetryLimit;
-                command.Parameters.Add(new SqlParameter("@DeadTaskRetryLimit", SqlDbType.Int)).Value =
-                    deadTaskRetryLimit;
-                command.Parameters.Add(new SqlParameter("@TasklingVersion", SqlDbType.VarChar)).Value = tasklingVersion;
+                TaskDefinitionId = taskDefinitionId,
+                StartedAt = lastKeepAlive,
+                ServerName = Environment.MachineName,
+                LastKeepAlive = lastKeepAlive,
+                TaskDeathMode = (int)TaskDeathMode.Override,
+                OverrideThreshold = overrideThreshold,
+                FailedTaskRetryLimit = failedTaskRetryLimit,
+                DeadTaskRetryLimit = deadTaskRetryLimit,
+                ReferenceValue = referenceValue,
+                Failed = false,
+                Blocked = false,
+                TasklingVersion = tasklingVersion,
+                ExecutionHeader = executionHeader
+            };
 
-                if (executionHeader == null)
-                    command.Parameters.Add(new SqlParameter("@ExecutionHeader", SqlDbType.NVarChar, -1)).Value =
-                        DBNull.Value;
-                else
-                    command.Parameters.Add(new SqlParameter("@ExecutionHeader", SqlDbType.NVarChar, -1)).Value =
-                        executionHeader;
-
-                if (referenceValue == null)
-                    command.Parameters.Add(new SqlParameter("@ReferenceValue", SqlDbType.NVarChar, 2000)).Value =
-                        DBNull.Value;
-                else
-                    command.Parameters.Add(new SqlParameter("@ReferenceValue", SqlDbType.NVarChar, 2000)).Value =
-                        referenceValue;
-
-                return (int)await command.ExecuteScalarAsync().ConfigureAwait(false);
-            }
+            await dbContext.TaskExecutions.AddAsync(taskExecution).ConfigureAwait(false);
+            await dbContext.SaveChangesAsync().ConfigureAwait(false);
+            return taskExecution.TaskExecutionId;
         }
     }
 
@@ -376,41 +363,17 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
 
     private async Task SetBlockedOnTaskExecutionAsync(TaskId taskId, int taskExecutionId)
     {
-        using (var connection = await CreateNewConnectionAsync(taskId).ConfigureAwait(false))
-        {
-            using (var command = new SqlCommand(TaskQueryBuilder.SetBlockedTaskExecutionQuery, connection))
-            {
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(taskId).QueryTimeoutSeconds;
-                command.Parameters.Add(new SqlParameter("@TaskExecutionId", SqlDbType.Int)).Value = taskExecutionId;
-                await command.ExecuteNonQueryAsync().ConfigureAwait(false);
-            }
-        }
+        await UpdateTaskExecution(i => i.Blocked = true, taskExecutionId, taskId);
     }
 
     private async Task SetCompletedDateOnTaskExecutionAsync(TaskId taskId, int taskExecutionId)
     {
-        using (var connection = await CreateNewConnectionAsync(taskId).ConfigureAwait(false))
-        {
-            using (var command = new SqlCommand(TaskQueryBuilder.SetCompletedDateOfTaskExecutionQuery, connection))
-            {
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(taskId).QueryTimeoutSeconds;
-                command.Parameters.Add(new SqlParameter("@TaskExecutionId", SqlDbType.Int)).Value = taskExecutionId;
-                await command.ExecuteNonQueryAsync().ConfigureAwait(false);
-            }
-        }
+        await UpdateTaskExecution(i => i.CompletedAt = DateTime.UtcNow, taskExecutionId, taskId);
     }
 
     private async Task SetTaskExecutionAsFailedAsync(TaskId taskId, int taskExecutionId)
     {
-        using (var connection = await CreateNewConnectionAsync(taskId).ConfigureAwait(false))
-        {
-            using (var command = new SqlCommand(TaskQueryBuilder.SetTaskExecutionAsFailedQuery, connection))
-            {
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(taskId).QueryTimeoutSeconds;
-                command.Parameters.Add(new SqlParameter("@TaskExecutionId", SqlDbType.Int)).Value = taskExecutionId;
-                await command.ExecuteNonQueryAsync().ConfigureAwait(false);
-            }
-        }
+        await UpdateTaskExecution(i => i.Failed = true, taskExecutionId, taskId);
     }
 
     private async Task RegisterEventAsync(TaskId taskId, int taskExecutionId, EventType eventType, string message)
