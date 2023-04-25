@@ -88,22 +88,6 @@ public class BlockRepository : DbOperationsService, IBlockRepository
     private const string UnexpectedBlockTypeMessage =
         "This block type was not expected. This can occur when changing the block type of an existing process or combining different block types in a single process - which is not supported";
 
-    private const string GetForcedBlocksQuery = @"SELECT B.[BlockId]
-    {0}
-    ,COALESCE(MaxAttempt, 0) AS Attempt
-    ,B.BlockType
-    ,FBQ.ForceBlockQueueId
-    ,B.ObjectData
-    ,B.CompressedObjectData
-FROM [Taskling].[Block] B WITH(NOLOCK)
-JOIN [Taskling].[ForceBlockQueue] FBQ ON B.BlockId = FBQ.BlockId
-OUTER APPLY (
-	SELECT MAX(Attempt) MaxAttempt
-	FROM [Taskling].[BlockExecution] WITH(NOLOCK) WHERE BlockId = FBQ.BlockId
-) _
-WHERE B.TaskDefinitionId = @TaskDefinitionId
-AND FBQ.ProcessingStatus = 'Pending'";
-
     private const string GetBlocksOfTaskQuery = @"
 SELECT B.[BlockId]
         {0}
@@ -1166,19 +1150,102 @@ ORDER BY B.CreatedDate ASC";
     private async Task<IList<ForcedRangeBlockQueueItem>> GetForcedDateRangeBlocksAsync(
         QueuedForcedBlocksRequest queuedForcedBlocksRequest)
     {
-        var query = string.Format(GetForcedBlocksQuery, ",B.FromDate,B.ToDate");
-        return await GetForcedRangeBlocksAsync(queuedForcedBlocksRequest, query).ConfigureAwait(false);
+        return await GetForcedRangeBlocksAsync(queuedForcedBlocksRequest).ConfigureAwait(false);
     }
 
     private async Task<IList<ForcedRangeBlockQueueItem>> GetForcedNumericRangeBlocksAsync(
         QueuedForcedBlocksRequest queuedForcedBlocksRequest)
     {
-        var query = string.Format(GetForcedBlocksQuery, ",B.FromNumber,B.ToNumber");
-        return await GetForcedRangeBlocksAsync(queuedForcedBlocksRequest, query).ConfigureAwait(false);
+        return await GetForcedRangeBlocksAsync(queuedForcedBlocksRequest).ConfigureAwait(false);
+    }
+
+    private class ForcedBlockQueueQueryItem
+    {
+        public DateTime? FromDate { get; set; }
+        public DateTime? ToDate { get; set; }
+        public int BlockType { get; set; }
+        public string? ProcessingStatus { get; set; }
+        public int TaskDefinitionId { get; set; }
+        public long BlockId { get; set; }
+        public int ForceBlockQueueId { get; set; }
+        public long? FromNumber { get; set; }
+        public long? ToNumber { get; set; }
+        public int Attempt { get; set; }
+        public string? ObjectData { get; set; }
+        public byte[]? CompressedObjectData { get; set; }
+    }
+
+    private async Task<List<ForcedBlockQueueQueryItem>> GetForcedBlockQueueQueryItems(TasklingDbContext dbContext,
+        int taskDefinitionId, BlockType blockType)
+    {
+        bool getData = false;
+        switch (blockType)
+        {
+            case BlockType.List:
+            case BlockType.Object:
+                getData = true;
+                break;
+            case BlockType.NumericRange:
+            case BlockType.DateRange:
+            case BlockType.NotDefined:
+                getData = false;
+                break;
+            default:
+                throw new NotImplementedException($"No handling for {nameof(BlockType)} = {blockType}");
+        }
+
+        var forcedBlockQueueQueryItems = from leftSide in dbContext.ForceBlockQueues.Include(i => i.Block)
+                                         join preRightSide in dbContext.BlockExecutions.GroupBy(i => i.BlockId)
+                                                 .Select(i => new { BlockId = i.Key, Attempt = i.Max(j => j.Attempt) }) on leftSide.BlockId equals
+                                             preRightSide.BlockId into gj
+                                         from rightSide in gj.DefaultIfEmpty()
+                                         select new { leftSide, rightSide, Attempt = rightSide == null ? 0 : rightSide.Attempt };
+        IQueryable<ForcedBlockQueueQueryItem> queryable;
+        if (getData)
+        {
+            queryable =
+                from x in forcedBlockQueueQueryItems
+                select new ForcedBlockQueueQueryItem
+                {
+                    BlockId = x.leftSide.BlockId,
+                    FromNumber = x.leftSide.Block.FromNumber,
+                    FromDate = x.leftSide.Block.FromDate,
+                    ToNumber = x.leftSide.Block.ToNumber,
+                    ToDate = x.leftSide.Block.ToDate,
+                    Attempt = x.rightSide == null ? 0 : x.rightSide.Attempt,
+                    BlockType = x.leftSide.Block.BlockType,
+                    ForceBlockQueueId = x.leftSide.ForceBlockQueueId,
+                    ObjectData = x.leftSide.Block.ObjectData,
+                    CompressedObjectData = x.leftSide.Block.CompressedObjectData,
+                    TaskDefinitionId = x.leftSide.Block.TaskDefinitionId,
+                    ProcessingStatus = x.leftSide.ProcessingStatus
+                };
+        }
+        else
+        {
+            queryable =
+                from x in forcedBlockQueueQueryItems
+                select new ForcedBlockQueueQueryItem
+                {
+                    BlockId = x.leftSide.BlockId,
+                    FromNumber = x.leftSide.Block.FromNumber,
+                    FromDate = x.leftSide.Block.FromDate,
+                    ToNumber = x.leftSide.Block.ToNumber,
+                    ToDate = x.leftSide.Block.ToDate,
+                    Attempt = x.rightSide == null ? 0 : x.rightSide.Attempt,
+                    BlockType = x.leftSide.Block.BlockType,
+                    ForceBlockQueueId = x.leftSide.ForceBlockQueueId,
+                    TaskDefinitionId = x.leftSide.Block.TaskDefinitionId,
+                    ProcessingStatus = x.leftSide.ProcessingStatus
+                };
+        }
+
+        var list = await queryable.Where(i => i.TaskDefinitionId == taskDefinitionId && i.ProcessingStatus == "Pending").ToListAsync();
+        return list;
     }
 
     private async Task<IList<ForcedRangeBlockQueueItem>> GetForcedRangeBlocksAsync(
-        QueuedForcedBlocksRequest queuedForcedBlocksRequest, string query)
+        QueuedForcedBlocksRequest queuedForcedBlocksRequest)
     {
         var results = new List<ForcedRangeBlockQueueItem>();
         var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(queuedForcedBlocksRequest.TaskId)
@@ -1186,62 +1253,54 @@ ORDER BY B.CreatedDate ASC";
 
         try
         {
-            using (var connection =
-                   await CreateNewConnectionAsync(queuedForcedBlocksRequest.TaskId).ConfigureAwait(false))
+            using (var dbContext = await GetDbContextAsync(queuedForcedBlocksRequest.TaskId))
+
             {
-                var command = connection.CreateCommand();
-                command.CommandText = query;
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(queuedForcedBlocksRequest.TaskId)
-                    .QueryTimeoutSeconds;
-                command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinition.TaskDefinitionId;
-                using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
+                var items = await GetForcedBlockQueueQueryItems(dbContext, taskDefinition.TaskDefinitionId,
+                    queuedForcedBlocksRequest.BlockType).ConfigureAwait(false);
+
+                foreach (var item in items)
                 {
-                    while (await reader.ReadAsync().ConfigureAwait(false))
+                    var blockType = (BlockType)item.BlockType;
+                    if (blockType == queuedForcedBlocksRequest.BlockType)
                     {
-                        var blockType = (BlockType)reader.GetInt32("BlockType");
-                        if (blockType == queuedForcedBlocksRequest.BlockType)
+                        var blockId = item.BlockId;
+                        var attempt = item.Attempt;
+                        var forceBlockQueueId = 0;
+
+                        long rangeBegin;
+                        long rangeEnd;
+
+                        RangeBlock? rangeBlock = null;
+                        if (queuedForcedBlocksRequest.BlockType == BlockType.DateRange)
                         {
-                            var blockId = reader.GetInt64("BlockId");
-                            var attempt = reader.GetInt32("Attempt");
-                            var forceBlockQueueId = 0;
-
-                            long rangeBegin;
-                            long rangeEnd;
-
-                            RangeBlock rangeBlock = null;
-                            if (queuedForcedBlocksRequest.BlockType == BlockType.DateRange)
-                            {
-                                rangeBegin = reader.GetDateTime(1).Ticks;
-                                rangeEnd = reader.GetDateTime(2).Ticks;
-                                rangeBlock = new RangeBlock(blockId, attempt + 1, rangeBegin, rangeEnd,
-                                    queuedForcedBlocksRequest.BlockType);
-                                forceBlockQueueId = reader.GetInt32(5);
-                            }
-                            else if (queuedForcedBlocksRequest.BlockType == BlockType.NumericRange)
-                            {
-                                rangeBegin = reader.GetInt64("FromNumber");
-                                rangeEnd = reader.GetInt64("ToNumber");
-                                rangeBlock = new RangeBlock(blockId, attempt + 1, rangeBegin, rangeEnd,
-                                    queuedForcedBlocksRequest.BlockType);
-                                forceBlockQueueId = reader.GetInt32(5);
-                            }
-
-                            var queueItem = new ForcedRangeBlockQueueItem
-                            {
-                                BlockType = queuedForcedBlocksRequest.BlockType,
-                                ForcedBlockQueueId = forceBlockQueueId,
-                                RangeBlock = rangeBlock
-                            };
-
-                            results.Add(queueItem);
+                            rangeBegin = item.FromDate.Value.Ticks;
+                            rangeEnd = item.ToDate.Value.Ticks;
+                            rangeBlock = new RangeBlock(blockId, attempt + 1, rangeBegin, rangeEnd,
+                                queuedForcedBlocksRequest.BlockType);
+                            forceBlockQueueId = item.ForceBlockQueueId;
                         }
-                        else
+                        else if (queuedForcedBlocksRequest.BlockType == BlockType.NumericRange)
                         {
-                            throw new ExecutionException(
-                                @"The block type of the process does not match the block type of the queued item. 
-This could occur if the block type of the process has been changed during a new development. Expected: " +
-                                queuedForcedBlocksRequest.BlockType + " but queued block is: " + blockType);
+                            rangeBegin = item.FromNumber.Value;
+                            rangeEnd = item.ToNumber.Value;
+                            rangeBlock = new RangeBlock(blockId, attempt + 1, rangeBegin, rangeEnd,
+                                queuedForcedBlocksRequest.BlockType);
+                            forceBlockQueueId = item.ForceBlockQueueId;
                         }
+
+                        var queueItem = new ForcedRangeBlockQueueItem
+                        {
+                            BlockType = queuedForcedBlocksRequest.BlockType,
+                            ForcedBlockQueueId = forceBlockQueueId,
+                            RangeBlock = rangeBlock
+                        };
+
+                        results.Add(queueItem);
+                    }
+                    else
+                    {
+                        throw GetBlockTypeException(queuedForcedBlocksRequest, blockType);
                     }
                 }
             }
@@ -1266,50 +1325,42 @@ This could occur if the block type of the process has been changed during a new 
 
         try
         {
-            using (var connection =
-                   await CreateNewConnectionAsync(queuedForcedBlocksRequest.TaskId).ConfigureAwait(false))
+            using (var dbContext = await GetDbContextAsync(queuedForcedBlocksRequest.TaskId).ConfigureAwait(false))
+
+
             {
-                var command = connection.CreateCommand();
-                command.CommandText = string.Format(GetForcedBlocksQuery, "");
-                ;
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(queuedForcedBlocksRequest.TaskId)
-                    .QueryTimeoutSeconds;
-                command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinition.TaskDefinitionId;
-                using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
+                var items = await GetForcedBlockQueueQueryItems(dbContext, taskDefinition.TaskDefinitionId,
+                    queuedForcedBlocksRequest.BlockType).ConfigureAwait(false);
+
+                foreach (var item in items)
                 {
-                    while (await reader.ReadAsync().ConfigureAwait(false))
+                    var blockType = (BlockType)item.BlockType;
+                    if (blockType == queuedForcedBlocksRequest.BlockType)
                     {
-                        var blockType = (BlockType)reader.GetInt32("BlockType");
-                        if (blockType == queuedForcedBlocksRequest.BlockType)
+                        var blockId = item.BlockId;
+                        var attempt = item.Attempt;
+                        var forceBlockQueueId = item.ForceBlockQueueId;
+
+                        var listBlock = new ProtoListBlock
                         {
-                            var blockId = reader.GetInt64("BlockId");
-                            var attempt = reader.GetInt32("Attempt");
-                            var forceBlockQueueId = reader.GetInt32("ForceBlockQueueId");
+                            ListBlockId = blockId,
+                            Attempt = attempt + 1,
+                            Header = SerializedValueReader.ReadValueAsString(item, i => i.ObjectData,
+                                i => i.CompressedObjectData)
+                        };
 
-                            var listBlock = new ProtoListBlock
-                            {
-                                ListBlockId = blockId,
-                                Attempt = attempt + 1,
-                                Header = SerializedValueReader.ReadValueAsString(reader, "ObjectData",
-                                    "CompressedObjectData")
-                            };
-
-                            var queueItem = new ForcedListBlockQueueItem
-                            {
-                                BlockType = queuedForcedBlocksRequest.BlockType,
-                                ForcedBlockQueueId = forceBlockQueueId,
-                                ListBlock = listBlock
-                            };
-
-                            results.Add(queueItem);
-                        }
-                        else
+                        var queueItem = new ForcedListBlockQueueItem
                         {
-                            throw new ExecutionException(
-                                @"The block type of the process does not match the block type of the queued item. 
-This could occur if the block type of the process has been changed during a new development. Expected: " +
-                                queuedForcedBlocksRequest.BlockType + " but queued block is: " + blockType);
-                        }
+                            BlockType = queuedForcedBlocksRequest.BlockType,
+                            ForcedBlockQueueId = forceBlockQueueId,
+                            ListBlock = listBlock
+                        };
+
+                        results.Add(queueItem);
+                    }
+                    else
+                    {
+                        throw GetBlockTypeException(queuedForcedBlocksRequest, blockType);
                     }
                 }
             }
@@ -1334,50 +1385,41 @@ This could occur if the block type of the process has been changed during a new 
 
         try
         {
-            using (var connection =
-                   await CreateNewConnectionAsync(queuedForcedBlocksRequest.TaskId).ConfigureAwait(false))
+            using (var dbContext = await GetDbContextAsync(queuedForcedBlocksRequest.TaskId).ConfigureAwait(false))
+
+
             {
-                var command = connection.CreateCommand();
-                command.CommandText = string.Format(GetForcedBlocksQuery, ",B.ObjectData");
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(queuedForcedBlocksRequest.TaskId)
-                    .QueryTimeoutSeconds;
-                command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinition.TaskDefinitionId;
-                using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
+                var items = await GetForcedBlockQueueQueryItems(dbContext, taskDefinition.TaskDefinitionId,
+                    queuedForcedBlocksRequest.BlockType).ConfigureAwait(false);
+
+
+                foreach (var item in items)
                 {
-                    while (await reader.ReadAsync().ConfigureAwait(false))
+                    var blockType = (BlockType)item.BlockType;
+                    if (blockType == queuedForcedBlocksRequest.BlockType)
                     {
-                        var blockType = (BlockType)reader.GetInt32("BlockType");
-                        if (blockType == queuedForcedBlocksRequest.BlockType)
+                        var objectData =
+                            SerializedValueReader.ReadValue<T>(item.ObjectData, item.CompressedObjectData);
+
+                        var objectBlock = new ObjectBlock<T>
                         {
-                            var blockId = reader.GetInt64("BlockId");
-                            var attempt = reader.GetInt32("Attempt");
-                            var forceBlockQueueId = reader.GetInt32(4);
-                            var objectData =
-                                SerializedValueReader.ReadValue<T>(reader, "ObjectData", "CompressedObjectData");
+                            ObjectBlockId = item.BlockId,
+                            Attempt = item.Attempt + 1,
+                            Object = objectData
+                        };
 
-                            var objectBlock = new ObjectBlock<T>
-                            {
-                                ObjectBlockId = blockId,
-                                Attempt = attempt + 1,
-                                Object = objectData
-                            };
-
-                            var queueItem = new ForcedObjectBlockQueueItem<T>
-                            {
-                                BlockType = queuedForcedBlocksRequest.BlockType,
-                                ForcedBlockQueueId = forceBlockQueueId,
-                                ObjectBlock = objectBlock
-                            };
-
-                            results.Add(queueItem);
-                        }
-                        else
+                        var queueItem = new ForcedObjectBlockQueueItem<T>
                         {
-                            throw new ExecutionException(
-                                @"The block type of the process does not match the block type of the queued item. 
-This could occur if the block type of the process has been changed during a new development. Expected: " +
-                                queuedForcedBlocksRequest.BlockType + " but queued block is: " + blockType);
-                        }
+                            BlockType = queuedForcedBlocksRequest.BlockType,
+                            ForcedBlockQueueId = item.ForceBlockQueueId,
+                            ObjectBlock = objectBlock
+                        };
+
+                        results.Add(queueItem);
+                    }
+                    else
+                    {
+                        throw GetBlockTypeException(queuedForcedBlocksRequest, blockType);
                     }
                 }
             }
@@ -1391,6 +1433,14 @@ This could occur if the block type of the process has been changed during a new 
         }
 
         return results;
+    }
+
+    private static ExecutionException GetBlockTypeException(QueuedForcedBlocksRequest queuedForcedBlocksRequest, BlockType blockType)
+    {
+        return new ExecutionException(
+            @"The block type of the process does not match the block type of the queued item. 
+This could occur if the block type of the process has been changed during a new development. Expected: " +
+            queuedForcedBlocksRequest.BlockType + " but queued block is: " + blockType);
     }
 
     private async Task UpdateForcedBlocksAsync(DequeueForcedBlocksRequest dequeueForcedBlocksRequest)
@@ -1422,17 +1472,6 @@ This could occur if the block type of the process has been changed during a new 
 
     #endregion .: Force Block Queue :.
 
-    private DataTable GenerateEmptyDataTable()
-    {
-        var dt = new DataTable();
-        dt.Columns.Add("BlockId", typeof(long));
-        dt.Columns.Add("Value", typeof(string));
-        dt.Columns.Add("CompressedValue", typeof(byte[]));
-        dt.Columns.Add("Status", typeof(int));
-        dt.Columns.Add("LastUpdated", typeof(DateTime));
-
-        return dt;
-    }
 
     private DateTime EnsureSqlSafeDateTime(DateTime dateTime)
     {
@@ -1459,6 +1498,7 @@ This could occur if the block type of the process has been changed during a new 
                     CreatedAt = DateTime.UtcNow
                 };
                 await dbContext.BlockExecutions.AddAsync(blockExecution).ConfigureAwait(false);
+                await dbContext.SaveChangesAsync().ConfigureAwait(false);
                 return blockExecution.BlockExecutionId;
             }
         }
