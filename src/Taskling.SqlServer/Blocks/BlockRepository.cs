@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
@@ -16,13 +17,14 @@ using Taskling.InfrastructureContracts.Blocks.RangeBlocks;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.Serialization;
 using Taskling.SqlServer.AncilliaryServices;
+using Taskling.SqlServer.Blocks.QueryBuilders;
 using Taskling.SqlServer.Blocks.Serialization;
 using Taskling.SqlServer.Models;
 using Taskling.Tasks;
 
 namespace Taskling.SqlServer.Blocks;
 
-public class BlockRepository : DbOperationsService, IBlockRepository
+public partial class BlockRepository : DbOperationsService, IBlockRepository
 {
     #region .: Constructor :.
 
@@ -33,75 +35,12 @@ public class BlockRepository : DbOperationsService, IBlockRepository
 
     #endregion .: Constructor :.
 
-    public static string GetFindDateRangeBlocksOfTaskQuery(ReprocessOption reprocessOption)
-    {
-        if (reprocessOption == ReprocessOption.Everything)
-            return string.Format(GetBlocksOfTaskQuery, ",B.FromDate,B.ToDate", "");
-
-        if (reprocessOption == ReprocessOption.PendingOrFailed)
-            return string.Format(GetBlocksOfTaskQuery, ",B.FromDate,B.ToDate",
-                "AND BE.BlockExecutionStatus IN (0, 1, 3)");
-
-        throw new ArgumentException("ReprocessOption not supported");
-    }
-
-    public static string GetFindNumericRangeBlocksOfTaskQuery(ReprocessOption reprocessOption)
-    {
-        if (reprocessOption == ReprocessOption.Everything)
-            return string.Format(GetBlocksOfTaskQuery, ",B.FromNumber,B.ToNumber", "");
-
-        if (reprocessOption == ReprocessOption.PendingOrFailed)
-            return string.Format(GetBlocksOfTaskQuery, ",B.FromNumber,B.ToNumber",
-                "AND BE.BlockExecutionStatus IN (0, 1, 3)");
-
-        throw new ArgumentException("ReprocessOption not supported");
-    }
-
-    public static string GetFindListBlocksOfTaskQuery(ReprocessOption reprocessOption)
-    {
-        if (reprocessOption == ReprocessOption.Everything)
-            return string.Format(GetBlocksOfTaskQuery, "", "");
-
-        if (reprocessOption == ReprocessOption.PendingOrFailed)
-            return string.Format(GetBlocksOfTaskQuery, "",
-                "AND BE.BlockExecutionStatus IN (@NotStarted, @Started, @Failed)");
-
-        throw new ArgumentException("ReprocessOption not supported");
-    }
-
-    public static string GetFindObjectBlocksOfTaskQuery(ReprocessOption reprocessOption)
-    {
-        if (reprocessOption == ReprocessOption.Everything)
-            return string.Format(GetBlocksOfTaskQuery, ",B.ObjectData", "");
-
-        if (reprocessOption == ReprocessOption.PendingOrFailed)
-            return string.Format(GetBlocksOfTaskQuery, ",B.ObjectData",
-                "AND BE.BlockExecutionStatus IN (@NotStarted, @Started, @Failed)");
-
-        throw new ArgumentException("ReprocessOption not supported");
-    }
-
     #region .: Fields and services :.
 
     private readonly ITaskRepository _taskRepository;
 
     private const string UnexpectedBlockTypeMessage =
         "This block type was not expected. This can occur when changing the block type of an existing process or combining different block types in a single process - which is not supported";
-
-    private const string GetBlocksOfTaskQuery = @"
-SELECT B.[BlockId]
-        {0}
-        ,BE.Attempt
-        ,B.BlockType
-        ,B.ObjectData
-        ,B.CompressedObjectData
-FROM [Taskling].[Block] B WITH(NOLOCK)
-JOIN [Taskling].[BlockExecution] BE WITH(NOLOCK) ON B.BlockId = BE.BlockId
-LEFT JOIN [Taskling].[TaskExecution] TE WITH(NOLOCK) ON BE.TaskExecutionId = TE.TaskExecutionId
-WHERE B.TaskDefinitionId = @TaskDefinitionId
-AND TE.ReferenceValue = @ReferenceValue
-{1}
-ORDER BY B.CreatedDate ASC";
 
     #endregion .: Fields and services :.
 
@@ -112,7 +51,7 @@ ORDER BY B.CreatedDate ASC";
     public async Task<IList<ForcedRangeBlockQueueItem>> GetQueuedForcedRangeBlocksAsync(
         QueuedForcedBlocksRequest queuedForcedBlocksRequest)
     {
-        var query = string.Empty;
+         
         switch (queuedForcedBlocksRequest.BlockType)
         {
             case BlockType.DateRange:
@@ -145,62 +84,18 @@ ORDER BY B.CreatedDate ASC";
 
     #region .: Range Blocks :.
 
-    public async Task<IList<RangeBlock>> FindFailedRangeBlocksAsync(FindFailedBlocksRequest failedBlocksRequest)
-    {
-        var query = string.Empty;
-        switch (failedBlocksRequest.BlockType)
-        {
-            case BlockType.DateRange:
-                query = FailedBlocksQueryBuilder.GetFindFailedDateRangeBlocksQuery(failedBlocksRequest.BlockCountLimit);
-                break;
-            case BlockType.NumericRange:
-                query = FailedBlocksQueryBuilder.GetFindFailedNumericRangeBlocksQuery(failedBlocksRequest
-                    .BlockCountLimit);
-                break;
-            default:
-                throw new NotSupportedException("This range type is not supported");
-        }
-
-        return await FindFailedDateRangeBlocksAsync(failedBlocksRequest, query).ConfigureAwait(false);
-    }
-
-    public async Task<IList<RangeBlock>> FindDeadRangeBlocksAsync(FindDeadBlocksRequest deadBlocksRequest)
-    {
-        var query = string.Empty;
-        switch (deadBlocksRequest.BlockType)
-        {
-            case BlockType.DateRange:
-                if (deadBlocksRequest.TaskDeathMode == TaskDeathMode.KeepAlive)
-                    query = DeadBlocksQueryBuilder.GetFindDeadDateRangeBlocksWithKeepAliveQuery(deadBlocksRequest
-                        .BlockCountLimit);
-                else
-                    query = DeadBlocksQueryBuilder.GetFindDeadDateRangeBlocksQuery(deadBlocksRequest.BlockCountLimit);
-                break;
-            case BlockType.NumericRange:
-                if (deadBlocksRequest.TaskDeathMode == TaskDeathMode.KeepAlive)
-                    query = DeadBlocksQueryBuilder.GetFindDeadNumericRangeBlocksWithKeepAliveQuery(deadBlocksRequest
-                        .BlockCountLimit);
-                else
-                    query = DeadBlocksQueryBuilder.GetFindDeadNumericRangeBlocksQuery(deadBlocksRequest
-                        .BlockCountLimit);
-                break;
-            default:
-                throw new NotSupportedException("This range type is not supported");
-        }
-
-        return await FindDeadDateRangeBlocksAsync(deadBlocksRequest, query).ConfigureAwait(false);
-    }
+ 
 
     public async Task<IList<RangeBlock>> FindRangeBlocksOfTaskAsync(FindBlocksOfTaskRequest blocksOfTaskRequest)
     {
-        var query = string.Empty;
+        Func<BlocksOfTaskQueryBuilder.BlocksOfTaskQueryParams, Expression<Func<BlocksOfTaskQueryBuilder.BlocksOfTaskQueryItem, bool>>> query;
         switch (blocksOfTaskRequest.BlockType)
         {
             case BlockType.DateRange:
-                query = GetFindDateRangeBlocksOfTaskQuery(blocksOfTaskRequest.ReprocessOption);
+                query = BlocksOfTaskQueryBuilder.GetFindDateRangeBlocksOfTaskQuery(blocksOfTaskRequest.ReprocessOption);
                 break;
             case BlockType.NumericRange:
-                query = GetFindNumericRangeBlocksOfTaskQuery(blocksOfTaskRequest
+                query = BlocksOfTaskQueryBuilder.GetFindNumericRangeBlocksOfTaskQuery(blocksOfTaskRequest
                     .ReprocessOption);
                 break;
             default:
@@ -244,39 +139,14 @@ ORDER BY B.CreatedDate ASC";
 
     #region .: List Blocks :.
 
-    public async Task<IList<ProtoListBlock>> FindFailedListBlocksAsync(FindFailedBlocksRequest failedBlocksRequest)
-    {
-        if (failedBlocksRequest.BlockType == BlockType.List)
-        {
-            var query = FailedBlocksQueryBuilder.GetFindFailedListBlocksQuery(failedBlocksRequest.BlockCountLimit);
-            return await FindFailedListBlocksAsync(failedBlocksRequest, query).ConfigureAwait(false);
-        }
+   
 
-        throw new NotSupportedException(UnexpectedBlockTypeMessage);
-    }
-
-    public async Task<IList<ProtoListBlock>> FindDeadListBlocksAsync(FindDeadBlocksRequest deadBlocksRequest)
-    {
-        if (deadBlocksRequest.BlockType == BlockType.List)
-        {
-            var query = string.Empty;
-            if (deadBlocksRequest.TaskDeathMode == TaskDeathMode.KeepAlive)
-                query = DeadBlocksQueryBuilder.GetFindDeadListBlocksWithKeepAliveQuery(
-                    deadBlocksRequest.BlockCountLimit);
-            else
-                query = DeadBlocksQueryBuilder.GetFindDeadListBlocksQuery(deadBlocksRequest.BlockCountLimit);
-
-            return await FindDeadListBlocksAsync(deadBlocksRequest, query).ConfigureAwait(false);
-        }
-
-        throw new NotSupportedException(UnexpectedBlockTypeMessage);
-    }
 
     public async Task<IList<ProtoListBlock>> FindListBlocksOfTaskAsync(FindBlocksOfTaskRequest blocksOfTaskRequest)
     {
         if (blocksOfTaskRequest.BlockType == BlockType.List)
         {
-            var query = GetFindListBlocksOfTaskQuery(blocksOfTaskRequest.ReprocessOption);
+            var query = BlocksOfTaskQueryBuilder.GetFindListBlocksOfTaskQuery(blocksOfTaskRequest.ReprocessOption);
             return await FindListBlocksOfTaskAsync(blocksOfTaskRequest, query, blocksOfTaskRequest.ReprocessOption)
                 .ConfigureAwait(false);
         }
@@ -322,7 +192,7 @@ ORDER BY B.CreatedDate ASC";
     {
         if (blocksOfTaskRequest.BlockType == BlockType.Object)
         {
-            var query = GetFindObjectBlocksOfTaskQuery(blocksOfTaskRequest.ReprocessOption);
+            var query = BlocksOfTaskQueryBuilder.GetFindObjectBlocksOfTaskQuery(blocksOfTaskRequest.ReprocessOption);
             return await FindObjectBlocksOfTaskAsync<T>(blocksOfTaskRequest, query, blocksOfTaskRequest.ReprocessOption)
                 .ConfigureAwait(false);
         }
@@ -330,34 +200,8 @@ ORDER BY B.CreatedDate ASC";
         throw new NotSupportedException(UnexpectedBlockTypeMessage);
     }
 
-    public async Task<IList<ObjectBlock<T>>> FindFailedObjectBlocksAsync<T>(FindFailedBlocksRequest failedBlocksRequest)
-    {
-        if (failedBlocksRequest.BlockType == BlockType.Object)
-        {
-            var query = FailedBlocksQueryBuilder.GetFindFailedObjectBlocksQuery(failedBlocksRequest.BlockCountLimit);
-            return await FindFailedObjectBlocksAsync<T>(failedBlocksRequest, query).ConfigureAwait(false);
-        }
 
-        throw new NotSupportedException(UnexpectedBlockTypeMessage);
-    }
-
-    public async Task<IList<ObjectBlock<T>>> FindDeadObjectBlocksAsync<T>(FindDeadBlocksRequest deadBlocksRequest)
-    {
-        if (deadBlocksRequest.BlockType == BlockType.Object)
-        {
-            var query = string.Empty;
-            if (deadBlocksRequest.TaskDeathMode == TaskDeathMode.KeepAlive)
-                query = DeadBlocksQueryBuilder.GetFindDeadObjectBlocksWithKeepAliveQuery(deadBlocksRequest
-                    .BlockCountLimit);
-            else
-                query = DeadBlocksQueryBuilder.GetFindDeadObjectBlocksQuery(deadBlocksRequest.BlockCountLimit);
-
-            return await FindDeadObjectBlocksAsync<T>(deadBlocksRequest, query).ConfigureAwait(false);
-        }
-
-        throw new NotSupportedException(UnexpectedBlockTypeMessage);
-    }
-
+  
     public async Task<long> AddObjectBlockExecutionAsync(BlockExecutionCreateRequest executionCreateRequest)
     {
         return await AddBlockExecutionAsync(executionCreateRequest).ConfigureAwait(false);
@@ -393,135 +237,10 @@ ORDER BY B.CreatedDate ASC";
 
     #region .: Range Blocks :.
 
-    private async Task<IList<RangeBlock>> FindFailedDateRangeBlocksAsync(FindFailedBlocksRequest failedBlocksRequest,
-        string query)
-    {
-        var results = new List<RangeBlock>();
-        var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(failedBlocksRequest.TaskId)
-            .ConfigureAwait(false);
-
-        try
-        {
-            using (var connection = await CreateNewConnectionAsync(failedBlocksRequest.TaskId).ConfigureAwait(false))
-            {
-                var command = connection.CreateCommand();
-                command.CommandText = query;
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(failedBlocksRequest.TaskId)
-                    .QueryTimeoutSeconds;
-                command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinition.TaskDefinitionId;
-                command.Parameters.Add("@SearchPeriodBegin", SqlDbType.DateTime).Value =
-                    failedBlocksRequest.SearchPeriodBegin;
-                command.Parameters.Add("@SearchPeriodEnd", SqlDbType.DateTime).Value =
-                    failedBlocksRequest.SearchPeriodEnd;
-                command.Parameters.Add("@AttemptLimit", SqlDbType.Int).Value =
-                    failedBlocksRequest.RetryLimit + 1; // RetryLimit + 1st attempt
-                using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
-                {
-                    while (await reader.ReadAsync().ConfigureAwait(false))
-                    {
-                        var blockType = (BlockType)reader.GetInt32("BlockType");
-                        if (blockType == failedBlocksRequest.BlockType)
-                        {
-                            var rangeBlockId = reader.GetInt64("BlockId");
-                            var attempt = reader.GetInt32("Attempt");
-
-                            long rangeBegin;
-                            long rangeEnd;
-
-                            if (failedBlocksRequest.BlockType == BlockType.DateRange)
-                            {
-                                rangeBegin = reader.GetDateTime(1).Ticks;
-                                rangeEnd = reader.GetDateTime(2).Ticks;
-                            }
-                            else
-                            {
-                                rangeBegin = reader.GetInt64("FromNumber");
-                                rangeEnd = reader.GetInt64("ToNumber");
-                            }
-
-                            results.Add(new RangeBlock(rangeBlockId, attempt, rangeBegin, rangeEnd,
-                                failedBlocksRequest.BlockType));
-                        }
-                    }
-                }
-            }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
-
-            throw;
-        }
-
-        return results;
-    }
-
-    private async Task<IList<RangeBlock>> FindDeadDateRangeBlocksAsync(FindDeadBlocksRequest deadBlocksRequest,
-        string query)
-    {
-        var results = new List<RangeBlock>();
-        var taskDefinition =
-            await _taskRepository.EnsureTaskDefinitionAsync(deadBlocksRequest.TaskId).ConfigureAwait(false);
-
-        try
-        {
-            using (var connection = await CreateNewConnectionAsync(deadBlocksRequest.TaskId).ConfigureAwait(false))
-            {
-                var command = connection.CreateCommand();
-                command.CommandText = query;
-                command.CommandTimeout =
-                    ConnectionStore.Instance.GetConnection(deadBlocksRequest.TaskId).QueryTimeoutSeconds;
-                command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinition.TaskDefinitionId;
-                command.Parameters.Add("@SearchPeriodBegin", SqlDbType.DateTime).Value =
-                    deadBlocksRequest.SearchPeriodBegin;
-                command.Parameters.Add("@SearchPeriodEnd", SqlDbType.DateTime).Value =
-                    deadBlocksRequest.SearchPeriodEnd;
-                command.Parameters.Add("@AttemptLimit", SqlDbType.Int).Value =
-                    deadBlocksRequest.RetryLimit + 1; // RetryLimit + 1st attempt
-
-                using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
-                {
-                    while (await reader.ReadAsync().ConfigureAwait(false))
-                    {
-                        var blockType = (BlockType)reader.GetInt32("BlockType");
-                        if (blockType == deadBlocksRequest.BlockType)
-                        {
-                            var rangeBlockId = reader.GetInt64("BlockId");
-                            var attempt = reader.GetInt32("Attempt");
-
-                            long rangeBegin;
-                            long rangeEnd;
-                            if (deadBlocksRequest.BlockType == BlockType.DateRange)
-                            {
-                                rangeBegin = reader.GetDateTime(1).Ticks;
-                                rangeEnd = reader.GetDateTime(2).Ticks;
-                            }
-                            else
-                            {
-                                rangeBegin = reader.GetInt64("FromNumber");
-                                rangeEnd = reader.GetInt64("ToNumber");
-                            }
-
-                            results.Add(new RangeBlock(rangeBlockId, attempt, rangeBegin, rangeEnd, blockType));
-                        }
-                    }
-                }
-            }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
-
-            throw;
-        }
-
-        return results;
-    }
-
+    
+  
     private async Task<IList<RangeBlock>> FindRangeBlocksOfTaskAsync(FindBlocksOfTaskRequest blocksOfTaskRequest,
-        string query)
+        Func<BlocksOfTaskQueryBuilder.BlocksOfTaskQueryParams, Expression<Func<BlocksOfTaskQueryBuilder.BlocksOfTaskQueryItem, bool>>> query)
     {
         var results = new List<RangeBlock>();
         var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(blocksOfTaskRequest.TaskId)
@@ -529,44 +248,36 @@ ORDER BY B.CreatedDate ASC";
 
         try
         {
-            using (var connection = await CreateNewConnectionAsync(blocksOfTaskRequest.TaskId).ConfigureAwait(false))
+            using (var dbContext = await GetDbContextAsync(blocksOfTaskRequest.TaskId))
             {
-                var command = connection.CreateCommand();
-                command.CommandText = query;
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(blocksOfTaskRequest.TaskId)
-                    .QueryTimeoutSeconds;
-                command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinition.TaskDefinitionId;
-                command.Parameters.Add("@ReferenceValue", SqlDbType.NVarChar, 200).Value =
-                    blocksOfTaskRequest.ReferenceValueOfTask;
+                var items = await BlocksOfTaskQueryBuilder.GetBlocksOfTaskQueryItems(dbContext, taskDefinition.TaskDefinitionId,
+                    blocksOfTaskRequest.ReferenceValueOfTask, query(new BlocksOfTaskQueryBuilder.BlocksOfTaskQueryParams()));
 
-                using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
+                foreach (var item in items)
                 {
-                    while (await reader.ReadAsync().ConfigureAwait(false))
+                    var blockType = (BlockType)item.BlockType;
+                    if (blockType != blocksOfTaskRequest.BlockType)
+                        throw new ExecutionException(
+                            "The block with this reference value is of a different BlockType. BlockType resuested: " +
+                            blocksOfTaskRequest.BlockType + " BlockType found: " + blockType);
+
+                    var rangeBlockId = item.BlockId;
+                    var attempt = item.Attempt;
+                    long rangeBegin;
+                    long rangeEnd;
+                    if (blocksOfTaskRequest.BlockType == BlockType.DateRange)
                     {
-                        var blockType = (BlockType)reader.GetInt32("BlockType");
-                        if (blockType != blocksOfTaskRequest.BlockType)
-                            throw new ExecutionException(
-                                "The block with this reference value is of a different BlockType. BlockType resuested: " +
-                                blocksOfTaskRequest.BlockType + " BlockType found: " + blockType);
-
-                        var rangeBlockId = reader.GetInt64("BlockId");
-                        var attempt = reader.GetInt32("Attempt");
-                        long rangeBegin;
-                        long rangeEnd;
-                        if (blocksOfTaskRequest.BlockType == BlockType.DateRange)
-                        {
-                            rangeBegin = reader.GetDateTime(1).Ticks; //reader.GetDateTime("FromDate").Ticks;
-                            rangeEnd = reader.GetDateTime(2).Ticks; //reader.GetDateTime("ToDate").Ticks;
-                        }
-                        else
-                        {
-                            rangeBegin = reader.GetInt64("FromNumber");
-                            rangeEnd = reader.GetInt64("ToNumber");
-                        }
-
-                        results.Add(new RangeBlock(rangeBlockId, attempt, rangeBegin, rangeEnd,
-                            blocksOfTaskRequest.BlockType));
+                        rangeBegin = item.FromDate.Value.Ticks; //reader.GetDateTime("FromDate").Ticks;
+                        rangeEnd = item.ToDate.Value.Ticks; //reader.GetDateTime("ToDate").Ticks;
                     }
+                    else
+                    {
+                        rangeBegin = item.FromNumber.Value;
+                        rangeEnd = item.ToNumber.Value;
+                    }
+
+                    results.Add(new RangeBlock(rangeBlockId, attempt, rangeBegin, rangeEnd,
+                        blocksOfTaskRequest.BlockType));
                 }
             }
         }
@@ -652,114 +363,10 @@ ORDER BY B.CreatedDate ASC";
 
     #region .: List Blocks :.
 
-    private async Task<IList<ProtoListBlock>> FindFailedListBlocksAsync(FindFailedBlocksRequest failedBlocksRequest,
-        string query)
-    {
-        var results = new List<ProtoListBlock>();
-        var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(failedBlocksRequest.TaskId)
-            .ConfigureAwait(false);
-
-        try
-        {
-            using (var connection = await CreateNewConnectionAsync(failedBlocksRequest.TaskId).ConfigureAwait(false))
-            {
-                var command = connection.CreateCommand();
-                command.CommandText = query;
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(failedBlocksRequest.TaskId)
-                    .QueryTimeoutSeconds;
-                command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinition.TaskDefinitionId;
-                command.Parameters.Add("@SearchPeriodBegin", SqlDbType.DateTime).Value =
-                    failedBlocksRequest.SearchPeriodBegin;
-                command.Parameters.Add("@SearchPeriodEnd", SqlDbType.DateTime).Value =
-                    failedBlocksRequest.SearchPeriodEnd;
-                command.Parameters.Add("@AttemptLimit", SqlDbType.Int).Value =
-                    failedBlocksRequest.RetryLimit + 1; // RetryLimit + 1st attempt
-                using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
-                {
-                    while (await reader.ReadAsync().ConfigureAwait(false))
-                    {
-                        var blockType = (BlockType)reader.GetInt32("BlockType");
-                        if (blockType == failedBlocksRequest.BlockType)
-                        {
-                            var listBlock = new ProtoListBlock();
-                            listBlock.ListBlockId = reader.GetInt64("BlockId");
-                            listBlock.Attempt = reader.GetInt32("Attempt");
-                            listBlock.Header =
-                                SerializedValueReader.ReadValueAsString(reader, "ObjectData", "CompressedObjectData");
-
-                            results.Add(listBlock);
-                        }
-                    }
-                }
-            }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
-
-            throw;
-        }
-
-        return results;
-    }
-
-    private async Task<IList<ProtoListBlock>> FindDeadListBlocksAsync(FindDeadBlocksRequest deadBlocksRequest,
-        string query)
-    {
-        var results = new List<ProtoListBlock>();
-        var taskDefinition =
-            await _taskRepository.EnsureTaskDefinitionAsync(deadBlocksRequest.TaskId).ConfigureAwait(false);
-
-        try
-        {
-            using (var connection = await CreateNewConnectionAsync(deadBlocksRequest.TaskId).ConfigureAwait(false))
-            {
-                var command = connection.CreateCommand();
-                command.CommandText = query;
-                command.CommandTimeout =
-                    ConnectionStore.Instance.GetConnection(deadBlocksRequest.TaskId).QueryTimeoutSeconds;
-                command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinition.TaskDefinitionId;
-                command.Parameters.Add("@SearchPeriodBegin", SqlDbType.DateTime).Value =
-                    deadBlocksRequest.SearchPeriodBegin;
-                command.Parameters.Add("@SearchPeriodEnd", SqlDbType.DateTime).Value =
-                    deadBlocksRequest.SearchPeriodEnd;
-                command.Parameters.Add("@AttemptLimit", SqlDbType.Int).Value =
-                    deadBlocksRequest.RetryLimit + 1; // RetryLimit + 1st attempt
-
-                using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
-                {
-                    while (await reader.ReadAsync().ConfigureAwait(false))
-                    {
-                        var blockType = (BlockType)reader.GetInt32("BlockType");
-                        if (blockType == deadBlocksRequest.BlockType)
-                        {
-                            var listBlock = new ProtoListBlock();
-
-                            listBlock.ListBlockId = reader.GetInt64("BlockId");
-                            listBlock.Attempt = reader.GetInt32("Attempt");
-                            listBlock.Header =
-                                SerializedValueReader.ReadValueAsString(reader, "ObjectData", "CompressedObjectData");
-
-                            results.Add(listBlock);
-                        }
-                    }
-                }
-            }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
-
-            throw;
-        }
-
-        return results;
-    }
-
+  
     private async Task<IList<ProtoListBlock>> FindListBlocksOfTaskAsync(FindBlocksOfTaskRequest blocksOfTaskRequest,
-        string query, ReprocessOption reprocessOption)
+        Func<BlocksOfTaskQueryBuilder.BlocksOfTaskQueryParams, Expression<Func<BlocksOfTaskQueryBuilder.BlocksOfTaskQueryItem, bool>>> query,
+        ReprocessOption reprocessOption)
     {
         var results = new List<ProtoListBlock>();
         var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(blocksOfTaskRequest.TaskId)
@@ -767,41 +374,36 @@ ORDER BY B.CreatedDate ASC";
 
         try
         {
-            using (var connection = await CreateNewConnectionAsync(blocksOfTaskRequest.TaskId).ConfigureAwait(false))
+            using (var dbContext = await GetDbContextAsync(blocksOfTaskRequest.TaskId))
             {
-                var command = connection.CreateCommand();
-                command.CommandText = query;
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(blocksOfTaskRequest.TaskId)
-                    .QueryTimeoutSeconds;
-                command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinition.TaskDefinitionId;
-                command.Parameters.Add("@ReferenceValue", SqlDbType.NVarChar, 200).Value =
-                    blocksOfTaskRequest.ReferenceValueOfTask;
-
+                BlocksOfTaskQueryBuilder.BlocksOfTaskQueryParams blocksOfTaskQueryParams;
                 if (reprocessOption == ReprocessOption.PendingOrFailed)
-                {
-                    command.Parameters.Add("@NotStarted", SqlDbType.Int).Value = (int)BlockExecutionStatus.NotStarted;
-                    command.Parameters.Add("@Started", SqlDbType.Int).Value = (int)BlockExecutionStatus.Started;
-                    command.Parameters.Add("@Failed", SqlDbType.Int).Value = (int)BlockExecutionStatus.Failed;
-                }
 
-                using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
-                {
-                    while (await reader.ReadAsync().ConfigureAwait(false))
+                    blocksOfTaskQueryParams = new BlocksOfTaskQueryBuilder.BlocksOfTaskQueryParams
                     {
-                        var blockType = (BlockType)reader.GetInt32("BlockType");
-                        if (blockType != blocksOfTaskRequest.BlockType)
-                            throw new ExecutionException(
-                                "The block with this reference value is of a different BlockType. BlockType resuested: " +
-                                blocksOfTaskRequest.BlockType + " BlockType found: " + blockType);
+                        Started = (int)BlockExecutionStatus.Started,
+                        NotStarted = (int)BlockExecutionStatus.NotStarted,
+                        Failed = (int)BlockExecutionStatus.Failed
+                    };
+                else blocksOfTaskQueryParams = new BlocksOfTaskQueryBuilder.BlocksOfTaskQueryParams();
+                var items = await BlocksOfTaskQueryBuilder.GetBlocksOfTaskQueryItems(dbContext, taskDefinition.TaskDefinitionId,
+                    blocksOfTaskRequest.ReferenceValueOfTask, query(blocksOfTaskQueryParams));
 
-                        var listBlock = new ProtoListBlock();
-                        listBlock.ListBlockId = reader.GetInt64("BlockId");
-                        listBlock.Attempt = reader.GetInt32("Attempt");
-                        listBlock.Header =
-                            SerializedValueReader.ReadValueAsString(reader, "ObjectData", "CompressedObjectData");
+                foreach (var reader in items)
+                {
+                    var blockType = (BlockType)reader.BlockType;
+                    if (blockType != blocksOfTaskRequest.BlockType)
+                        throw GetBlockTypeException(blocksOfTaskRequest, blockType);
 
-                        results.Add(listBlock);
-                    }
+
+                    var listBlock = new ProtoListBlock();
+                    listBlock.ListBlockId = reader.BlockId;
+                    listBlock.Attempt = reader.Attempt;
+                    listBlock.Header =
+                        SerializedValueReader.ReadValueAsString(reader, i => i.ObjectData,
+                            i => i.CompressedObjectData);
+
+                    results.Add(listBlock);
                 }
             }
         }
@@ -972,62 +574,7 @@ ORDER BY B.CreatedDate ASC";
         }
     }
 
-    private async Task<IList<ObjectBlock<T>>> FindFailedObjectBlocksAsync<T>(
-        FindFailedBlocksRequest failedBlocksRequest, string query)
-    {
-        var results = new List<ObjectBlock<T>>();
-        var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(failedBlocksRequest.TaskId)
-            .ConfigureAwait(false);
-
-        try
-        {
-            using (var connection = await CreateNewConnectionAsync(failedBlocksRequest.TaskId).ConfigureAwait(false))
-            {
-                var command = connection.CreateCommand();
-                command.CommandText = query;
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(failedBlocksRequest.TaskId)
-                    .QueryTimeoutSeconds;
-                command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinition.TaskDefinitionId;
-                command.Parameters.Add("@SearchPeriodBegin", SqlDbType.DateTime).Value =
-                    failedBlocksRequest.SearchPeriodBegin;
-                command.Parameters.Add("@SearchPeriodEnd", SqlDbType.DateTime).Value =
-                    failedBlocksRequest.SearchPeriodEnd;
-                command.Parameters.Add("@AttemptLimit", SqlDbType.Int).Value =
-                    failedBlocksRequest.RetryLimit + 1; // RetryLimit + 1st attempt
-                using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
-                {
-                    while (await reader.ReadAsync().ConfigureAwait(false))
-                    {
-                        var blockType = (BlockType)reader.GetInt32("BlockType");
-                        if (blockType == failedBlocksRequest.BlockType)
-                        {
-                            var objectBlock = new ObjectBlock<T>();
-                            objectBlock.ObjectBlockId = reader.GetInt64("BlockId");
-                            objectBlock.Attempt = reader.GetInt32("Attempt");
-                            objectBlock.Object =
-                                SerializedValueReader.ReadValue<T>(reader, "ObjectData", "CompressedObjectData");
-
-                            results.Add(objectBlock);
-                        }
-                        else
-                        {
-                            throw new NotSupportedException(UnexpectedBlockTypeMessage);
-                        }
-                    }
-                }
-            }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
-
-            throw;
-        }
-
-        return results;
-    }
-
+   
     private async Task<IList<ObjectBlock<T>>> FindDeadObjectBlocksAsync<T>(FindDeadBlocksRequest deadBlocksRequest,
         string query)
     {
@@ -1086,7 +633,9 @@ ORDER BY B.CreatedDate ASC";
     }
 
     private async Task<IList<ObjectBlock<T>>> FindObjectBlocksOfTaskAsync<T>(
-        FindBlocksOfTaskRequest blocksOfTaskRequest, string query, ReprocessOption reprocessOption)
+        FindBlocksOfTaskRequest blocksOfTaskRequest,
+        Func<BlocksOfTaskQueryBuilder.BlocksOfTaskQueryParams, Expression<Func<BlocksOfTaskQueryBuilder.BlocksOfTaskQueryItem, bool>>> query,
+        ReprocessOption reprocessOption)
     {
         var results = new List<ObjectBlock<T>>();
         var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(blocksOfTaskRequest.TaskId)
@@ -1094,41 +643,36 @@ ORDER BY B.CreatedDate ASC";
 
         try
         {
-            using (var connection = await CreateNewConnectionAsync(blocksOfTaskRequest.TaskId).ConfigureAwait(false))
+            using (var dbContext = await GetDbContextAsync(blocksOfTaskRequest.TaskId).ConfigureAwait(false))
             {
-                var command = connection.CreateCommand();
-                command.CommandText = query;
-                command.CommandTimeout = ConnectionStore.Instance.GetConnection(blocksOfTaskRequest.TaskId)
-                    .QueryTimeoutSeconds;
-                command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinition.TaskDefinitionId;
-                command.Parameters.Add("@ReferenceValue", SqlDbType.NVarChar, 200).Value =
-                    blocksOfTaskRequest.ReferenceValueOfTask;
+                var blockOfTypeQueryParams = new BlocksOfTaskQueryBuilder.BlocksOfTaskQueryParams();
+
 
                 if (reprocessOption == ReprocessOption.PendingOrFailed)
                 {
-                    command.Parameters.Add("@NotStarted", SqlDbType.Int).Value = (int)BlockExecutionStatus.NotStarted;
-                    command.Parameters.Add("@Started", SqlDbType.Int).Value = (int)BlockExecutionStatus.Started;
-                    command.Parameters.Add("@Failed", SqlDbType.Int).Value = (int)BlockExecutionStatus.Failed;
+                    blockOfTypeQueryParams.NotStarted = (int)BlockExecutionStatus.NotStarted;
+                    blockOfTypeQueryParams.Started = (int)BlockExecutionStatus.Started;
+                    blockOfTypeQueryParams.Failed = (int)BlockExecutionStatus.Failed;
                 }
 
-                using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
+                var items = await BlocksOfTaskQueryBuilder.GetBlocksOfTaskQueryItems(dbContext, taskDefinition.TaskDefinitionId,
+                    blocksOfTaskRequest.ReferenceValueOfTask, query(blockOfTypeQueryParams)).ConfigureAwait(false);
+
+                foreach (var item in items)
                 {
-                    while (await reader.ReadAsync().ConfigureAwait(false))
-                    {
-                        var blockType = (BlockType)reader.GetInt32("BlockType");
-                        if (blockType != blocksOfTaskRequest.BlockType)
-                            throw new ExecutionException(
-                                "The block with this reference value is of a different BlockType. BlockType resuested: " +
-                                blocksOfTaskRequest.BlockType + " BlockType found: " + blockType);
+                    var blockType = (BlockType)item.BlockType;
+                    if (blockType != blocksOfTaskRequest.BlockType)
+                        throw new ExecutionException(
+                            "The block with this reference value is of a different BlockType. BlockType resuested: " +
+                            blocksOfTaskRequest.BlockType + " BlockType found: " + blockType);
 
-                        var objectBlock = new ObjectBlock<T>();
-                        objectBlock.ObjectBlockId = reader.GetInt64("BlockId");
-                        objectBlock.Attempt = reader.GetInt32("Attempt");
-                        objectBlock.Object =
-                            SerializedValueReader.ReadValue<T>(reader, "ObjectData", "CompressedObjectData");
+                    var objectBlock = new ObjectBlock<T>();
+                    objectBlock.ObjectBlockId = item.BlockId;
+                    objectBlock.Attempt = item.Attempt;
+                    objectBlock.Object =
+                        SerializedValueReader.ReadValue<T>(item.ObjectData, item.CompressedObjectData);
 
-                        results.Add(objectBlock);
-                    }
+                    results.Add(objectBlock);
                 }
             }
         }
@@ -1159,91 +703,6 @@ ORDER BY B.CreatedDate ASC";
         return await GetForcedRangeBlocksAsync(queuedForcedBlocksRequest).ConfigureAwait(false);
     }
 
-    private class ForcedBlockQueueQueryItem
-    {
-        public DateTime? FromDate { get; set; }
-        public DateTime? ToDate { get; set; }
-        public int BlockType { get; set; }
-        public string? ProcessingStatus { get; set; }
-        public int TaskDefinitionId { get; set; }
-        public long BlockId { get; set; }
-        public int ForceBlockQueueId { get; set; }
-        public long? FromNumber { get; set; }
-        public long? ToNumber { get; set; }
-        public int Attempt { get; set; }
-        public string? ObjectData { get; set; }
-        public byte[]? CompressedObjectData { get; set; }
-    }
-
-    private async Task<List<ForcedBlockQueueQueryItem>> GetForcedBlockQueueQueryItems(TasklingDbContext dbContext,
-        int taskDefinitionId, BlockType blockType)
-    {
-        bool getData = false;
-        switch (blockType)
-        {
-            case BlockType.List:
-            case BlockType.Object:
-                getData = true;
-                break;
-            case BlockType.NumericRange:
-            case BlockType.DateRange:
-            case BlockType.NotDefined:
-                getData = false;
-                break;
-            default:
-                throw new NotImplementedException($"No handling for {nameof(BlockType)} = {blockType}");
-        }
-
-        var forcedBlockQueueQueryItems = from leftSide in dbContext.ForceBlockQueues.Include(i => i.Block)
-                                         join preRightSide in dbContext.BlockExecutions.GroupBy(i => i.BlockId)
-                                                 .Select(i => new { BlockId = i.Key, Attempt = i.Max(j => j.Attempt) }) on leftSide.BlockId equals
-                                             preRightSide.BlockId into gj
-                                         from rightSide in gj.DefaultIfEmpty()
-                                         select new { leftSide, rightSide, Attempt = rightSide == null ? 0 : rightSide.Attempt };
-        IQueryable<ForcedBlockQueueQueryItem> queryable;
-        if (getData)
-        {
-            queryable =
-                from x in forcedBlockQueueQueryItems
-                select new ForcedBlockQueueQueryItem
-                {
-                    BlockId = x.leftSide.BlockId,
-                    FromNumber = x.leftSide.Block.FromNumber,
-                    FromDate = x.leftSide.Block.FromDate,
-                    ToNumber = x.leftSide.Block.ToNumber,
-                    ToDate = x.leftSide.Block.ToDate,
-                    Attempt = x.rightSide == null ? 0 : x.rightSide.Attempt,
-                    BlockType = x.leftSide.Block.BlockType,
-                    ForceBlockQueueId = x.leftSide.ForceBlockQueueId,
-                    ObjectData = x.leftSide.Block.ObjectData,
-                    CompressedObjectData = x.leftSide.Block.CompressedObjectData,
-                    TaskDefinitionId = x.leftSide.Block.TaskDefinitionId,
-                    ProcessingStatus = x.leftSide.ProcessingStatus
-                };
-        }
-        else
-        {
-            queryable =
-                from x in forcedBlockQueueQueryItems
-                select new ForcedBlockQueueQueryItem
-                {
-                    BlockId = x.leftSide.BlockId,
-                    FromNumber = x.leftSide.Block.FromNumber,
-                    FromDate = x.leftSide.Block.FromDate,
-                    ToNumber = x.leftSide.Block.ToNumber,
-                    ToDate = x.leftSide.Block.ToDate,
-                    Attempt = x.rightSide == null ? 0 : x.rightSide.Attempt,
-                    BlockType = x.leftSide.Block.BlockType,
-                    ForceBlockQueueId = x.leftSide.ForceBlockQueueId,
-                    TaskDefinitionId = x.leftSide.Block.TaskDefinitionId,
-                    ProcessingStatus = x.leftSide.ProcessingStatus
-                };
-        }
-
-        var list = await queryable.Where(i => i.TaskDefinitionId == taskDefinitionId && i.ProcessingStatus == "Pending").ToListAsync();
-        return list;
-    }
-
     private async Task<IList<ForcedRangeBlockQueueItem>> GetForcedRangeBlocksAsync(
         QueuedForcedBlocksRequest queuedForcedBlocksRequest)
     {
@@ -1256,7 +715,7 @@ ORDER BY B.CreatedDate ASC";
             using (var dbContext = await GetDbContextAsync(queuedForcedBlocksRequest.TaskId))
 
             {
-                var items = await GetForcedBlockQueueQueryItems(dbContext, taskDefinition.TaskDefinitionId,
+                var items = await ForcedBlockQueueQueryBuilder.GetForcedBlockQueueQueryItems(dbContext, taskDefinition.TaskDefinitionId,
                     queuedForcedBlocksRequest.BlockType).ConfigureAwait(false);
 
                 foreach (var item in items)
@@ -1329,7 +788,7 @@ ORDER BY B.CreatedDate ASC";
 
 
             {
-                var items = await GetForcedBlockQueueQueryItems(dbContext, taskDefinition.TaskDefinitionId,
+                var items = await ForcedBlockQueueQueryBuilder.GetForcedBlockQueueQueryItems(dbContext, taskDefinition.TaskDefinitionId,
                     queuedForcedBlocksRequest.BlockType).ConfigureAwait(false);
 
                 foreach (var item in items)
@@ -1389,7 +848,7 @@ ORDER BY B.CreatedDate ASC";
 
 
             {
-                var items = await GetForcedBlockQueueQueryItems(dbContext, taskDefinition.TaskDefinitionId,
+                var items = await ForcedBlockQueueQueryBuilder.GetForcedBlockQueueQueryItems(dbContext, taskDefinition.TaskDefinitionId,
                     queuedForcedBlocksRequest.BlockType).ConfigureAwait(false);
 
 
@@ -1435,7 +894,8 @@ ORDER BY B.CreatedDate ASC";
         return results;
     }
 
-    private static ExecutionException GetBlockTypeException(QueuedForcedBlocksRequest queuedForcedBlocksRequest, BlockType blockType)
+    private static ExecutionException GetBlockTypeException(BlockRequestBase queuedForcedBlocksRequest,
+        BlockType blockType)
     {
         return new ExecutionException(
             @"The block type of the process does not match the block type of the queued item. 
@@ -1514,4 +974,6 @@ This could occur if the block type of the process has been changed during a new 
     }
 
     #endregion .: Private Methods :.
+
+  
 }
