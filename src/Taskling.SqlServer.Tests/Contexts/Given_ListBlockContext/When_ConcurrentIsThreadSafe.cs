@@ -8,7 +8,7 @@ using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_ListBlockContext;
-
+[Collection(Constants.CollectionName)]
 public class When_ConcurrentIsThreadSafe
 {
     private readonly BlocksHelper _blocksHelper;

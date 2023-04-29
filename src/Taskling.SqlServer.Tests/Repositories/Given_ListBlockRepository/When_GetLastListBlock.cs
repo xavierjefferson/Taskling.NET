@@ -11,7 +11,7 @@ using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_ListBlockRepository;
-
+[Collection(Constants.CollectionName)]
 public class When_GetLastListBlock
 {
     private DateTime _baseDateTime;

@@ -1,6 +1,12 @@
-﻿namespace Taskling.SqlServer.Blocks;
+﻿using Microsoft.EntityFrameworkCore;
+using Taskling.Blocks.Common;
+using Taskling.InfrastructureContracts.Blocks.CommonRequests;
+using Taskling.SqlServer.Blocks.Models;
+using Taskling.SqlServer.Models;
 
-internal class DeadBlocksQueryBuilder
+namespace Taskling.SqlServer.Blocks.QueryBuilders;
+
+public class DeadBlocksQueryBuilder
 {
     private const string FindDeadBlocksQuery = @"WITH OrderedBlocks As (
 	SELECT ROW_NUMBER() OVER (PARTITION BY BE.BlockId ORDER BY BE.BlockExecutionId DESC) AS RowNo
@@ -58,43 +64,71 @@ AND BE.Attempt < @AttemptLimit
 AND OB.RowNo = 1
 ORDER BY B.CreatedDate ASC";
 
-    public static string GetFindDeadDateRangeBlocksQuery(int top)
+
+    public static async Task<List<BlockQueryItem>> GetFindDeadBlocksQuery(BlockItemRequestWrapper requestWrapper)
     {
-        return string.Format(FindDeadBlocksQuery, top, ",B.FromDate,B.ToDate");
+        var items = await GetBlocksInner(requestWrapper);
+        //AND TE.StartedAt <= DATEADD(SECOND, -1 * DATEDIFF(SECOND, '00:00:00', OverrideThreshold), GETUTCDATE())
+        return items.Where(i => i.StartedAt < DateTime.UtcNow.Subtract(i.OverrideThreshold.Value)).Take(requestWrapper.Limit).ToList();
     }
 
-    public static string GetFindDeadNumericRangeBlocksQuery(int top)
+    public static async Task<List<BlockQueryItem>> GetFindDeadBlocksWithKeepAliveQuery(BlockItemRequestWrapper requestWrapper)
     {
-        return string.Format(FindDeadBlocksQuery, top, ",B.FromNumber,B.ToNumber");
+        var items = await GetBlocksInner(requestWrapper);
+        //AND DATEDIFF(SECOND, TE.LastKeepAlive, GETUTCDATE()) > DATEDIFF(SECOND, '00:00:00', TE.KeepAliveDeathThreshold)
+        return items.Where(i => DateTime.UtcNow.Subtract(i.LastKeepAlive) > i.KeepAliveDeathThreshold).Take(requestWrapper.Limit).ToList();
     }
 
-    public static string GetFindDeadListBlocksQuery(int top)
+    public static async Task<List<BlockQueryItem>> GetBlocksInner(BlockItemRequestWrapper requestWrapper)
     {
-        return string.Format(FindDeadBlocksQuery, top, "");
-    }
+        var tasklingDbContext = requestWrapper.DbContext;
+        var request = requestWrapper.Body;
+        
+        var b0 = tasklingDbContext.BlockExecutions.Include(i => i.TaskExecution).Where(i =>
+                i.TaskExecution.StartedAt >= request.SearchPeriodBegin
+                && i.TaskExecution.StartedAt <= request.SearchPeriodEnd &&
+                i.TaskExecution.TaskDefinitionId == requestWrapper.TaskDefinitionId)
+            .GroupBy(i => i.BlockId,
+                (i, j) => j.Max(k => k.BlockExecutionId));
+        var d = b0.ToList();
 
-    public static string GetFindDeadObjectBlocksQuery(int top)
-    {
-        return string.Format(FindDeadBlocksQuery, top, ",B.ObjectData");
-    }
+        var statuses = request.GetMatchingStatuses();
 
-    public static string GetFindDeadDateRangeBlocksWithKeepAliveQuery(int top)
-    {
-        return string.Format(FindDeadBlocksWithKeepAliveQuery, top, ",B.FromDate,B.ToDate");
-    }
+        var b = tasklingDbContext.BlockExecutions.Include(i => i.TaskExecution)
+            .Join(b0, i => i.BlockExecutionId, i => i, (i, j) => i)
+            .Where(i => !i.Block.IsPhantom && statuses.Contains(i.BlockExecutionStatus) &&
+                        i.Attempt < request.AttemptLimit)
+            //.Where(i=>i.StartedAt.Value.Add(i.TaskExecution.OverrideThreshold.Value) <= DateTime.UtcNow)
+            .OrderBy(i => i.Block.CreatedDate)
+            .Select(i => new BlockQueryItem
+            {
+                BlockId = i.BlockId,
+                Attempt = i.Attempt,
+                BlockType = i.Block.BlockType,
+                FromDate = i.Block.FromDate,
+                ObjectData = i.Block.ObjectData,
+                CompressedObjectData = i.Block.CompressedObjectData,
+                FromNumber = i.Block.FromNumber,
+                ToDate = i.Block.ToDate,
+                ToNumber = i.Block.ToNumber,
+                StartedAt = i.TaskExecution.StartedAt,
+                LastKeepAlive = i.TaskExecution.LastKeepAlive,
+                OverrideThreshold = i.TaskExecution.OverrideThreshold,
+                KeepAliveDeathThreshold = i.TaskExecution.KeepAliveDeathThreshold,
+                KeepAliveInterval = i.TaskExecution.KeepAliveInterval
+            });
 
-    public static string GetFindDeadNumericRangeBlocksWithKeepAliveQuery(int top)
-    {
-        return string.Format(FindDeadBlocksWithKeepAliveQuery, top, ",B.FromNumber,B.ToNumber");
-    }
 
-    public static string GetFindDeadListBlocksWithKeepAliveQuery(int top)
-    {
-        return string.Format(FindDeadBlocksWithKeepAliveQuery, top, "");
+        var c = await b.ToListAsync().ConfigureAwait(false);
+        return c;
     }
+}
 
-    public static string GetFindDeadObjectBlocksWithKeepAliveQuery(int top)
-    {
-        return string.Format(FindDeadBlocksWithKeepAliveQuery, top, ",B.ObjectData");
-    }
+public class BlockItemRequestWrapper
+{
+    public TasklingDbContext DbContext { get; set; }
+    public int Limit { get; set; }
+    public ISearchableBlockRequest Body { get; set; }
+    public BlockType BlockType { get; set; }
+    public int TaskDefinitionId { get; set; }
 }

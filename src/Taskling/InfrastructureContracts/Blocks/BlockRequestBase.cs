@@ -1,8 +1,9 @@
 ﻿using Taskling.Blocks.Common;
+using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 
 namespace Taskling.InfrastructureContracts.Blocks;
 
-public class BlockRequestBase
+public class BlockRequestBase : IBlockRequest
 {
     public BlockRequestBase(TaskId taskId, int taskExecutionId, BlockType blockType)
     {

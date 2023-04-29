@@ -1,9 +1,10 @@
 ﻿using System.Threading.Tasks;
+using Taskling.SqlServer.Tests.Contexts.Given_ObjectBlockContext;
 using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_TaskExecutionContext;
-
+[Collection(Constants.CollectionName)]
 public class When_Blocked
 {
     private readonly int _taskDefinitionId;

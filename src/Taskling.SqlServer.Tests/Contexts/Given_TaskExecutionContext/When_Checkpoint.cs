@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Taskling.Events;
+using Taskling.SqlServer.Tests.Contexts.Given_ObjectBlockContext;
 using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_TaskExecutionContext;
-
+[Collection(Constants.CollectionName)]
 public class When_Checkpoint
 {
     private readonly int _taskDefinitionId;
@@ -28,7 +29,7 @@ public class When_Checkpoint
 
         // ACT
         bool startedOk;
-        Tuple<EventType, string> lastEvent = null;
+        GetLastEventResponse lastEvent = null;
 
         using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
                    ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
@@ -39,7 +40,7 @@ public class When_Checkpoint
         }
 
         // ASSERT
-        Assert.Equal(EventType.CheckPoint, lastEvent.Item1);
-        Assert.Equal("Test checkpoint", lastEvent.Item2);
+        Assert.Equal(EventType.CheckPoint, lastEvent.EventType);
+        Assert.Equal("Test checkpoint", lastEvent.Message);
     }
 }

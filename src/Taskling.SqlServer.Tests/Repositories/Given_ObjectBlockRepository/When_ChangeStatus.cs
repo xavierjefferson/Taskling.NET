@@ -9,7 +9,7 @@ using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_ObjectBlockRepository;
-
+[Collection(Constants.CollectionName)]
 public class When_ChangeStatus
 {
     private DateTime _baseDateTime;

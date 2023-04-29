@@ -6,8 +6,10 @@ using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.CriticalSections;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.AncilliaryServices;
+using Taskling.SqlServer.Blocks;
 using Taskling.SqlServer.Models;
 using Taskling.Tasks;
+using TaskDefinition = Taskling.SqlServer.Models.TaskDefinition;
 
 namespace Taskling.SqlServer.Tokens.CriticalSections;
 
@@ -61,15 +63,36 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
     private async Task<CompleteCriticalSectionResponse> ReturnCriticalSectionTokenAsync(TaskId taskId,
         int taskDefinitionId, int taskExecutionId, CriticalSectionType criticalSectionType)
     {
-        var response = new CompleteCriticalSectionResponse();
-
-        using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
+        return await RetryHelper.WithRetry(async (transactionScope) =>
         {
-            using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            var response = new CompleteCriticalSectionResponse();
 
-
-            try
+            using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
             {
+
+                //var exampleEntity = dbContext.TaskDefinitions.Attach(new TaskDefinition { TaskDefinitionId = taskDefinitionId });
+                //if (criticalSectionType == CriticalSectionType.User)
+                //{
+                //    exampleEntity.Entity.UserCsStatus = 1;
+                //    exampleEntity.Property(i => i.UserCsStatus).IsModified = true;
+                //    taskDefinition.UserCsStatus = 1;
+                //}
+                //else
+                //{
+                //    exampleEntity.Entity.ClientCsStatus = 1;
+                //    exampleEntity.Property(i => i.ClientCsStatus).IsModified = true;
+
+                //}
+
+
+                //dbContext.TaskDefinitions.Update(taskDefinition);
+                //await dbContext.SaveChangesAsync().ConfigureAwait(false);
+                //exampleEntity.Entity.HoldLockTaskExecutionId = taskExecutionId;
+                //exampleEntity.Property(i => i.HoldLockTaskExecutionId).IsModified = true;
+                //await dbContext.SaveChangesAsync();
+                //exampleEntity.State = EntityState.Detached;
+
+
                 var taskDefinition = await
                     dbContext.TaskDefinitions.FirstOrDefaultAsync(i => i.TaskDefinitionId == taskDefinitionId);
                 if (taskDefinition != null)
@@ -81,35 +104,26 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
 
                     dbContext.TaskDefinitions.Update(taskDefinition);
                     await dbContext.SaveChangesAsync().ConfigureAwait(false);
-                    await transaction.CommitAsync().ConfigureAwait(false);
                 }
+
             }
 
+            return response;
+        });
 
-            catch (SqlException sqlEx)
-            {
-                TryRollBack(transaction, sqlEx);
-            }
-            catch (Exception ex)
-            {
-                TryRollback(transaction, ex);
-            }
-        }
-
-        return response;
     }
 
     private async Task<bool> TryAcquireCriticalSectionAsync(TaskId taskId, int taskDefinitionId, int taskExecutionId,
         CriticalSectionType criticalSectionType)
     {
-        var granted = false;
-        using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
+        return await RetryHelper.WithRetry(async (transactionScope) =>
         {
-            using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-
-
-            try
+            var granted = false;
+            using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
             {
+                
+
+
                 await AcquireRowLockAsync(taskDefinitionId, taskExecutionId, dbContext).ConfigureAwait(false);
                 var csState =
                     await GetCriticalSectionStateAsync(taskDefinitionId, criticalSectionType, dbContext)
@@ -151,20 +165,12 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
                 if (csState.HasBeenModified)
                     await UpdateCriticalSectionStateAsync(taskDefinitionId, csState, criticalSectionType, dbContext)
                         .ConfigureAwait(false);
+ 
+            }
 
-                transaction.Commit();
-            }
-            catch (SqlException sqlEx)
-            {
-                TryRollBack(transaction, sqlEx);
-            }
-            catch (Exception ex)
-            {
-                TryRollback(transaction, ex);
-            }
-        }
+            return granted;
+        }, 10, 60000, 1000);
 
-        return granted;
     }
 
     private async Task AcquireRowLockAsync(int taskDefinitionId, int taskExecutionId,
@@ -254,9 +260,9 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
         List<TaskExecutionState> taskExecutionStates, List<CriticalSectionQueueItem> csQueue)
     {
         var validQueuedExecutions = (from tes in taskExecutionStates
-            join q in csQueue on tes.TaskExecutionId equals q.TaskExecutionId
-            where HasCriticalSectionExpired(tes) == false
-            select q).ToList();
+                                     join q in csQueue on tes.TaskExecutionId equals q.TaskExecutionId
+                                     where HasCriticalSectionExpired(tes) == false
+                                     select q).ToList();
 
         if (validQueuedExecutions.Count != csQueue.Count)
         {

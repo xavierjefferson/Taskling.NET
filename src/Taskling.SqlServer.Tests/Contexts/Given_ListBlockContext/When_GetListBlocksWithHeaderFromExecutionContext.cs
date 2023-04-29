@@ -7,11 +7,12 @@ using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
 using Taskling.Contexts;
 using Taskling.Events;
+using Taskling.SqlServer.Tests.Contexts.Given_ObjectBlockContext;
 using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_ListBlockContext;
-
+[Collection(Constants.CollectionName)]
 public class When_GetListBlocksWithHeaderFromExecutionContext
 {
     private readonly BlocksHelper _blocksHelper;
@@ -239,8 +240,8 @@ public class When_GetListBlocksWithHeaderFromExecutionContext
                         x.WithSingleUnitCommit(values, testHeader, maxBlockSize));
                 Assert.False(listBlock.Any());
                 var execEvent = _executionHelper.GetLastEvent(_taskDefinitionId);
-                Assert.Equal(EventType.CheckPoint, execEvent.Item1);
-                Assert.Equal("No values for generate the block. Emtpy Block context returned.", execEvent.Item2);
+                Assert.Equal(EventType.CheckPoint, execEvent.EventType);
+                Assert.Equal("No values for generate the block. Emtpy Block context returned.", execEvent.Message);
             }
         }
     }
@@ -967,7 +968,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext
                 var testHeader = GetTestHeader();
                 var listBlocks = await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x =>
                     x.WithBatchCommitAtEnd(new List<PersonDto>(), testHeader, 10));
-
+                Assert.NotEmpty(listBlocks);
                 Assert.Equal(forcedBlockTestHeader.PurchaseCode, listBlocks[0].Block.Header.PurchaseCode);
                 Assert.Equal(1, listBlocks.Count);
 

@@ -4,8 +4,15 @@ using Taskling.Tasks;
 
 namespace Taskling.InfrastructureContracts.Blocks.CommonRequests;
 
-public class FindDeadBlocksRequest : BlockRequestBase
+public class FindDeadBlocksRequest : StatusSpecificBlockRequestBase, ISearchableBlockRequest
 {
+    private static readonly int[] Statuses = new[] { (int)BlockExecutionStatus.NotStarted, (int)BlockExecutionStatus.Started };
+
+    public override int[] GetMatchingStatuses()
+    {
+        return Statuses;
+
+    }
     public FindDeadBlocksRequest(TaskId taskId,
         int taskExecutionId,
         BlockType blockType,
@@ -23,9 +30,8 @@ public class FindDeadBlocksRequest : BlockRequestBase
         RetryLimit = retryLimit;
     }
 
-    public DateTime SearchPeriodBegin { get; set; }
-    public DateTime SearchPeriodEnd { get; set; }
-    public int BlockCountLimit { get; set; }
+
+   
     public TaskDeathMode TaskDeathMode { get; set; }
-    public int RetryLimit { get; set; }
+   
 }

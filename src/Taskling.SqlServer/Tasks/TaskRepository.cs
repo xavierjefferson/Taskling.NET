@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.AncilliaryServices;
+using Taskling.SqlServer.Blocks;
 
 namespace Taskling.SqlServer.Tasks;
 
@@ -52,33 +53,41 @@ public class TaskRepository : DbOperationsService, ITaskRepository
 
     public async Task<DateTime> GetLastTaskCleanUpTimeAsync(TaskId taskId)
     {
-        using (var dbContext = await GetDbContextAsync(taskId))
+        return await RetryHelper.WithRetry(async (transactionScope) =>
         {
-            var tuple = await dbContext.TaskDefinitions
-                .Where(i => i.TaskName == taskId.TaskName && i.ApplicationName == taskId.ApplicationName)
-                .Select(i => new { i.LastCleaned }).FirstOrDefaultAsync().ConfigureAwait(false);
-            if (tuple == null) return DateTime.MinValue;
-            return tuple.LastCleaned ?? DateTime.MinValue;
-        }
+            using (var dbContext = await GetDbContextAsync(taskId))
+            {
+                var tuple = await dbContext.TaskDefinitions
+                    .Where(i => i.TaskName == taskId.TaskName && i.ApplicationName == taskId.ApplicationName)
+                    .Select(i => new { i.LastCleaned }).FirstOrDefaultAsync().ConfigureAwait(false);
+                if (tuple == null) return DateTime.MinValue;
+                return tuple.LastCleaned ?? DateTime.MinValue;
+            }
 
-        return DateTime.MinValue;
+            return DateTime.MinValue;
+        });
+
     }
 
     public async Task SetLastCleanedAsync(TaskId taskId)
     {
-        using (var dbContext = await GetDbContextAsync(taskId))
-        {
-            var taskDefinitions = await dbContext.TaskDefinitions
-                .Where(i => i.TaskName == taskId.TaskName && i.ApplicationName == taskId.ApplicationName).ToListAsync()
-                .ConfigureAwait(false);
-            foreach (var taskDefinition in taskDefinitions)
-            {
-                taskDefinition.LastCleaned = DateTime.UtcNow;
-                dbContext.TaskDefinitions.Update(taskDefinition);
-            }
+        await RetryHelper.WithRetry(async (transactionScope) =>
+       {
+           using (var dbContext = await GetDbContextAsync(taskId))
+           {
+               var taskDefinitions = await dbContext.TaskDefinitions
+                    .Where(i => i.TaskName == taskId.TaskName && i.ApplicationName == taskId.ApplicationName).ToListAsync()
+                    .ConfigureAwait(false);
+               foreach (var taskDefinition in taskDefinitions)
+               {
+                   taskDefinition.LastCleaned = DateTime.UtcNow;
+                   dbContext.TaskDefinitions.Update(taskDefinition);
+               }
 
-            await dbContext.SaveChangesAsync();
-        }
+               await dbContext.SaveChangesAsync();
+           }
+       });
+
     }
 
     public static void ClearCache()
@@ -165,7 +174,7 @@ public class TaskRepository : DbOperationsService, ITaskRepository
         using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
         {
             var taskDefinition = new Models.TaskDefinition
-                { ApplicationName = taskId.ApplicationName, TaskName = taskId.TaskName };
+            { ApplicationName = taskId.ApplicationName, TaskName = taskId.TaskName };
             await dbContext.TaskDefinitions.AddAsync(taskDefinition);
             await dbContext.SaveChangesAsync();
 

@@ -1,5 +1,7 @@
 ﻿using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
+using Taskling.Blocks.Common;
+using Taskling.SqlServer.Blocks.Models;
 using Taskling.SqlServer.Models;
 using Taskling.Tasks;
 
@@ -7,22 +9,25 @@ namespace Taskling.SqlServer.Blocks.QueryBuilders;
 
 public class BlocksOfTaskQueryBuilder
 {
-    public static readonly int[] PendingAndFailed = { 0, 1, 3 };
+    public static readonly int[] Statuses013 = { 
+        (int)BlockExecutionStatus.NotStarted,
+        (int)BlockExecutionStatus.NotDefined,  
+        (int)BlockExecutionStatus.Completed, };
 
-    public static Func<BlocksOfTaskQueryParams, Expression<Func<BlocksOfTaskQueryItem, bool>>>
+    public static Func<BlocksOfTaskQueryParams, Expression<Func<BlockQueryItem, bool>>>
         GetFindDateRangeBlocksOfTaskQuery(ReprocessOption reprocessOption)
     {
         if (reprocessOption == ReprocessOption.Everything)
             return z => i => true;
 
         if (reprocessOption == ReprocessOption.PendingOrFailed)
-            return z => i => PendingAndFailed.Contains(i
+            return z => i => Statuses013.Contains(i
                 .BlockExecutionStatus);
 
         throw new ArgumentException("ReprocessOption not supported");
     }
 
-    public static Func<BlocksOfTaskQueryParams, Expression<Func<BlocksOfTaskQueryItem, bool>>>
+    public static Func<BlocksOfTaskQueryParams, Expression<Func<BlockQueryItem, bool>>>
         GetFindNumericRangeBlocksOfTaskQuery(ReprocessOption reprocessOption)
     {
         if (reprocessOption == ReprocessOption.Everything)
@@ -30,41 +35,33 @@ public class BlocksOfTaskQueryBuilder
 
 
         if (reprocessOption == ReprocessOption.PendingOrFailed)
-            return z => i => PendingAndFailed.Contains(i
+            return z => i => Statuses013.Contains(i
                 .BlockExecutionStatus);
 
         throw new ArgumentException("ReprocessOption not supported");
     }
 
-    public static Func<BlocksOfTaskQueryParams, Expression<Func<BlocksOfTaskQueryItem, bool>>>
+    public static Func<BlocksOfTaskQueryParams, Expression<Func<BlockQueryItem, bool>>>
         GetFindListBlocksOfTaskQuery(ReprocessOption reprocessOption)
     {
-        if (reprocessOption == ReprocessOption.Everything)
-            return z => i => true; // string.Format(GetBlocksOfTaskQuery, "", "");
-
-        if (reprocessOption == ReprocessOption.PendingOrFailed)
-            return z => i =>
-                new[] { z.NotStarted, z.Started, z.Failed }.Contains(i.BlockExecutionStatus);
-
-        throw new ArgumentException("ReprocessOption not supported");
+        return GetFindNumericRangeBlocksOfTaskQuery(reprocessOption);
     }
-
-    public static Func<BlocksOfTaskQueryParams, Expression<Func<BlocksOfTaskQueryItem, bool>>>
+    
+    public static Func<BlocksOfTaskQueryParams, Expression<Func<BlockQueryItem, bool>>>
         GetFindObjectBlocksOfTaskQuery(ReprocessOption reprocessOption)
     {
         if (reprocessOption == ReprocessOption.Everything)
             return z => i => true; // string.Format(GetBlocksOfTaskQuery, ",B.ObjectData", "");
 
         if (reprocessOption == ReprocessOption.PendingOrFailed)
-            return z => i =>
-                new[] { z.NotStarted, z.Started, z.Failed }.Contains(i.BlockExecutionStatus);
+            return z => i => z.StatusesToMatch.Contains(i.BlockExecutionStatus);
 
         throw new ArgumentException("ReprocessOption not supported");
     }
 
-    public static async Task<List<BlocksOfTaskQueryItem>> GetBlocksOfTaskQueryItems(TasklingDbContext dbContext,
+    public static async Task<List<BlockQueryItem>> GetBlocksOfTaskQueryItems(TasklingDbContext dbContext,
         int taskDefinitionId,
-        string referenceValue, Expression<Func<BlocksOfTaskQueryItem, bool>> filterExpression)
+        string referenceValue, Expression<Func<BlockQueryItem, bool>> filterExpression)
     {
         var leftSide1 = dbContext.BlockExecutions.Include(i => i.Block);
         var query =
@@ -78,7 +75,7 @@ public class BlocksOfTaskQueryBuilder
                 leftSide.Block,
                 rightSide
             };
-        var queryable = query.Select(i => new BlocksOfTaskQueryItem
+        var queryable = query.Select(i => new BlockQueryItem
             {
                 FromDate = i.Block.FromDate,
                 FromNumber = i.Block.FromNumber,
@@ -97,29 +94,5 @@ public class BlocksOfTaskQueryBuilder
             .Where(filterExpression);
 
         return await queryable.OrderBy(i => i.CreatedDate).ToListAsync();
-    }
-
-    public class BlocksOfTaskQueryItem
-    {
-        public DateTime CreatedDate { get; set; }
-        public long BlockId { get; set; }
-        public int Attempt { get; set; }
-        public int BlockType { get; set; }
-        public string? ObjectData { get; set; }
-        public byte[]? CompressedObjectData { get; set; }
-        public int TaskDefinitionId { get; set; }
-        public string? ReferenceValue { get; set; }
-        public int BlockExecutionStatus { get; set; }
-        public DateTime? FromDate { get; set; }
-        public long? FromNumber { get; set; }
-        public DateTime? ToDate { get; set; }
-        public long? ToNumber { get; set; }
-    }
-
-    public class BlocksOfTaskQueryParams
-    {
-        public int NotStarted { get; set; }
-        public int Started { get; set; }
-        public int Failed { get; set; }
     }
 }

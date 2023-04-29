@@ -1,18 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
-using System.Data.SqlClient;
+using System.Linq;
 using System.Text;
-using System.Transactions;
+using Microsoft.EntityFrameworkCore;
 using Taskling.Events;
 using Taskling.InfrastructureContracts;
+using Taskling.SqlServer.Blocks;
+using Taskling.SqlServer.Models;
 using Taskling.SqlServer.Tasks;
 using Taskling.SqlServer.Tokens.Executions;
 using Taskling.Tasks;
 
 namespace Taskling.SqlServer.Tests.Helpers;
 
-public class ExecutionsHelper
+public class ExecutionsHelper : RepositoryBase
 {
     public ExecutionsHelper()
     {
@@ -24,18 +25,71 @@ public class ExecutionsHelper
 
     public void DeleteRecordsOfApplication(string applicationName)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            using (var ts = new TransactionScope())
+            using (var dbContext = GetDbContext())
             {
-                var command = connection.CreateCommand();
-                command.CommandText = DeleteExecutionTokenQuery;
-                command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
-                command.ExecuteNonQuery();
-                ts.Complete();
+                dbContext.TaskExecutionEvents
+                    .RemoveRange(dbContext.TaskExecutionEvents.Include(i => i.TaskExecution)
+                        .ThenInclude(i => i.TaskDefinition).Where(i =>
+                            i.TaskExecution.TaskDefinition.ApplicationName == applicationName));
+                dbContext.BlockExecutions.RemoveRange(dbContext.BlockExecutions.Include(i => i.TaskExecution)
+                    .ThenInclude(i => i.TaskDefinition).Include(i => i.Block).ThenInclude(i => i.TaskDefinition)
+                    .Where(i => i.TaskExecution.TaskDefinition.ApplicationName == applicationName ||
+                                i.Block.TaskDefinition.ApplicationName == applicationName));
+                dbContext.TaskExecutions.RemoveRange(dbContext.TaskExecutions.Include(i => i.TaskDefinition)
+                    .Where(i => i.TaskDefinition.ApplicationName == applicationName));
+                dbContext.ForceBlockQueues.RemoveRange(dbContext.ForceBlockQueues.Include(i => i.Block)
+                    .ThenInclude(i => i.TaskDefinition)
+                    .Where(i => i.Block.TaskDefinition.ApplicationName == applicationName));
+                dbContext.ListBlockItems.RemoveRange(dbContext.ListBlockItems.Include(i => i.Block)
+                    .ThenInclude(i => i.TaskDefinition)
+                    .Where(i => i.Block.TaskDefinition.ApplicationName == applicationName));
+                dbContext.Blocks.RemoveRange(dbContext.Blocks.Include(i => i.TaskDefinition)
+                    .Where(i => i.TaskDefinition.ApplicationName == applicationName));
+                dbContext.TaskDefinitions.RemoveRange(
+                    dbContext.TaskDefinitions.Where(i => i.ApplicationName == applicationName));
+                dbContext.SaveChanges();
             }
-        }
+
+            //            using (var connection = GetConnection())
+            //            {
+            //                using (var ts = new TransactionScope())
+            //                {
+            //                    var command = connection.CreateCommand();
+            //                    command.CommandText = @"
+            //DELETE TEV FROM [Taskling].[TaskExecutionEvent] TEV
+            //JOIN [Taskling].[TaskExecution] TE ON TEV.TaskExecutionId = TE.TaskExecutionId
+            //JOIN [Taskling].[TaskDefinition] T ON TE.TaskDefinitionId = T.TaskDefinitionId
+            //WHERE T.ApplicationName = @ApplicationName;
+
+            //DELETE bE FROM [Taskling].BlockExecution be inner join [Taskling].[TaskExecution] TE on te.taskexecutionid= be.taskexecutionid
+            //JOIN [Taskling].[TaskDefinition] T ON TE.TaskDefinitionId = T.TaskDefinitionId
+            //WHERE T.ApplicationName = @ApplicationName;
+
+            //DELETE TE FROM [Taskling].[TaskExecution] TE
+            //JOIN [Taskling].[TaskDefinition] T ON TE.TaskDefinitionId = T.TaskDefinitionId
+            //WHERE T.ApplicationName = @ApplicationName;
+
+            //dELETE q FROM [taskling].forceblockqueue q inner join [taskling].[block] b on b.blockid = q.blockid inner join [Taskling].[TaskDefinition] t on b.taskdefinitionid = t.taskdefinitionid
+            //WHERE t.ApplicationName = @ApplicationName;
+
+            //dELETE q FROM [taskling].listblockitem q inner join [taskling].[block] b on b.blockid = q.blockid inner join [Taskling].[TaskDefinition] t on b.taskdefinitionid = t.taskdefinitionid
+            //WHERE t.ApplicationName = @ApplicationName;
+
+            //DELETE b FROM [taskling].[block] b inner join [Taskling].[TaskDefinition] t on b.taskdefinitionid = t.taskdefinitionid
+            //WHERE t.ApplicationName = @ApplicationName;
+
+            //DELETE FROM [Taskling].[TaskDefinition] 
+            //WHERE ApplicationName = @ApplicationName;
+
+            //DELETE FROM [Taskling].[ForceBlockQueue];";
+            //                    command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
+            //                    command.ExecuteNonQuery();
+            //                    ts.Complete();
+            //                }
+            //            }
+        });
     }
 
     public void SetKeepAlive(int taskExecutionId)
@@ -45,52 +99,86 @@ public class ExecutionsHelper
 
     public void SetKeepAlive(int taskExecutionId, DateTime keepAliveDateTime)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = SetKeepAliveQuery;
-            command.Parameters.Add("@TaskExecutionId", SqlDbType.Int).Value = taskExecutionId;
-            command.Parameters.Add("@KeepAliveDateTime", SqlDbType.DateTime).Value = keepAliveDateTime;
+            using (var dbContext = GetDbContext())
+            {
+                try
+                {
+                    var z = dbContext.TaskExecutions.Attach(new Models.TaskExecution
+                        { TaskExecutionId = taskExecutionId, LastKeepAlive = keepAliveDateTime });
+                    z.Property(i => i.LastKeepAlive).IsModified = true;
+                    dbContext.SaveChanges();
+                }
+                catch (DbUpdateException)
+                {
+                }
+            }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = SetKeepAliveQuery;
+            //    command.Parameters.Add("@TaskExecutionId", SqlDbType.Int).Value = taskExecutionId;
+            //    command.Parameters.Add("@KeepAliveDateTime", SqlDbType.DateTime).Value = keepAliveDateTime;
 
-            command.ExecuteNonQuery();
-        }
+            //    command.ExecuteNonQuery();
+            //}
+        });
     }
 
     public DateTime GetLastKeepAlive(int taskDefinitionId)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        return RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = GetLastKeepAliveQuery;
-            command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-            return (DateTime)command.ExecuteScalar();
-        }
+            using (var dbContext = GetDbContext())
+            {
+                var z = dbContext.TaskExecutions.Where(i => i.TaskDefinitionId == taskDefinitionId)
+                    .Select(i => new { i.LastKeepAlive }).FirstOrDefault();
+                return z == null ? DateTime.MinValue : z.LastKeepAlive;
+            }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = GetLastKeepAliveQuery;
+            //    command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
+            //    return (DateTime)command.ExecuteScalar();
+            //}
+        });
     }
 
-    public Tuple<EventType, string> GetLastEvent(int taskDefinitionId)
+    public GetLastEventResponse GetLastEvent(int taskDefinitionId)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        return RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = GetLastEventQuery;
-            command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-            var reader = command.ExecuteReader();
-            if (reader.Read())
+            using (var dbContext = GetDbContext())
             {
-                var result = new Tuple<EventType, string>(
-                    (EventType)reader.GetInt32(0),
-                    reader.GetString(1));
+                var z = dbContext.TaskExecutionEvents.OrderByDescending(i => i.TaskExecutionId)
+                    .Where(i => i.TaskExecution.TaskDefinitionId == taskDefinitionId)
+                    .Select(i => new { i.EventType, i.Message }).FirstOrDefault();
 
-                reader.Close();
-
-                return result;
+                if (z == null) return null;
+                return new GetLastEventResponse((EventType)z.EventType, z.Message);
             }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = GetLastEventQuery;
+            //    command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
+            //    var reader = command.ExecuteReader();
+            //    if (reader.Read())
+            //    {
+            //        var result = new zuple(
+            //            (EventType)reader.GetInt32(0),
+            //            reader.GetString(1));
 
-            return null;
-        }
+            //        reader.Close();
+
+            //        return result;
+            //    }
+
+            //    return null;
+            //}
+        });
     }
 
 
@@ -106,18 +194,33 @@ public class ExecutionsHelper
 
     public int InsertTask(string applicationName, string taskName)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        return RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = InsertTaskQuery;
-            command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
-            command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
-            var reader = command.ExecuteReader();
-            while (reader.Read()) return reader.GetInt32("TaskDefinitionId");
-        }
+            using (var dbContext = GetDbContext())
+            {
+                var task = new TaskDefinition
+                {
+                    ApplicationName = applicationName,
+                    TaskName = taskName,
+                    UserCsStatus = 1,
+                    ClientCsStatus = 1
+                };
+                dbContext.TaskDefinitions.Add(task);
+                dbContext.SaveChanges();
+                return task.TaskDefinitionId;
+            }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = InsertTaskQuery;
+            //    command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
+            //    command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
+            //    var reader = command.ExecuteReader();
+            //    while (reader.Read()) return reader.GetInt32("TaskDefinitionId");
+            //}
 
-        return -1;
+            //return -1;
+        });
     }
 
     #endregion .: Tasks :.
@@ -139,34 +242,6 @@ AND TaskName = @TaskName";
     #endregion .: Execution Tokens :.
 
     #region .: Delete All :.
-
-    private const string DeleteExecutionTokenQuery = @"
-DELETE TEV FROM [Taskling].[TaskExecutionEvent] TEV
-JOIN [Taskling].[TaskExecution] TE ON TEV.TaskExecutionId = TE.TaskExecutionId
-JOIN [Taskling].[TaskDefinition] T ON TE.TaskDefinitionId = T.TaskDefinitionId
-WHERE T.ApplicationName = @ApplicationName;
-
-DELETE bE FROM [Taskling].BlockExecution be inner join [Taskling].[TaskExecution] TE on te.taskexecutionid= be.taskexecutionid
-JOIN [Taskling].[TaskDefinition] T ON TE.TaskDefinitionId = T.TaskDefinitionId
-WHERE T.ApplicationName = @ApplicationName;
-
-DELETE TE FROM [Taskling].[TaskExecution] TE
-JOIN [Taskling].[TaskDefinition] T ON TE.TaskDefinitionId = T.TaskDefinitionId
-WHERE T.ApplicationName = @ApplicationName;
-
-dELETE q FROM [taskling].forceblockqueue q inner join [taskling].[block] b on b.blockid = q.blockid inner join [Taskling].[TaskDefinition] t on b.taskdefinitionid = t.taskdefinitionid
-WHERE t.ApplicationName = @ApplicationName;
-
-dELETE q FROM [taskling].listblockitem q inner join [taskling].[block] b on b.blockid = q.blockid inner join [Taskling].[TaskDefinition] t on b.taskdefinitionid = t.taskdefinitionid
-WHERE t.ApplicationName = @ApplicationName;
-
-DELETE b FROM [taskling].[block] b inner join [Taskling].[TaskDefinition] t on b.taskdefinitionid = t.taskdefinitionid
-WHERE t.ApplicationName = @ApplicationName;
-
-DELETE FROM [Taskling].[TaskDefinition] 
-WHERE ApplicationName = @ApplicationName;
-
-DELETE FROM [Taskling].[ForceBlockQueue];";
 
     #endregion .: Delete All :.
 
@@ -318,7 +393,7 @@ AND T.TaskName = @TaskName";
 
     public void InsertUnlimitedExecutionToken(int taskDefinitionId)
     {
-        InsertExecutionToken(taskDefinitionId, new List<Tuple<ExecutionTokenStatus, int>>
+        InsertExecutionToken(taskDefinitionId, new List<Execinfo>
         {
             new(ExecutionTokenStatus.Unlimited, 0)
         });
@@ -326,7 +401,7 @@ AND T.TaskName = @TaskName";
 
     public void InsertUnavailableExecutionToken(int taskDefinitionId)
     {
-        InsertExecutionToken(taskDefinitionId, new List<Tuple<ExecutionTokenStatus, int>>
+        InsertExecutionToken(taskDefinitionId, new List<Execinfo>
         {
             new(ExecutionTokenStatus.Unavailable, 0)
         });
@@ -334,29 +409,46 @@ AND T.TaskName = @TaskName";
 
     public void InsertAvailableExecutionToken(int taskDefinitionId, int count = 1)
     {
-        var list = new List<Tuple<ExecutionTokenStatus, int>>();
+        var list = new List<Execinfo>();
         for (var i = 0; i < count; i++)
-            list.Add(new Tuple<ExecutionTokenStatus, int>(ExecutionTokenStatus.Available, 0));
+            list.Add(new Execinfo(ExecutionTokenStatus.Available, 0));
 
         InsertExecutionToken(taskDefinitionId, list);
     }
 
-    public void InsertExecutionToken(int taskDefinitionId, List<Tuple<ExecutionTokenStatus, int>> tokens)
+    public void InsertExecutionToken(int taskDefinitionId, List<Execinfo> tokens)
     {
-        var tokenString = GenerateTokensString(tokens);
-
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = InsertExecutionTokenQuery;
-            command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-            command.Parameters.Add("@ExecutionTokens", SqlDbType.VarChar, 8000).Value = tokenString;
-            command.ExecuteNonQuery();
-        }
+            var tokenString = GenerateTokensString(tokens);
+            using (var dbContext = GetDbContext())
+            {
+                try
+                {
+                    var entity = dbContext.TaskDefinitions.Attach(new TaskDefinition
+                        { TaskDefinitionId = taskDefinitionId });
+                    entity.Entity.ExecutionTokens = tokenString;
+                    entity.Property(i => i.ExecutionTokens).IsModified = true;
+                    dbContext.SaveChanges();
+                    entity.State = EntityState.Detached;
+                }
+                catch (DbUpdateException d)
+                {
+                    //do nothing
+                }
+            }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = InsertExecutionTokenQuery;
+            //    command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
+            //    command.Parameters.Add("@ExecutionTokens", SqlDbType.VarChar, 8000).Value = tokenString;
+            //    command.ExecuteNonQuery();
+            //}
+        });
     }
 
-    private string GenerateTokensString(List<Tuple<ExecutionTokenStatus, int>> tokens)
+    private string GenerateTokensString(List<Execinfo> tokens)
     {
         var sb = new StringBuilder();
         var counter = 0;
@@ -368,9 +460,9 @@ AND T.TaskName = @TaskName";
             sb.Append("I:");
             sb.Append(Guid.NewGuid());
             sb.Append(",S:");
-            sb.Append(((int)token.Item1).ToString());
+            sb.Append(((int)token.Status).ToString());
             sb.Append(",G:");
-            sb.Append(token.Item2);
+            sb.Append(token.GrantedTaskExecutionId);
 
             counter++;
         }
@@ -380,34 +472,69 @@ AND T.TaskName = @TaskName";
 
     public ExecutionTokenList GetExecutionTokens(string applicationName, string taskName)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        return RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = GetExecutionTokensQuery;
-            command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
-            command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
-            var result = command.ExecuteScalar().ToString();
+            using (var dbContext = GetDbContext())
+            {
+                var tmp = dbContext.TaskDefinitions
+                    .Where(i => i.ApplicationName == applicationName && i.TaskName == taskName)
+                    .Select(i => i.ExecutionTokens).FirstOrDefault();
+                return ExecutionTokenRepository.ParseTokensString(tmp);
+                //var objectBlock = new Block()
+                //{
+                //    TaskDefinitionId = taskDefinitionId,
+                //    CreatedDate = createdDate,
+                //    ToNumber = toNumber,
+                //    FromNumber = fromNumber,
+                //    //ObjectData = JsonGenericSerializer.Serialize(objectData),
+                //    BlockType = (int)BlockType.NumericRange
+                //};
+                //dbContext.Blocks.Add(objectBlock);
+                //dbContext.SaveChanges();
+                //return objectBlock.BlockId;
+            }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = GetExecutionTokensQuery;
+            //    command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
+            //    command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
+            //    var result = command.ExecuteScalar().ToString();
 
-            return ExecutionTokenRepository.ParseTokensString(result);
-        }
+
+            //}
+        });
     }
 
     public ExecutionTokenStatus GetExecutionTokenStatus(string applicationName, string taskName)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        return RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = GetExecutionTokensQuery;
-            command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
-            command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
-            var result = command.ExecuteScalar().ToString();
-            if (string.IsNullOrEmpty(result))
-                return ExecutionTokenStatus.Available;
+            using (var dbContext = GetDbContext())
+            {
+                var result = dbContext.TaskDefinitions
+                    .Where(i => i.ApplicationName == applicationName && i.TaskName == taskName)
+                    .Select(i => i.ExecutionTokens).FirstOrDefault();
+                //=> i.TaskExecutionId)
+                //.Where(i => i.TaskDefinitionId == taskDefinitionId).Select(i => i.Blocked).FirstOrDefault();
+                if (string.IsNullOrEmpty(result))
+                    return ExecutionTokenStatus.Available;
 
-            return (ExecutionTokenStatus)int.Parse(result.Substring(result.IndexOf("S:") + 2, 1));
-        }
+                return (ExecutionTokenStatus)int.Parse(result.Substring(result.IndexOf("S:") + 2, 1));
+            }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = GetExecutionTokensQuery;
+            //    command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
+            //    command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
+            //    var result = command.ExecuteScalar().ToString();
+            //    if (string.IsNullOrEmpty(result))
+            //        return ExecutionTokenStatus.Available;
+
+            //    return (ExecutionTokenStatus)int.Parse(result.Substring(result.IndexOf("S:") + 2, 1));
+            //}
+        });
     }
 
     #endregion .: Execution Tokens :.
@@ -435,30 +562,56 @@ AND T.TaskName = @TaskName";
     public int InsertKeepAliveTaskExecution(int taskDefinitionId, TimeSpan keepAliveInterval,
         TimeSpan keepAliveDeathThreshold, DateTime startedAt, DateTime? completedAt)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        return RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = InsertKeepAliveTaskExecutionQuery;
-            command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-            command.Parameters.Add(new SqlParameter("@ServerName", SqlDbType.VarChar, 200)).Value =
-                Environment.MachineName;
-            command.Parameters.Add(new SqlParameter("@TaskDeathMode", SqlDbType.Int)).Value =
-                (int)TaskDeathMode.KeepAlive;
-            command.Parameters.Add(new SqlParameter("@KeepAliveInterval", SqlDbType.Time)).Value = keepAliveInterval;
-            command.Parameters.Add(new SqlParameter("@KeepAliveDeathThreshold", SqlDbType.Time)).Value =
-                keepAliveDeathThreshold;
-            command.Parameters.Add(new SqlParameter("@StartedAt", SqlDbType.DateTime)).Value = startedAt;
-            command.Parameters.Add(new SqlParameter("@FailedTaskRetryLimit", SqlDbType.Int)).Value = 3;
-            command.Parameters.Add(new SqlParameter("@DeadTaskRetryLimit", SqlDbType.Int)).Value = 3;
+            using (var dbContext = GetDbContext())
+            {
+                var taskExecution = new Models.TaskExecution
+                {
+                    TaskDefinitionId = taskDefinitionId,
+                    StartedAt = startedAt,
+                    LastKeepAlive = completedAt ?? DateTime.MinValue,
+                    ServerName = Environment.MachineName,
 
-            if (completedAt.HasValue)
-                command.Parameters.Add(new SqlParameter("@CompletedAt", SqlDbType.DateTime)).Value = completedAt;
-            else
-                command.Parameters.Add(new SqlParameter("@CompletedAt", SqlDbType.DateTime)).Value = DBNull.Value;
+                    TaskDeathMode = (int)TaskDeathMode.KeepAlive,
+                    KeepAliveInterval = keepAliveInterval,
+                    KeepAliveDeathThreshold = keepAliveDeathThreshold,
+                    FailedTaskRetryLimit = 3,
+                    DeadTaskRetryLimit = 3,
 
-            return (int)command.ExecuteScalar();
-        }
+
+                    Failed = false,
+                    Blocked = false,
+                    TasklingVersion = "N/A"
+                };
+                dbContext.TaskExecutions.Add(taskExecution);
+                return taskExecution.TaskExecutionId;
+            }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = InsertKeepAliveTaskExecutionQuery;
+            //    command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
+            //    command.Parameters.Add(new SqlParameter("@ServerName", SqlDbType.VarChar, 200)).Value =
+            //        Environment.MachineName;
+            //    command.Parameters.Add(new SqlParameter("@TaskDeathMode", SqlDbType.Int)).Value =
+            //        (int)TaskDeathMode.KeepAlive;
+            //    command.Parameters.Add(new SqlParameter("@KeepAliveInterval", SqlDbType.Time)).Value =
+            //        keepAliveInterval;
+            //    command.Parameters.Add(new SqlParameter("@KeepAliveDeathThreshold", SqlDbType.Time)).Value =
+            //        keepAliveDeathThreshold;
+            //    command.Parameters.Add(new SqlParameter("@StartedAt", SqlDbType.DateTime)).Value = startedAt;
+            //    command.Parameters.Add(new SqlParameter("@FailedTaskRetryLimit", SqlDbType.Int)).Value = 3;
+            //    command.Parameters.Add(new SqlParameter("@DeadTaskRetryLimit", SqlDbType.Int)).Value = 3;
+
+            //    if (completedAt.HasValue)
+            //        command.Parameters.Add(new SqlParameter("@CompletedAt", SqlDbType.DateTime)).Value = completedAt;
+            //    else
+            //        command.Parameters.Add(new SqlParameter("@CompletedAt", SqlDbType.DateTime)).Value = DBNull.Value;
+
+            //    return (int)command.ExecuteScalar();
+            //}
+        });
     }
 
     public int InsertOverrideTaskExecution(int taskDefinitionId, TimeSpan overrideThreshold)
@@ -469,119 +622,196 @@ AND T.TaskName = @TaskName";
     public int InsertOverrideTaskExecution(int taskDefinitionId, TimeSpan overrideThreshold, DateTime startedAt,
         DateTime? completedAt)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        return RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = InsertOverrideTaskExecutionQuery;
-            command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-            command.Parameters.Add(new SqlParameter("@ServerName", SqlDbType.VarChar, 200)).Value =
-                Environment.MachineName;
-            command.Parameters.Add(new SqlParameter("@TaskDeathMode", SqlDbType.Int)).Value =
-                (int)TaskDeathMode.Override;
-            command.Parameters.Add(new SqlParameter("@OverrideThreshold", SqlDbType.Time)).Value = overrideThreshold;
-            command.Parameters.Add(new SqlParameter("@StartedAt", SqlDbType.DateTime)).Value = startedAt;
-            command.Parameters.Add(new SqlParameter("@FailedTaskRetryLimit", SqlDbType.Int)).Value = 3;
-            command.Parameters.Add(new SqlParameter("@DeadTaskRetryLimit", SqlDbType.Int)).Value = 3;
+            using (var dbContext = GetDbContext())
+            {
+                var taskExecution = new Models.TaskExecution
+                {
+                    TaskDefinitionId = taskDefinitionId,
+                    ServerName = Environment.MachineName,
+                    LastKeepAlive = completedAt ?? DateTime.MinValue,
+                    TaskDeathMode = (int)TaskDeathMode.Override,
+                    OverrideThreshold = overrideThreshold,
+                    StartedAt = startedAt,
+                    FailedTaskRetryLimit = 3,
+                    DeadTaskRetryLimit = 3,
 
-            if (completedAt.HasValue)
-                command.Parameters.Add(new SqlParameter("@CompletedAt", SqlDbType.DateTime)).Value = completedAt;
-            else
-                command.Parameters.Add(new SqlParameter("@CompletedAt", SqlDbType.DateTime)).Value = DBNull.Value;
+                    Failed = false,
+                    Blocked = false,
+                    TasklingVersion = "N/A"
+                };
+                dbContext.TaskExecutions.Add(taskExecution);
+                return taskExecution.TaskExecutionId;
+            }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = InsertOverrideTaskExecutionQuery;
+            //    command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
+            //    command.Parameters.Add(new SqlParameter("@ServerName", SqlDbType.VarChar, 200)).Value =
+            //        Environment.MachineName;
+            //    command.Parameters.Add(new SqlParameter("@TaskDeathMode", SqlDbType.Int)).Value =
+            //        (int)TaskDeathMode.Override;
+            //    command.Parameters.Add(new SqlParameter("@OverrideThreshold", SqlDbType.Time)).Value =
+            //        overrideThreshold;
+            //    command.Parameters.Add(new SqlParameter("@StartedAt", SqlDbType.DateTime)).Value = startedAt;
+            //    command.Parameters.Add(new SqlParameter("@FailedTaskRetryLimit", SqlDbType.Int)).Value = 3;
+            //    command.Parameters.Add(new SqlParameter("@DeadTaskRetryLimit", SqlDbType.Int)).Value = 3;
 
-            return (int)command.ExecuteScalar();
-        }
+            //    if (completedAt.HasValue)
+            //        command.Parameters.Add(new SqlParameter("@CompletedAt", SqlDbType.DateTime)).Value = completedAt;
+            //    else
+            //        command.Parameters.Add(new SqlParameter("@CompletedAt", SqlDbType.DateTime)).Value = DBNull.Value;
+
+            //    return (int)command.ExecuteScalar();
+            //}
+        });
     }
 
     public void SetTaskExecutionAsCompleted(int taskExecutionId)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = UpdateTaskExecutionStatusQuery;
-            command.Parameters.Add("@TaskExecutionId", SqlDbType.Int).Value = taskExecutionId;
+            using (var dbContext = GetDbContext())
+            {
+                try
+                {
+                    var z = dbContext.TaskExecutions.Attach(
+                        new Models.TaskExecution { TaskExecutionId = taskExecutionId });
+                    z.Entity.CompletedAt = DateTime.UtcNow;
+                    z.Property(i => i.CompletedAt).IsModified = true;
+                    dbContext.SaveChanges();
+                }
+                catch (DbUpdateException)
+                {
+                }
+            }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = UpdateTaskExecutionStatusQuery;
+            //    command.Parameters.Add("@TaskExecutionId", SqlDbType.Int).Value = taskExecutionId;
 
-            command.ExecuteNonQuery();
-        }
+            //    command.ExecuteNonQuery();
+            //}
+        });
     }
 
     public void SetLastExecutionAsDead(int taskDefinitionId)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = SetLastExecutionAsDeadQuery;
-            command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-            command.ExecuteNonQuery();
-        }
+            using (var dbContext = GetDbContext())
+            {
+                var a = dbContext.TaskExecutions.GroupBy(i => 1).Select(i => i.Max(j => j.TaskExecutionId));
+                var b = a
+                    .Join(dbContext.TaskExecutions, i => i, j => j.TaskExecutionId, (i, j) => j)
+                    .FirstOrDefault(j => j.TaskDefinitionId == taskDefinitionId);
+                if (b != null)
+                {
+                    b.CompletedAt = null;
+                    b.StartedAt = b.LastKeepAlive = DateTime.UtcNow.AddHours(-12);
+                    dbContext.TaskExecutions.Update(b);
+                }
+
+                dbContext.SaveChanges();
+            }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = SetLastExecutionAsDeadQuery;
+            //    command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
+            //    command.ExecuteNonQuery();
+            //}
+        });
     }
 
     public bool GetBlockedStatusOfLastExecution(int taskDefinitionId)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        return RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = GetLastTaskExecutionQuery;
-            command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-            var reader = command.ExecuteReader();
-            if (reader.Read())
+            using (var dbContext = GetDbContext())
             {
-                var result = (bool)reader["Blocked"];
-
-                reader.Close();
-
-                return result;
+                return dbContext.TaskExecutions.OrderByDescending(i => i.TaskExecutionId)
+                    .Where(i => i.TaskDefinitionId == taskDefinitionId).Select(i => i.Blocked).FirstOrDefault();
             }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = GetLastTaskExecutionQuery;
+            //    command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
+            //    var reader = command.ExecuteReader();
+            //    if (reader.Read())
+            //    {
+            //        var result = (bool)reader["Blocked"];
 
-            return false;
-        }
+            //        reader.Close();
+
+            //        return result;
+            //    }
+
+            //    return false;
+            //}
+        });
     }
 
     public string GetLastExecutionVersion(int taskDefinitionId)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        return RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = GetLastTaskExecutionQuery;
-            command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-            var reader = command.ExecuteReader();
-            if (reader.Read())
+            using (var dbContext = GetDbContext())
             {
-                var result = reader["TasklingVersion"].ToString();
-
-                reader.Close();
-
-                return result;
+                return dbContext.TaskExecutions.OrderByDescending(i => i.TaskExecutionId)
+                    .Where(i => i.TaskDefinitionId == taskDefinitionId).Select(i => i.TasklingVersion).FirstOrDefault();
             }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = GetLastTaskExecutionQuery;
+            //    command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
+            //    var reader = command.ExecuteReader();
+            //    if (reader.Read())
+            //    {
+            //        var result = reader["TasklingVersion"].ToString();
 
-            return string.Empty;
-        }
+            //        reader.Close();
+
+            //        return result;
+            //    }
+
+            //    return string.Empty;
+            //}
+        });
     }
 
     public string GetLastExecutionHeader(int taskDefinitionId)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        return RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = GetLastTaskExecutionQuery;
-            command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-            var reader = command.ExecuteReader();
-            if (reader.Read())
+            using (var dbContext = GetDbContext())
             {
-                var result = reader["ExecutionHeader"].ToString();
-
-                reader.Close();
-
-                return result;
+                return dbContext.TaskExecutions.Include(i => i.TaskDefinition)
+                    .Where(i => i.TaskDefinitionId == taskDefinitionId).Select(i => i.ExecutionHeader).FirstOrDefault();
             }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = GetLastTaskExecutionQuery;
+            //    command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
+            //    var reader = command.ExecuteReader();
+            //    if (reader.Read())
+            //    {
+            //        var result = reader["ExecutionHeader"].ToString();
 
-            return string.Empty;
-        }
+            //        reader.Close();
+
+            //        return result;
+            //    }
+
+            //    return string.Empty;
+            //}
+        });
     }
 
     #endregion .: Task Executions :.
@@ -601,55 +831,142 @@ AND T.TaskName = @TaskName";
 
     private void InsertCriticalSectionToken(int taskDefinitionId, int taskExecutionId, int status)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = InsertCriticalSectionTokenQuery;
-            command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-            command.Parameters.Add("@TaskExecutionId", SqlDbType.Int).Value = taskExecutionId;
-            command.Parameters.Add("@Status", SqlDbType.Int).Value = status;
-            command.ExecuteNonQuery();
-        }
+            using (var dbContext = GetDbContext())
+            {
+                try
+                {
+                    var entityEntry = dbContext.TaskDefinitions.Attach(new TaskDefinition
+                    {
+                        TaskDefinitionId = taskDefinitionId,
+                        UserCsStatus = status,
+                        HoldLockTaskExecutionId = taskExecutionId,
+                        UserCsTaskExecutionId = taskExecutionId
+                    });
+                    entityEntry.Property(i => i.UserCsStatus).IsModified = true;
+                    entityEntry.Property(i => i.UserCsTaskExecutionId).IsModified = true;
+                    entityEntry.Property(i => i.HoldLockTaskExecutionId).IsModified = true;
+                    dbContext.SaveChanges();
+                }
+                catch (DbUpdateException)
+                {
+                }
+            }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = InsertCriticalSectionTokenQuery;
+            //    command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
+            //    command.Parameters.Add("@TaskExecutionId", SqlDbType.Int).Value = taskExecutionId;
+            //    command.Parameters.Add("@Status", SqlDbType.Int).Value = status;
+            //    command.ExecuteNonQuery();
+            //}
+        });
     }
 
     public int GetQueueCount(int taskExecutionId)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        return RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = GetQueueCountQuery;
-            command.Parameters.Add("@TaskExecutionId", SqlDbType.VarChar).Value = taskExecutionId;
-            return (int)command.ExecuteScalar();
-        }
+            using (var dbContext = GetDbContext())
+            {
+                return dbContext.TaskDefinitions.Count(i => i.UserCsQueue.Contains(taskExecutionId.ToString()));
+            }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = GetQueueCountQuery;
+            //    command.Parameters.Add("@TaskExecutionId", SqlDbType.VarChar).Value = taskExecutionId;
+            //    return (int)command.ExecuteScalar();
+            //}
+        });
     }
 
     public void InsertIntoCriticalSectionQueue(int taskDefinitionId, int queueIndex, int taskExecutionId)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = InsertIntoCriticalSectionQueueQuery;
-            command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-            command.Parameters.Add("@CsQueue", SqlDbType.VarChar).Value = queueIndex + "," + taskExecutionId;
-            command.ExecuteNonQuery();
-        }
+            using (var dbContext = GetDbContext())
+            {
+                var taskDefinitions = dbContext.TaskDefinitions.Where(i => i.TaskDefinitionId == taskDefinitionId)
+                    .ToList();
+                foreach (var taskDefinition in taskDefinitions)
+                {
+                    taskDefinition.UserCsQueue = $"{taskDefinition.UserCsQueue}|{queueIndex + "," + taskExecutionId}";
+                    dbContext.TaskDefinitions.Update(taskDefinition);
+                }
+
+                dbContext.SaveChanges();
+                //var entityEntry = dbContext.TaskDefinitions.Attach(new Models.TaskDefinition()
+                //{
+                //    TaskDefinitionId = taskDefinitionId,
+                //    UserCsStatus = status,
+                //    HoldLockTaskExecutionId = taskExecutionId,
+                //    UserCsTaskExecutionId = taskExecutionId
+                //});
+                //entityEntry.Property(i => i.UserCsStatus).IsModified = true;
+                //entityEntry.Property(i => i.UserCsTaskExecutionId).IsModified = true;
+                //entityEntry.Property(i => i.HoldLockTaskExecutionId).IsModified = true;
+                //dbContext.SaveChanges();
+            }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = InsertIntoCriticalSectionQueueQuery;
+            //    command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
+            //    command.Parameters.Add("@CsQueue", SqlDbType.VarChar).Value = queueIndex + "," + taskExecutionId;
+            //    command.ExecuteNonQuery();
+            //}
+        });
     }
 
     public int GetCriticalSectionTokenStatus(string applicationName, string taskName)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        return RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = GetCriticalSectionTokenStatusByTaskExecutionQuery;
-            command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
-            command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
-            return (int)command.ExecuteScalar();
-        }
+            using (var dbContext = GetDbContext())
+            {
+                var a = dbContext.TaskExecutions.Include(i => i.TaskDefinition)
+                    .Where(i => i.TaskDefinition.ApplicationName == applicationName &&
+                                i.TaskDefinition.TaskName == taskName)
+                    .Select(i => i.TaskDefinition.UserCsStatus).FirstOrDefault();
+                return a;
+            }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = GetCriticalSectionTokenStatusByTaskExecutionQuery;
+            //    command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
+            //    command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
+            //    return (int)command.ExecuteScalar();
+            //}
+        });
     }
 
     #endregion .: Critical Sections :.
+}
+
+public class GetLastEventResponse
+{
+    public GetLastEventResponse(EventType eventType, string message)
+    {
+        EventType = eventType;
+        Message = message;
+    }
+
+    public EventType EventType { get; }
+    public string Message { get; }
+}
+
+public class Execinfo
+{
+    public Execinfo(ExecutionTokenStatus status, int grantedTaskExecutionId)
+    {
+        Status = status;
+        GrantedTaskExecutionId = grantedTaskExecutionId;
+    }
+
+    public ExecutionTokenStatus Status { get; }
+    public int GrantedTaskExecutionId { get; }
 }

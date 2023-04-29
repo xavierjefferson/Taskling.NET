@@ -1,148 +1,261 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
+using System.Linq;
+using Microsoft.EntityFrameworkCore;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
 using Taskling.Serialization;
-using Taskling.SqlServer.Tests.Repositories.Given_RangeBlockRepository;
+using Taskling.SqlServer.Blocks;
+using Taskling.SqlServer.Models;
 
 namespace Taskling.SqlServer.Tests.Helpers;
 
-public class BlocksHelper
+public class BlocksHelper : RepositoryBase
 {
     public int GetListBlockItemCountByStatus(long blockId, ItemStatus status)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        return RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = GetListBlockItemCountByStatusQuery;
-            command.Parameters.Add("@BlockId", SqlDbType.BigInt).Value = blockId;
-            command.Parameters.Add("@Status", SqlDbType.Int).Value = (int)status;
-            return (int)command.ExecuteScalar();
-        }
+            using (var dbContext = GetDbContext())
+            {
+                return dbContext.ListBlockItems.Count(i => i.BlockId == blockId && i.Status == (int)status);
+            }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = GetListBlockItemCountByStatusQuery;
+            //    command.Parameters.Add("@BlockId", SqlDbType.BigInt).Value = blockId;
+            //    command.Parameters.Add("@Status", SqlDbType.Int).Value = (int)status;
+            //    return (int)command.ExecuteScalar();
+            //}
+        });
     }
 
     public long GetLastBlockId(string applicationName, string taskName)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        return RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = GetLastBlockIdQuery;
-            command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
-            command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
-            return (long)command.ExecuteScalar();
-        }
+            using (var dbContext = GetDbContext())
+            {
+                return dbContext.Blocks.Include(i => i.TaskDefinition).Where(i =>
+                        i.TaskDefinition.TaskName == taskName && i.TaskDefinition.ApplicationName == applicationName)
+                    .Max(i => i.BlockId);
+            }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = GetLastBlockIdQuery;
+            //    command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
+            //    command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
+            //    return (long)command.ExecuteScalar();
+            //}
+        });
     }
 
     public List<ListBlockItem<T>> GetListBlockItems<T>(long blockId, ItemStatus status)
     {
-        var items = new List<ListBlockItem<T>>();
-        
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        return RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = GetListBlockItemsQuery;
-            command.Parameters.Add("@BlockId", SqlDbType.BigInt).Value = blockId;
-            command.Parameters.Add("@Status", SqlDbType.Int).Value = (int)status;
-
-            var reader = command.ExecuteReader();
-            while (reader.Read())
+            var items = new List<ListBlockItem<T>>();
+            using (var dbContext = GetDbContext())
             {
-                var item = new ListBlockItem<T>();
-                item.ListBlockItemId = reader.GetInt64(0) ;
-                item.Value = JsonGenericSerializer.Deserialize<T>(reader.GetString(1));
-                item.Status = (ItemStatus)reader.GetInt32(2);
+                var tmp = dbContext.ListBlockItems.Where(i => i.BlockId == blockId && i.Status == (int)status)
+                    .Select(i => new { i.ListBlockItemId, i.Value, i.Status, i.StatusReason, i.Step }).ToList();
+                foreach (var reader in tmp)
+                {
+                    var item = new ListBlockItem<T>();
+                    item.ListBlockItemId = reader.ListBlockItemId;
+                    item.Value = JsonGenericSerializer.Deserialize<T>(reader.Value);
+                    item.Status = (ItemStatus)reader.Status;
+                    item.StatusReason = reader.StatusReason;
+                    item.Step = reader.Step;
 
-                if (reader[4] != DBNull.Value)
-                    item.StatusReason = reader.GetString(4);
-
-                if (reader[5] != DBNull.Value)
-                    item.Step = reader.GetInt32(5);
-
-                items.Add(item);
+                    items.Add(item);
+                }
             }
-        }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = GetListBlockItemsQuery;
+            //    command.Parameters.Add("@BlockId", SqlDbType.BigInt).Value = blockId;
+            //    command.Parameters.Add("@Status", SqlDbType.Int).Value = (int)status;
 
-        return items;
+            //    var reader = command.ExecuteReader();
+            //    while (reader.Read())
+            //    {
+            //        var item = new ListBlockItem<T>();
+            //        item.ListBlockItemId = reader.GetInt64(0);
+            //        item.Value = JsonGenericSerializer.Deserialize<T>(reader.GetString(1));
+            //        item.Status = (ItemStatus)reader.GetInt32(2);
+
+            //        if (reader[4] != DBNull.Value)
+            //            item.StatusReason = reader.GetString(4);
+
+            //        if (reader[5] != DBNull.Value)
+            //            item.Step = reader.GetInt32(5);
+
+            //        items.Add(item);
+            //    }
+            //}
+
+            return items;
+        });
     }
 
     public void EnqueueForcedBlock(long blockId)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = InsertForcedBlockQueueQuery;
-            command.Parameters.Add("@BlockId", SqlDbType.BigInt).Value = blockId;
-            command.ExecuteNonQuery();
-        }
+            using (var dbContext = GetDbContext())
+            {
+                var forceBlockQueue = new ForceBlockQueue
+                {
+                    BlockId = blockId,
+                    ForcedBy = "Test",
+                    ForcedDate = DateTime.UtcNow,
+                    ProcessingStatus = "Pending"
+                };
+                dbContext.ForceBlockQueues.Add(forceBlockQueue);
+            }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = InsertForcedBlockQueueQuery;
+            //    command.Parameters.Add("@BlockId", SqlDbType.BigInt).Value = blockId;
+            //    command.ExecuteNonQuery();
+            //}
+        });
     }
 
     public void InsertPhantomDateRangeBlock(string applicationName, string taskName, DateTime fromDate, DateTime toDate)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = InsertPhantomDateBlockQuery;
-            command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
-            command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
-            command.Parameters.Add("@FromDate", SqlDbType.DateTime).Value = fromDate;
-            command.Parameters.Add("@ToDate", SqlDbType.DateTime).Value = toDate;
-            command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.DateRange;
-            command.ExecuteNonQuery();
-        }
+            using (var dbContext = GetDbContext())
+            {
+                OnTaskDefinitionFound(dbContext, applicationName, taskName,
+                    (taskDefinitionId, context) =>
+                    {
+                        AddDateRange(context, taskDefinitionId, fromDate, toDate, DateTime.UtcNow, true);
+                    });
+            }
+
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = InsertPhantomDateBlockQuery;
+            //    command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
+            //    command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
+            //    command.Parameters.Add("@FromDate", SqlDbType.DateTime).Value = fromDate;
+            //    command.Parameters.Add("@ToDate", SqlDbType.DateTime).Value = toDate;
+            //    command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.DateRange;
+            //    command.ExecuteNonQuery();
+            //}
+        });
+    }
+
+    private void OnTaskDefinitionFound(TasklingDbContext dbContext, string applicationName, string taskName,
+        Action<int, TasklingDbContext> action)
+    {
+        var tid = dbContext.TaskDefinitions
+            .Where(i => i.TaskName == taskName && i.ApplicationName == applicationName)
+            .Select(i => i.TaskDefinitionId).FirstOrDefault();
+        if (tid != default) action(tid, dbContext);
     }
 
     public void InsertPhantomNumericBlock(string applicationName, string taskName, long fromId, long toId)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = InsertPhantomNumericBlockQuery;
-            command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
-            command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
-            command.Parameters.Add("@FromNumber", SqlDbType.BigInt).Value = fromId;
-            command.Parameters.Add("@ToNumber", SqlDbType.BigInt).Value = toId;
-            command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.NumericRange;
-            command.ExecuteNonQuery();
-        }
+            using (var dbContext = GetDbContext())
+            {
+                OnTaskDefinitionFound(dbContext, applicationName, taskName,
+                    (taskDefinitionId, context) =>
+                    {
+                        AddNumericBlock(context, taskDefinitionId, fromId, toId, DateTime.UtcNow, true);
+                    });
+            }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = InsertPhantomNumericBlockQuery;
+            //    command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
+            //    command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
+            //    command.Parameters.Add("@FromNumber", SqlDbType.BigInt).Value = fromId;
+            //    command.Parameters.Add("@ToNumber", SqlDbType.BigInt).Value = toId;
+            //    command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.NumericRange;
+            //    command.ExecuteNonQuery();
+            //}
+        });
     }
 
     public void InsertPhantomListBlock(string applicationName, string taskName)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = InsertPhantomListBlockQuery;
-            command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
-            command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
-            command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.List;
-            command.ExecuteNonQuery();
-        }
+            using (var connection = GetConnection())
+            {
+                var command = connection.CreateCommand();
+                command.CommandText = InsertPhantomListBlockQuery;
+                command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
+                command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
+                command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.List;
+                command.ExecuteNonQuery();
+            }
+        });
     }
 
     public void InsertPhantomObjectBlock(string applicationName, string taskName)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = InsertPhantomObjectBlockQuery;
-            command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
-            command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
-            command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.Object;
-            command.Parameters.Add("@ObjectData", SqlDbType.NVarChar, -1).Value =
-                JsonGenericSerializer.Serialize("My phantom block");
-            command.ExecuteNonQuery();
-        }
+            using (var dbContext = GetDbContext())
+            {
+                OnTaskDefinitionFound(dbContext, applicationName, taskName, (i, context) =>
+                {
+                    AddObjectBlock(context, i, DateTime.UtcNow, JsonGenericSerializer.Serialize("My phantom block"), true);
+                });
+            }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = InsertPhantomObjectBlockQuery;
+            //    command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
+            //    command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
+            //    command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.Object;
+            //    command.Parameters.Add("@ObjectData", SqlDbType.NVarChar, -1).Value =
+            //        JsonGenericSerializer.Serialize("My phantom block");
+            //    command.ExecuteNonQuery();
+            //}
+        });
     }
+
+    #region .: Get Block Counts :.
+
+    public int GetBlockCount(string applicationName, string taskName)
+    {
+        return RetryHelper.WithRetry(_ =>
+        {
+            using (var dbContext = GetDbContext())
+            {
+                return dbContext.Blocks.Include(i =>
+                        i.TaskDefinition)
+                    .Count(i => i.TaskDefinition.ApplicationName == applicationName &&
+                                i.TaskDefinition.TaskName == taskName);
+            }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = query;
+            //    command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
+            //    command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
+            //    return (int)command.ExecuteScalar();
+            //}
+        });
+    }
+
+    #endregion .: Get Block Counts :.
 
     #region .: Queries :.
 
@@ -220,32 +333,6 @@ SELECT CAST(SCOPE_IDENTITY() AS BIGINT);";
            ,@Attempt);
 
 SELECT CAST(SCOPE_IDENTITY() AS BIGINT);";
-
-    private const string DeleteBlocksQuery =
-        @"
-DELETE BE FROM [Taskling].[BlockExecution] BE
-inner JOIN [Taskling].[TaskExecution] TE ON BE.TaskExecutionId = TE.TaskExecutionId
-inner JOIN [Taskling].[TaskDefinition] T ON TE.TaskDefinitionId = T.TaskDefinitionId
-WHERE (T.ApplicationName = @ApplicationName);
-
-DELETE Q FROM [Taskling].[ListBlockItem] Q inner join [Taskling].[Block] B on q.BLockid = b.blockid
-inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
-WHERE (T.ApplicationName = @ApplicationName);
-
-
-DELETE Q FROM [Taskling].[ForceBlockQueue] Q inner join [Taskling].[Block] B on q.BLockid = b.blockid
-inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
-WHERE (T.ApplicationName = @ApplicationName);
-
-DELETE B FROM [Taskling].[Block] B
-inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
-WHERE (T.ApplicationName = @ApplicationName);
-
-DELETE LBI FROM [Taskling].[ListBlockItem] LBI
-inner JOIN [Taskling].[Block] B ON LBI.BlockId = B.BlockId 
-inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
-WHERE (T.ApplicationName = @ApplicationName);
-";
 
     private const string GetBlockCountQuery = @"SELECT COUNT(*)
 FROM [Taskling].[Block] B
@@ -397,170 +484,307 @@ INSERT INTO [Taskling].[Block]
 
     public long InsertDateRangeBlock(int taskDefinitionId, DateTime fromDate, DateTime toDate, DateTime createdAt)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        return RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = InsertDateRangeBlockQuery;
-            command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-            command.Parameters.Add("@FromDate", SqlDbType.DateTime).Value = fromDate;
-            command.Parameters.Add("@ToDate", SqlDbType.DateTime).Value = toDate;
-            command.Parameters.Add("@CreatedDate", SqlDbType.DateTime).Value = createdAt;
-            command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.DateRange;
-            return (long)command.ExecuteScalar();
-        }
+            using (var dbContext = GetDbContext())
+            {
+                return AddDateRange(dbContext, taskDefinitionId, fromDate, toDate, createdAt, false);
+            }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = InsertDateRangeBlockQuery;
+            //    command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
+            //    command.Parameters.Add("@FromDate", SqlDbType.DateTime).Value = fromDate;
+            //    command.Parameters.Add("@ToDate", SqlDbType.DateTime).Value = toDate;
+            //    command.Parameters.Add("@CreatedDate", SqlDbType.DateTime).Value = createdAt;
+            //    command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.DateRange;
+            //    return (long)command.ExecuteScalar();
+            //}
+        });
+    }
+
+    private static long AddDateRange(TasklingDbContext dbContext, int taskDefinitionId, DateTime fromDate,
+        DateTime toDate, DateTime createdAt,
+        bool isPhantom)
+    {
+        var objectBlock = new Block
+        {
+            TaskDefinitionId = taskDefinitionId,
+            CreatedDate = createdAt,
+            ToDate = toDate,
+            IsPhantom = isPhantom,
+            FromDate = fromDate, //ObjectData = JsonGenericSerializer.Serialize(objectData),
+            BlockType = (int)BlockType.DateRange
+        };
+        dbContext.Blocks.Add(objectBlock);
+        dbContext.SaveChanges();
+        return objectBlock.BlockId;
     }
 
     public long InsertNumericRangeBlock(int taskDefinitionId, long fromNumber, long toNumber, DateTime createdDate)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        return RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = InsertNumericRangeBlockQuery;
-            command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-            command.Parameters.Add("@FromNumber", SqlDbType.BigInt).Value = fromNumber;
-            command.Parameters.Add("@ToNumber", SqlDbType.BigInt).Value = toNumber;
-            command.Parameters.Add("@CreatedDate", SqlDbType.DateTime).Value = createdDate;
-            command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.NumericRange;
-            return (long)command.ExecuteScalar();
-        }
+            using (var dbContext = GetDbContext())
+            {
+                return AddNumericBlock(dbContext, taskDefinitionId, fromNumber, toNumber, createdDate, false);
+            }
+            //using (var connection = GetConnection())
+            //{
+
+
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = InsertNumericRangeBlockQuery;
+            //    command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
+            //    command.Parameters.Add("@FromNumber", SqlDbType.BigInt).Value = fromNumber;
+            //    command.Parameters.Add("@ToNumber", SqlDbType.BigInt).Value = toNumber;
+            //    command.Parameters.Add("@CreatedDate", SqlDbType.DateTime).Value = createdDate;
+            //    command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.NumericRange;
+            //    return (long)command.ExecuteScalar();
+            //}
+        });
+    }
+
+    private static long AddNumericBlock(TasklingDbContext dbContext, int taskDefinitionId, long fromNumber,
+        long toNumber, DateTime createdDate,
+        bool isPhantom)
+    {
+        var objectBlock = new Block
+        {
+            TaskDefinitionId = taskDefinitionId,
+            CreatedDate = createdDate,
+            ToNumber = toNumber,
+            FromNumber = fromNumber,
+            IsPhantom = isPhantom,
+            //ObjectData = JsonGenericSerializer.Serialize(objectData),
+            BlockType = (int)BlockType.NumericRange
+        };
+        dbContext.Blocks.Add(objectBlock);
+        dbContext.SaveChanges();
+        return objectBlock.BlockId;
     }
 
     public long InsertListBlock(int taskDefinitionId, DateTime createdDate, string objectData = null)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        return RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = InsertListBlockQuery;
-            command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-            command.Parameters.Add("@CreatedDate", SqlDbType.DateTime).Value = createdDate;
-            command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.List;
-            if (objectData == null)
-                command.Parameters.Add("@ObjectData", SqlDbType.NVarChar, 1000).Value = DBNull.Value;
-            else
-                command.Parameters.Add("@ObjectData", SqlDbType.NVarChar, 1000).Value = objectData;
+            using (var dbContext = GetDbContext())
+            {
+                var objectBlock = new Block
+                {
+                    TaskDefinitionId = taskDefinitionId,
+                    CreatedDate = createdDate,
+                    ObjectData = objectData,
+                    BlockType = (int)BlockType.List
+                };
+                dbContext.Blocks.Add(objectBlock);
+                dbContext.SaveChanges();
+                return objectBlock.BlockId;
+            }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = InsertListBlockQuery;
+            //    command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
+            //    command.Parameters.Add("@CreatedDate", SqlDbType.DateTime).Value = createdDate;
+            //    command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.List;
+            //    if (objectData == null)
+            //        command.Parameters.Add("@ObjectData", SqlDbType.NVarChar, 1000).Value = DBNull.Value;
+            //    else
+            //        command.Parameters.Add("@ObjectData", SqlDbType.NVarChar, 1000).Value = objectData;
 
-            return (long)command.ExecuteScalar();
-        }
+            //    return (long)command.ExecuteScalar();
+            //}
+        });
     }
 
     public long InsertObjectBlock(int taskDefinitionId, DateTime createdDate, string objectData)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        return RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = InsertObjectBlockQuery;
-            command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-            command.Parameters.Add("@CreatedDate", SqlDbType.DateTime).Value = createdDate;
-            command.Parameters.Add("@ObjectData", SqlDbType.NVarChar, -1).Value =
-                JsonGenericSerializer.Serialize(objectData);
-            command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.Object;
-            return (long)command.ExecuteScalar();
-        }
+            using (var dbContext = GetDbContext())
+            {
+                return AddObjectBlock(dbContext, taskDefinitionId, createdDate, objectData, false);
+            }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = InsertObjectBlockQuery;
+            //    command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
+            //    command.Parameters.Add("@CreatedDate", SqlDbType.DateTime).Value = createdDate;
+            //    command.Parameters.Add("@ObjectData", SqlDbType.NVarChar, -1).Value =
+            //        JsonGenericSerializer.Serialize(objectData);
+            //    command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.Object;
+            //    return (long)command.ExecuteScalar();
+            //}
+        });
+    }
+
+    private static long AddObjectBlock(TasklingDbContext dbContext, int taskDefinitionId, DateTime createdDate,
+        string objectData,
+        bool isPhantom)
+    {
+        var objectBlock = new Block
+        {
+            IsPhantom = isPhantom,
+            TaskDefinitionId = taskDefinitionId,
+            CreatedDate = createdDate,
+            ObjectData = JsonGenericSerializer.Serialize(objectData),
+            BlockType = (int)BlockType.Object
+        };
+        dbContext.Blocks.Add(objectBlock);
+        dbContext.SaveChanges();
+        return objectBlock.BlockId;
     }
 
     public long InsertBlockExecution(int taskExecutionId, long blockId, DateTime createdAt, DateTime? startedAt,
         DateTime? completedAt, BlockExecutionStatus executionStatus, int attempt = 1)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        return RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = InsertBlockExecutionQuery;
-            command.Parameters.Add("@TaskExecutionId", SqlDbType.Int).Value = taskExecutionId;
-            command.Parameters.Add("@BlockId", SqlDbType.BigInt).Value = blockId;
-            command.Parameters.Add("@CreatedAt", SqlDbType.DateTime).Value = createdAt;
-            command.Parameters.Add("@Attempt", SqlDbType.BigInt).Value = attempt;
+            using (var dbContext = GetDbContext())
+            {
+                var blockExecution = new BlockExecution
+                {
+                    TaskExecutionId = taskExecutionId,
+                    BlockId = blockId,
+                    CreatedAt = createdAt,
+                    StartedAt = startedAt,
+                    CompletedAt = completedAt,
+                    BlockExecutionStatus = (int)executionStatus,
+                    Attempt = attempt
+                };
+                dbContext.BlockExecutions.Add(blockExecution);
+                dbContext.SaveChanges();
+                return blockExecution.BlockExecutionId;
+            }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = InsertBlockExecutionQuery;
+            //    command.Parameters.Add("@TaskExecutionId", SqlDbType.Int).Value = taskExecutionId;
+            //    command.Parameters.Add("@BlockId", SqlDbType.BigInt).Value = blockId;
+            //    command.Parameters.Add("@CreatedAt", SqlDbType.DateTime).Value = createdAt;
+            //    command.Parameters.Add("@Attempt", SqlDbType.BigInt).Value = attempt;
 
-            if (startedAt.HasValue)
-                command.Parameters.Add("@StartedAt", SqlDbType.DateTime).Value = startedAt.Value;
-            else
-                command.Parameters.Add("@StartedAt", SqlDbType.DateTime).Value = DBNull.Value;
+            //    if (startedAt.HasValue)
+            //        command.Parameters.Add("@StartedAt", SqlDbType.DateTime).Value = startedAt.Value;
+            //    else
+            //        command.Parameters.Add("@StartedAt", SqlDbType.DateTime).Value = DBNull.Value;
 
-            if (completedAt.HasValue)
-                command.Parameters.Add("@CompletedAt", SqlDbType.DateTime).Value = completedAt.Value;
-            else
-                command.Parameters.Add("@CompletedAt", SqlDbType.DateTime).Value = DBNull.Value;
+            //    if (completedAt.HasValue)
+            //        command.Parameters.Add("@CompletedAt", SqlDbType.DateTime).Value = completedAt.Value;
+            //    else
+            //        command.Parameters.Add("@CompletedAt", SqlDbType.DateTime).Value = DBNull.Value;
 
-            command.Parameters.Add("@BlockExecutionStatus", SqlDbType.Int).Value = (int)executionStatus;
-            return (long)command.ExecuteScalar();
-        }
+            //    command.Parameters.Add("@BlockExecutionStatus", SqlDbType.Int).Value = (int)executionStatus;
+            //    return (long)command.ExecuteScalar();
+            //}
+        });
     }
 
     public void DeleteBlocks(string applicationName)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
-        {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = DeleteBlocksQuery;
-            command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
-            command.ExecuteNonQuery();
-        }
+        RetryHelper.WithRetry(_ =>
+            {
+                using (var dbContext = GetDbContext())
+                {
+                    dbContext.BlockExecutions.RemoveRange(dbContext.BlockExecutions.Include(i => i.Block)
+                        .ThenInclude(i => i.TaskDefinition).Include(i => i.TaskExecution)
+                        .ThenInclude(i => i.TaskDefinition)
+                        .Where(i => i.TaskExecution.TaskDefinition.ApplicationName == applicationName ||
+                                    i.Block.TaskDefinition.ApplicationName == applicationName));
+                    dbContext.ListBlockItems.RemoveRange(dbContext.ListBlockItems.Include(i => i.Block)
+                        .ThenInclude(i => i.TaskDefinition)
+                        .Where(i => i.Block.TaskDefinition.ApplicationName == applicationName));
+                    dbContext.ForceBlockQueues.RemoveRange(dbContext.ForceBlockQueues.Include(i => i.Block)
+                        .ThenInclude(i => i.TaskDefinition)
+                        .Where(i => i.Block.TaskDefinition.ApplicationName == applicationName));
+                    dbContext.Blocks.RemoveRange(dbContext.Blocks.Include(i => i.TaskDefinition)
+                        .Where(i => i.TaskDefinition.ApplicationName == applicationName));
+                    dbContext.SaveChanges();
+                }
+            }
+//            using (var connection = GetConnection())
+//            {
+//                var command = connection.CreateCommand();
+//                command.CommandText = @"
+//DELETE BE FROM [Taskling].[BlockExecution] BE
+//inner JOIN [Taskling].[TaskExecution] TE ON BE.TaskExecutionId = TE.TaskExecutionId
+//inner JOIN [Taskling].[TaskDefinition] T ON TE.TaskDefinitionId = T.TaskDefinitionId
+//WHERE (T.ApplicationName = @ApplicationName);
+
+            //DELETE Q FROM [Taskling].[ListBlockItem] Q inner join [Taskling].[Block] B on q.BLockid = b.blockid
+            //inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
+            //WHERE (T.ApplicationName = @ApplicationName);
+
+            //DELETE Q FROM [Taskling].[ForceBlockQueue] Q inner join [Taskling].[Block] B on q.BLockid = b.blockid
+            //inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
+            //WHERE (T.ApplicationName = @ApplicationName);
+
+            //DELETE B FROM [Taskling].[Block] B
+            //inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
+            //WHERE (T.ApplicationName = @ApplicationName);
+
+            //DELETE LBI FROM [Taskling].[ListBlockItem] LBI
+            //inner JOIN [Taskling].[Block] B ON LBI.BlockId = B.BlockId 
+            //inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
+            //WHERE (T.ApplicationName = @ApplicationName);
+            //";
+            //                command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
+            //                command.ExecuteNonQuery();
+            //            }
+            //        }
+        );
     }
 
     #endregion .: Insert and Delete Blocks :.
-
-    #region .: Get Block Counts :.
-
-    public int GetBlockCount(string applicationName, string taskName)
-    {
-        return GetBlockCount(applicationName, taskName, GetBlockCountQuery);
-    }
-
-    private int GetBlockCount(string applicationName, string taskName, string query)
-    {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
-        {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = query;
-            command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
-            command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
-            return (int)command.ExecuteScalar();
-        }
-    }
-
-    #endregion .: Get Block Counts :.
 
     #region .: Get Block Execution Counts :.
 
     public int GetBlockExecutionCountByStatus(string applicationName, string taskName,
         BlockExecutionStatus blockExecutionStatus)
     {
-        return GetBlockExecutionCountByStatus(applicationName, taskName, blockExecutionStatus,
-            GetBlockExecutionsCountByStatusQuery);
-    }
-
-    private int GetBlockExecutionCountByStatus(string applicationName, string taskName,
-        BlockExecutionStatus blockExecutionStatus, string query)
-    {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        return RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = query;
-            command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
-            command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
-            command.Parameters.Add("@BlockExecutionStatus", SqlDbType.Int).Value = (int)blockExecutionStatus;
-            return (int)command.ExecuteScalar();
-        }
+            using (var dbContext = GetDbContext())
+            {
+                return dbContext.BlockExecutions.Include(i => i.TaskExecution).ThenInclude(i => i.TaskDefinition)
+                    .Count(i => i.TaskExecution.TaskDefinition.ApplicationName == applicationName &&
+                                i.TaskExecution.TaskDefinition.TaskName == taskName &&
+                                i.BlockExecutionStatus == (int)blockExecutionStatus);
+            }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = GetBlockExecutionsCountByStatusQuery;
+            //    command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
+            //    command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
+            //    command.Parameters.Add("@BlockExecutionStatus", SqlDbType.Int).Value = (int)blockExecutionStatus;
+            //    return (int)command.ExecuteScalar();
+            //}
+        });
     }
 
     public int GetBlockExecutionItemCount(long blockExecutionId)
     {
-        using (var connection = new SqlConnection(TestConstants.TestConnectionString))
+        return RetryHelper.WithRetry(_ =>
         {
-            connection.Open();
-            var command = connection.CreateCommand();
-            command.CommandText = GetItemsCountQuery;
-            command.Parameters.Add("@BlockExecutionId", SqlDbType.BigInt).Value = blockExecutionId;
-            var result = command.ExecuteScalar();
-            return (int)result;
-        }
+            using (var dbContext = GetDbContext())
+            {
+                return dbContext.BlockExecutions.Where(i => i.BlockExecutionId == blockExecutionId)
+                    .Select(i => i.ItemsCount ?? 0).FirstOrDefault();
+            }
+            //using (var connection = GetConnection())
+            //{
+            //    var command = connection.CreateCommand();
+            //    command.CommandText = GetItemsCountQuery;
+            //    command.Parameters.Add("@BlockExecutionId", SqlDbType.BigInt).Value = blockExecutionId;
+            //    var result = command.ExecuteScalar();
+            //    return (int)result;
+            //}
+        });
     }
 
     #endregion .: Get Block Execution Counts :.

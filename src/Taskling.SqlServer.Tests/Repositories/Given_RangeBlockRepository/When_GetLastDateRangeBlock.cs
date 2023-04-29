@@ -10,7 +10,7 @@ using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_RangeBlockRepository;
-
+[Collection(Constants.CollectionName)]
 public class When_GetLastDateRangeBlock
 {
     private DateTime _baseDateTime;

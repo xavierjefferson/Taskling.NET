@@ -12,7 +12,7 @@ using Taskling.Tasks;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_CriticalSectionService;
-
+[Collection(Constants.CollectionName)]
 public class When_TryStart_AsOverrideAfterElaspedTimeMode
 {
     public When_TryStart_AsOverrideAfterElaspedTimeMode()

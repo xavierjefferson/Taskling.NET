@@ -15,8 +15,11 @@ using System;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Collections.Generic;
+using System.Transactions;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Taskling.SqlServer.Models;
- 
+using Taskling.InfrastructureContracts.CriticalSections;
+
 namespace Taskling.SqlServer.Blocks;
 
 public class ListBlockRepository : DbOperationsService, IListBlockRepository
@@ -30,8 +33,9 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
 
     public async Task ChangeStatusAsync(BlockExecutionChangeStatusRequest changeStatusRequest)
     {
-        try
+        await RetryHelper.WithRetry(async (transactionScope) =>
         {
+
             using (var dbContext = await GetDbContextAsync(changeStatusRequest.TaskId))
             {
                 var blockExecution = await dbContext.BlockExecutions.FirstOrDefaultAsync(i =>
@@ -58,22 +62,16 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
 
                 }
             }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
 
-            throw;
-        }
+        });
+
     }
 
     public async Task<IList<ProtoListBlockItem>> GetListBlockItemsAsync(TaskId taskId, long listBlockId)
     {
-        var results = new List<ProtoListBlockItem>();
-
-        try
+        return await RetryHelper.WithRetry(async (transactionScope) =>
         {
+            var results = new List<ProtoListBlockItem>();
             using (var dbContext = await GetDbContextAsync(taskId))
             {
                 var items = await dbContext.ListBlockItems.Where(i => i.BlockId == listBlockId).ToListAsync()
@@ -96,16 +94,13 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
                     results.Add(listBlock);
                 }
             }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
 
-            throw;
-        }
+            return results;
+        });
 
-        return results;
+
+
+
     }
 
     //private async Task UpdateListBlockItemAsync(List<SingleUpdateRequest> singeUpdateRequest)
@@ -151,19 +146,46 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
 
     public async Task BatchUpdateListBlockItemsAsync(BatchUpdateRequest batchUpdateRequest)
     {
-        try
+        await RetryHelper.WithRetry(async (retryEvent) =>
         {
             using (var dbContext = await GetDbContextAsync(batchUpdateRequest.TaskId))
             {
-                using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable).ConfigureAwait(false);
+                //List<EntityEntry<ListBlockItem>> list = new List<EntityEntry<ListBlockItem>>();
+                //foreach (var m in batchUpdateRequest.ListBlockItems)
+                //{
+                //    var exampleEntity = dbContext.ListBlockItems.Attach(new ListBlockItem() { ListBlockItemId = m.ListBlockItemId });
 
+
+                //        exampleEntity.Entity.Status = (int) m.Status;
+                //        exampleEntity.Property(i => i.Status).IsModified = true;
+                //        exampleEntity.Entity.StatusReason = m.StatusReason;
+                //        exampleEntity.Property(i => i.StatusReason).IsModified = true;
+                //        exampleEntity.Entity.Step =m.Step;
+                //        exampleEntity.Property(i => i.Step).IsModified = true;
+                //        list.Add(exampleEntity);
+                //        //taskDefinition.UserCsStatus = 1;
+
+
+
+                //    //dbContext.TaskDefinitions.Update(taskDefinition);
+                //    //await dbContext.SaveChangesAsync().ConfigureAwait(false);
+                //    //exampleEntity.Entity.HoldLockTaskExecutionId = taskExecutionId;
+                //    //exampleEntity.Property(i => i.HoldLockTaskExecutionId).IsModified = true;
+
+                //    exampleEntity.State = EntityState.Detached;
+                //}
+                //await dbContext.SaveChangesAsync();
+                //foreach (var item in list)
+                //{
+                //    item.State = EntityState.Detached;
+                // }
 
                 var listBlockItemIds = batchUpdateRequest.ListBlockItems.Select(i => i.ListBlockItemId).ToList();
                 var listBlockItems = await dbContext.ListBlockItems.Where(i => i.BlockId == batchUpdateRequest.ListBlockId)
                     .Where(i => listBlockItemIds.Contains(i.ListBlockItemId)).ToListAsync().ConfigureAwait(false);
                 if (!listBlockItems.Any())
                 {
-                    await transaction.RollbackAsync();
+                    retryEvent.Cancel();
                     return;
                 }
                 foreach (var item in batchUpdateRequest.ListBlockItems)
@@ -181,53 +203,20 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
                 }
 
                 await dbContext.SaveChangesAsync().ConfigureAwait(false);
-                await transaction.CommitAsync();
+
             }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
+        });
 
-            throw;
-        }
-        //using (var connection = await CreateNewConnectionAsync(batchUpdateRequest.TaskId).ConfigureAwait(false))
-        //{
-        //    var command = connection.CreateCommand();
-        //    var transaction = connection.BeginTransaction();
-        //    command.Connection = connection;
-        //    command.Transaction = transaction;
-        //    command.CommandTimeout =
-        //        ConnectionStore.Instance.GetConnection(batchUpdateRequest.TaskId).QueryTimeoutSeconds;
-        //    ;
 
-        //    try
-        //    {
-        //        var tableName = await CreateTemporaryTableAsync(command).ConfigureAwait(false);
-        //        var dt = GenerateDataTable(batchUpdateRequest.ListBlockId, batchUpdateRequest.ListBlockItems);
-        //        await BulkLoadInTransactionOperationAsync(dt, tableName, connection, transaction).ConfigureAwait(false);
-        //        await PerformBulkUpdateAsync(command, tableName).ConfigureAwait(false);
-
-        //        transaction.Commit();
-        //    }
-        //    catch (SqlException sqlEx)
-        //    {
-        //        TryRollBack(transaction, sqlEx);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        TryRollback(transaction, ex);
-        //    }
-        //}
     }
 
-    public async Task<ProtoListBlock> GetLastListBlockAsync(LastBlockRequest lastRangeBlockRequest)
+    public async Task<ProtoListBlock?> GetLastListBlockAsync(LastBlockRequest lastRangeBlockRequest)
     {
-        var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(lastRangeBlockRequest.TaskId)
+        return await RetryHelper.WithRetry(async (transactionScope) =>
+        {
+            var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(lastRangeBlockRequest.TaskId)
             .ConfigureAwait(false);
 
-        try
-        {
             using (var dbContext = await GetDbContextAsync(lastRangeBlockRequest.TaskId))
             {
                 var blockData = await dbContext.Blocks.OrderByDescending(i => i.BlockId).Where(i =>
@@ -247,23 +236,18 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
 
                     return listBlock;
                 }
+
+                return null;
             }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
+        });
 
-            throw;
-        }
 
-        return null;
     }
 
 
-    
 
-   
- 
-     
+
+
+
+
 }

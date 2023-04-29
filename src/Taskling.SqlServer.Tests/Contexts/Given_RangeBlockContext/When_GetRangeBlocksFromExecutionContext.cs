@@ -5,11 +5,12 @@ using Taskling.Blocks.Common;
 using Taskling.Blocks.RangeBlocks;
 using Taskling.Contexts;
 using Taskling.Events;
+using Taskling.SqlServer.Tests.Contexts.Given_ObjectBlockContext;
 using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_RangeBlockContext;
-
+[Collection(Constants.CollectionName)]
 public class When_GetRangeBlocksFromExecutionContext
 {
     private readonly BlocksHelper _blocksHelper;
@@ -106,8 +107,8 @@ public class When_GetRangeBlocksFromExecutionContext
                 Assert.Equal(0, _blocksHelper.GetBlockCount(TestConstants.ApplicationName, TestConstants.TaskName));
 
                 var lastEvent = _executionHelper.GetLastEvent(_taskDefinitionId);
-                Assert.Equal(EventType.CheckPoint, lastEvent.Item1);
-                Assert.Equal("No values for generate the block. Emtpy Block context returned.", lastEvent.Item2);
+                Assert.Equal(EventType.CheckPoint, lastEvent.EventType);
+                Assert.Equal("No values for generate the block. Emtpy Block context returned.", lastEvent.Message);
             }
         }
     }
@@ -135,8 +136,8 @@ public class When_GetRangeBlocksFromExecutionContext
                 Assert.Equal(0, _blocksHelper.GetBlockCount(TestConstants.ApplicationName, TestConstants.TaskName));
 
                 var lastEvent = _executionHelper.GetLastEvent(_taskDefinitionId);
-                Assert.Equal(EventType.CheckPoint, lastEvent.Item1);
-                Assert.Equal("No values for generate the block. Emtpy Block context returned.", lastEvent.Item2);
+                Assert.Equal(EventType.CheckPoint, lastEvent.EventType);
+                Assert.Equal("No values for generate the block. Emtpy Block context returned.", lastEvent.Message);
             }
         }
     }

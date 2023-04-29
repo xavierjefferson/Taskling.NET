@@ -1,6 +1,4 @@
-﻿using System.Data;
-using System.Data.SqlClient;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
@@ -17,10 +15,12 @@ using Taskling.InfrastructureContracts.Blocks.RangeBlocks;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.Serialization;
 using Taskling.SqlServer.AncilliaryServices;
+using Taskling.SqlServer.Blocks.Models;
 using Taskling.SqlServer.Blocks.QueryBuilders;
 using Taskling.SqlServer.Blocks.Serialization;
 using Taskling.SqlServer.Models;
 using Taskling.Tasks;
+using TaskDefinition = Taskling.InfrastructureContracts.TaskExecution.TaskDefinition;
 
 namespace Taskling.SqlServer.Blocks;
 
@@ -51,7 +51,6 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
     public async Task<IList<ForcedRangeBlockQueueItem>> GetQueuedForcedRangeBlocksAsync(
         QueuedForcedBlocksRequest queuedForcedBlocksRequest)
     {
-         
         switch (queuedForcedBlocksRequest.BlockType)
         {
             case BlockType.DateRange:
@@ -84,11 +83,10 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
 
     #region .: Range Blocks :.
 
- 
-
     public async Task<IList<RangeBlock>> FindRangeBlocksOfTaskAsync(FindBlocksOfTaskRequest blocksOfTaskRequest)
     {
-        Func<BlocksOfTaskQueryBuilder.BlocksOfTaskQueryParams, Expression<Func<BlocksOfTaskQueryBuilder.BlocksOfTaskQueryItem, bool>>> query;
+        Func<BlocksOfTaskQueryParams,
+            Expression<Func<BlockQueryItem, bool>>> query;
         switch (blocksOfTaskRequest.BlockType)
         {
             case BlockType.DateRange:
@@ -138,9 +136,6 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
     #endregion .: Range Blocks :.
 
     #region .: List Blocks :.
-
-   
-
 
     public async Task<IList<ProtoListBlock>> FindListBlocksOfTaskAsync(FindBlocksOfTaskRequest blocksOfTaskRequest)
     {
@@ -201,7 +196,6 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
     }
 
 
-  
     public async Task<long> AddObjectBlockExecutionAsync(BlockExecutionCreateRequest executionCreateRequest)
     {
         return await AddBlockExecutionAsync(executionCreateRequest).ConfigureAwait(false);
@@ -237,65 +231,32 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
 
     #region .: Range Blocks :.
 
-    
-  
     private async Task<IList<RangeBlock>> FindRangeBlocksOfTaskAsync(FindBlocksOfTaskRequest blocksOfTaskRequest,
-        Func<BlocksOfTaskQueryBuilder.BlocksOfTaskQueryParams, Expression<Func<BlocksOfTaskQueryBuilder.BlocksOfTaskQueryItem, bool>>> query)
+        Func<BlocksOfTaskQueryParams,
+            Expression<Func<BlockQueryItem, bool>>> query)
     {
-        var results = new List<RangeBlock>();
-        var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(blocksOfTaskRequest.TaskId)
-            .ConfigureAwait(false);
-
-        try
+        return await RetryHelper.WithRetry(async (transactionScope) =>
         {
+            var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(blocksOfTaskRequest.TaskId)
+                .ConfigureAwait(false);
+
             using (var dbContext = await GetDbContextAsync(blocksOfTaskRequest.TaskId))
             {
-                var items = await BlocksOfTaskQueryBuilder.GetBlocksOfTaskQueryItems(dbContext, taskDefinition.TaskDefinitionId,
-                    blocksOfTaskRequest.ReferenceValueOfTask, query(new BlocksOfTaskQueryBuilder.BlocksOfTaskQueryParams()));
+                var items = await BlocksOfTaskQueryBuilder.GetBlocksOfTaskQueryItems(dbContext,
+                    taskDefinition.TaskDefinitionId,
+                    blocksOfTaskRequest.ReferenceValueOfTask,
+                    query(new BlocksOfTaskQueryParams()));
+                var results = GetRangeBlocks(blocksOfTaskRequest, items);
 
-                foreach (var item in items)
-                {
-                    var blockType = (BlockType)item.BlockType;
-                    if (blockType != blocksOfTaskRequest.BlockType)
-                        throw new ExecutionException(
-                            "The block with this reference value is of a different BlockType. BlockType resuested: " +
-                            blocksOfTaskRequest.BlockType + " BlockType found: " + blockType);
-
-                    var rangeBlockId = item.BlockId;
-                    var attempt = item.Attempt;
-                    long rangeBegin;
-                    long rangeEnd;
-                    if (blocksOfTaskRequest.BlockType == BlockType.DateRange)
-                    {
-                        rangeBegin = item.FromDate.Value.Ticks; //reader.GetDateTime("FromDate").Ticks;
-                        rangeEnd = item.ToDate.Value.Ticks; //reader.GetDateTime("ToDate").Ticks;
-                    }
-                    else
-                    {
-                        rangeBegin = item.FromNumber.Value;
-                        rangeEnd = item.ToNumber.Value;
-                    }
-
-                    results.Add(new RangeBlock(rangeBlockId, attempt, rangeBegin, rangeEnd,
-                        blocksOfTaskRequest.BlockType));
-                }
+                return results;
             }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
-
-            throw;
-        }
-
-        return results;
+        }).ConfigureAwait(false);
     }
 
     private async Task<RangeBlock> AddDateRangeRangeBlockAsync(RangeBlockCreateRequest dateRangeBlockCreateRequest,
         int taskDefinitionId)
     {
-        try
+        return await RetryHelper.WithRetry(async (transactionScope) =>
         {
             using (var dbContext = await GetDbContextAsync(dateRangeBlockCreateRequest.TaskId))
 
@@ -317,20 +278,13 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
                     dateRangeBlockCreateRequest.To,
                     dateRangeBlockCreateRequest.BlockType);
             }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
-
-            throw;
-        }
+        }).ConfigureAwait(false);
     }
 
     private async Task<RangeBlock> AddNumericRangeRangeBlockAsync(RangeBlockCreateRequest dateRangeBlockCreateRequest,
         int taskDefinitionId)
     {
-        try
+        return await RetryHelper.WithRetry(async (transactionScope) =>
         {
             using (var dbContext = await GetDbContextAsync(dateRangeBlockCreateRequest.TaskId))
             {
@@ -349,74 +303,48 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
                     dateRangeBlockCreateRequest.To,
                     dateRangeBlockCreateRequest.BlockType);
             }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
-
-            throw;
-        }
+        }).ConfigureAwait(false);
     }
 
     #endregion .: Range Blocks :.
 
     #region .: List Blocks :.
 
-  
     private async Task<IList<ProtoListBlock>> FindListBlocksOfTaskAsync(FindBlocksOfTaskRequest blocksOfTaskRequest,
-        Func<BlocksOfTaskQueryBuilder.BlocksOfTaskQueryParams, Expression<Func<BlocksOfTaskQueryBuilder.BlocksOfTaskQueryItem, bool>>> query,
+        Func<BlocksOfTaskQueryParams,
+            Expression<Func<BlockQueryItem, bool>>> query,
         ReprocessOption reprocessOption)
     {
-        var results = new List<ProtoListBlock>();
-        var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(blocksOfTaskRequest.TaskId)
-            .ConfigureAwait(false);
-
-        try
+        return await RetryHelper.WithRetry(async (transactionScope) =>
         {
+            var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(blocksOfTaskRequest.TaskId)
+                .ConfigureAwait(false);
+
+
             using (var dbContext = await GetDbContextAsync(blocksOfTaskRequest.TaskId))
             {
-                BlocksOfTaskQueryBuilder.BlocksOfTaskQueryParams blocksOfTaskQueryParams;
+                BlocksOfTaskQueryParams blocksOfTaskQueryParams;
                 if (reprocessOption == ReprocessOption.PendingOrFailed)
 
-                    blocksOfTaskQueryParams = new BlocksOfTaskQueryBuilder.BlocksOfTaskQueryParams
+                    blocksOfTaskQueryParams = new BlocksOfTaskQueryParams
                     {
-                        Started = (int)BlockExecutionStatus.Started,
-                        NotStarted = (int)BlockExecutionStatus.NotStarted,
-                        Failed = (int)BlockExecutionStatus.Failed
+                        StatusesToMatch = new List<int>
+                        {
+                            (int)BlockExecutionStatus.Started, (int)BlockExecutionStatus.NotStarted,
+                            (int)BlockExecutionStatus.Failed
+                        }
                     };
-                else blocksOfTaskQueryParams = new BlocksOfTaskQueryBuilder.BlocksOfTaskQueryParams();
-                var items = await BlocksOfTaskQueryBuilder.GetBlocksOfTaskQueryItems(dbContext, taskDefinition.TaskDefinitionId,
+                else blocksOfTaskQueryParams = new BlocksOfTaskQueryParams();
+                var items = await BlocksOfTaskQueryBuilder.GetBlocksOfTaskQueryItems(dbContext,
+                    taskDefinition.TaskDefinitionId,
                     blocksOfTaskRequest.ReferenceValueOfTask, query(blocksOfTaskQueryParams));
-
-                foreach (var reader in items)
-                {
-                    var blockType = (BlockType)reader.BlockType;
-                    if (blockType != blocksOfTaskRequest.BlockType)
-                        throw GetBlockTypeException(blocksOfTaskRequest, blockType);
-
-
-                    var listBlock = new ProtoListBlock();
-                    listBlock.ListBlockId = reader.BlockId;
-                    listBlock.Attempt = reader.Attempt;
-                    listBlock.Header =
-                        SerializedValueReader.ReadValueAsString(reader, i => i.ObjectData,
-                            i => i.CompressedObjectData);
-
-                    results.Add(listBlock);
-                }
+                var results = GetListBlocks(blocksOfTaskRequest, items);
+                return results;
+                ;
             }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
-
-            throw;
-        }
-
-        return results;
+        });
     }
+
 
     private async Task<long> AddNewListBlockAsync(TaskId taskId, int taskDefinitionId, string header,
         int compressionThreshold)
@@ -432,7 +360,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
             compressedData = LargeValueCompressor.Zip(header);
         }
 
-        try
+        return await RetryHelper.WithRetry(async (transactionScope) =>
         {
             using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
 
@@ -460,26 +388,19 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
 
                 return block.BlockId;
             }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
-
-            throw;
-        }
+        });
     }
 
     private async Task AddListBlockItemsAsync(long blockId, ListBlockCreateRequest createRequest)
     {
-        using (var dbContext = await GetDbContextAsync(createRequest.TaskId).ConfigureAwait(false))
-
+        await RetryHelper.WithRetry(async (transactionScope) =>
         {
-            var transaction = await dbContext.Database.BeginTransactionAsync();
+            using (var dbContext = await GetDbContextAsync(createRequest.TaskId).ConfigureAwait(false))
 
-
-            try
             {
+                 
+
+
                 foreach (var value in (List<string>)createRequest.SerializedValues)
                 {
                     var item = new ListBlockItem
@@ -507,17 +428,9 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
                 await dbContext.SaveChangesAsync().ConfigureAwait(false);
 
 
-                await transaction.CommitAsync();
+                
             }
-            catch (SqlException sqlEx)
-            {
-                TryRollBack(transaction, sqlEx);
-            }
-            catch (Exception ex)
-            {
-                TryRollback(transaction, ex);
-            }
-        }
+        });
     }
 
     #endregion .: List Blocks :.
@@ -536,7 +449,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
             compressedData = LargeValueCompressor.Zip(jsonValue);
         }
 
-        try
+        return await RetryHelper.WithRetry(async (transactionScope) =>
         {
             using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
 
@@ -564,127 +477,86 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
 
                 return block.BlockId;
             }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
-
-            throw;
-        }
+        });
     }
 
-   
-    private async Task<IList<ObjectBlock<T>>> FindDeadObjectBlocksAsync<T>(FindDeadBlocksRequest deadBlocksRequest,
-        string query)
+
+    private async Task<IList<ObjectBlock<T>>> FindSearchableObjectBlocksAsync<T>(
+        ISearchableBlockRequest deadBlocksRequest,
+        BlockItemDelegateRunner blockItemDelegateRunner)
     {
-        var results = new List<ObjectBlock<T>>();
-        var taskDefinition =
-            await _taskRepository.EnsureTaskDefinitionAsync(deadBlocksRequest.TaskId).ConfigureAwait(false);
-
-        try
+        return await RetryHelper.WithRetry(async (transactionScope) =>
         {
-            using (var connection = await CreateNewConnectionAsync(deadBlocksRequest.TaskId).ConfigureAwait(false))
+            var results = new List<ObjectBlock<T>>();
+            var taskDefinition =
+                await _taskRepository.EnsureTaskDefinitionAsync(deadBlocksRequest.TaskId).ConfigureAwait(false);
+            using (var dbContext = await GetDbContextAsync(deadBlocksRequest.TaskId).ConfigureAwait(false))
             {
-                var command = connection.CreateCommand();
-                command.CommandText = query;
-                command.CommandTimeout =
-                    ConnectionStore.Instance.GetConnection(deadBlocksRequest.TaskId).QueryTimeoutSeconds;
-                command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinition.TaskDefinitionId;
-                command.Parameters.Add("@SearchPeriodBegin", SqlDbType.DateTime).Value =
-                    deadBlocksRequest.SearchPeriodBegin;
-                command.Parameters.Add("@SearchPeriodEnd", SqlDbType.DateTime).Value =
-                    deadBlocksRequest.SearchPeriodEnd;
-                command.Parameters.Add("@AttemptLimit", SqlDbType.Int).Value =
-                    deadBlocksRequest.RetryLimit + 1; // RetryLimit + 1st attempt
+                var items = await GetBlockQueryItems(deadBlocksRequest, blockItemDelegateRunner, taskDefinition,
+                    dbContext);
 
-                using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
-                {
-                    while (await reader.ReadAsync().ConfigureAwait(false))
-                    {
-                        var blockType = (BlockType)reader.GetInt32("BlockType");
-                        if (blockType == deadBlocksRequest.BlockType)
-                        {
-                            var objectBlock = new ObjectBlock<T>();
-                            objectBlock.ObjectBlockId = reader.GetInt64("BlockId");
-                            objectBlock.Attempt = reader.GetInt32("Attempt");
-                            objectBlock.Object =
-                                SerializedValueReader.ReadValue<T>(reader, "ObjectData", "CompressedObjectData");
-
-                            results.Add(objectBlock);
-                        }
-                        else
-                        {
-                            throw new NotSupportedException(UnexpectedBlockTypeMessage);
-                        }
-                    }
-                }
-            }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
-
-            throw;
-        }
-
-        return results;
-    }
-
-    private async Task<IList<ObjectBlock<T>>> FindObjectBlocksOfTaskAsync<T>(
-        FindBlocksOfTaskRequest blocksOfTaskRequest,
-        Func<BlocksOfTaskQueryBuilder.BlocksOfTaskQueryParams, Expression<Func<BlocksOfTaskQueryBuilder.BlocksOfTaskQueryItem, bool>>> query,
-        ReprocessOption reprocessOption)
-    {
-        var results = new List<ObjectBlock<T>>();
-        var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(blocksOfTaskRequest.TaskId)
-            .ConfigureAwait(false);
-
-        try
-        {
-            using (var dbContext = await GetDbContextAsync(blocksOfTaskRequest.TaskId).ConfigureAwait(false))
-            {
-                var blockOfTypeQueryParams = new BlocksOfTaskQueryBuilder.BlocksOfTaskQueryParams();
-
-
-                if (reprocessOption == ReprocessOption.PendingOrFailed)
-                {
-                    blockOfTypeQueryParams.NotStarted = (int)BlockExecutionStatus.NotStarted;
-                    blockOfTypeQueryParams.Started = (int)BlockExecutionStatus.Started;
-                    blockOfTypeQueryParams.Failed = (int)BlockExecutionStatus.Failed;
-                }
-
-                var items = await BlocksOfTaskQueryBuilder.GetBlocksOfTaskQueryItems(dbContext, taskDefinition.TaskDefinitionId,
-                    blocksOfTaskRequest.ReferenceValueOfTask, query(blockOfTypeQueryParams)).ConfigureAwait(false);
 
                 foreach (var item in items)
                 {
                     var blockType = (BlockType)item.BlockType;
-                    if (blockType != blocksOfTaskRequest.BlockType)
-                        throw new ExecutionException(
-                            "The block with this reference value is of a different BlockType. BlockType resuested: " +
-                            blocksOfTaskRequest.BlockType + " BlockType found: " + blockType);
+                    if (blockType == deadBlocksRequest.BlockType)
+                    {
+                        var objectBlock = new ObjectBlock<T>();
+                        objectBlock.ObjectBlockId = item.BlockId;
+                        objectBlock.Attempt = item.Attempt;
+                        objectBlock.Object =
+                            SerializedValueReader.ReadValue<T>(item.ObjectData, item.CompressedObjectData);
 
-                    var objectBlock = new ObjectBlock<T>();
-                    objectBlock.ObjectBlockId = item.BlockId;
-                    objectBlock.Attempt = item.Attempt;
-                    objectBlock.Object =
-                        SerializedValueReader.ReadValue<T>(item.ObjectData, item.CompressedObjectData);
-
-                    results.Add(objectBlock);
+                        results.Add(objectBlock);
+                    }
+                    else
+                    {
+                        throw new NotSupportedException(UnexpectedBlockTypeMessage);
+                    }
                 }
             }
-        }
-        catch (SqlException sqlEx)
+
+            return results;
+        });
+    }
+
+    private static async Task<List<BlockQueryItem>> GetBlockQueryItems(ISearchableBlockRequest searchableBlockRequest,
+        BlockItemDelegateRunner blockItemDelegateRunner,
+        TaskDefinition taskDefinition, TasklingDbContext dbContext)
+    {
+        var items = await blockItemDelegateRunner
+            .Execute(dbContext, searchableBlockRequest, taskDefinition.TaskDefinitionId).ConfigureAwait(false);
+        return items;
+    }
+
+    private async Task<IList<ObjectBlock<T>>> FindObjectBlocksOfTaskAsync<T>(
+        FindBlocksOfTaskRequest blocksOfTaskRequest,
+        Func<BlocksOfTaskQueryParams,
+            Expression<Func<BlockQueryItem, bool>>> query,
+        ReprocessOption reprocessOption)
+    {
+        return await RetryHelper.WithRetry(async (transactionScope) =>
         {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
+            var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(blocksOfTaskRequest.TaskId)
+                .ConfigureAwait(false);
+            using (var dbContext = await GetDbContextAsync(blocksOfTaskRequest.TaskId).ConfigureAwait(false))
+            {
+                var blockOfTypeQueryParams = new BlocksOfTaskQueryParams();
 
-            throw;
-        }
 
-        return results;
+                if (reprocessOption == ReprocessOption.PendingOrFailed)
+                    blockOfTypeQueryParams.StatusesToMatch = new List<int>
+                    {
+                        (int)BlockExecutionStatus.Started, (int)BlockExecutionStatus.NotStarted,
+                        (int)BlockExecutionStatus.Failed
+                    };
+
+                var items = await BlocksOfTaskQueryBuilder.GetBlocksOfTaskQueryItems(dbContext,
+                    taskDefinition.TaskDefinitionId,
+                    blocksOfTaskRequest.ReferenceValueOfTask, query(blockOfTypeQueryParams)).ConfigureAwait(false);
+                return GetObjectBlocks<T, BlockQueryItem>(blocksOfTaskRequest, items);
+            }
+        });
     }
 
     #endregion .: Object Blocks :.
@@ -706,18 +578,18 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
     private async Task<IList<ForcedRangeBlockQueueItem>> GetForcedRangeBlocksAsync(
         QueuedForcedBlocksRequest queuedForcedBlocksRequest)
     {
-        var results = new List<ForcedRangeBlockQueueItem>();
-        var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(queuedForcedBlocksRequest.TaskId)
-            .ConfigureAwait(false);
-
-        try
+        return await RetryHelper.WithRetry(async (transactionScope) =>
         {
+            var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(queuedForcedBlocksRequest.TaskId)
+                .ConfigureAwait(false);
+
             using (var dbContext = await GetDbContextAsync(queuedForcedBlocksRequest.TaskId))
 
             {
-                var items = await ForcedBlockQueueQueryBuilder.GetForcedBlockQueueQueryItems(dbContext, taskDefinition.TaskDefinitionId,
+                var items = await ForcedBlockQueueQueryBuilder.GetForcedBlockQueueQueryItems(dbContext,
+                    taskDefinition.TaskDefinitionId,
                     queuedForcedBlocksRequest.BlockType).ConfigureAwait(false);
-
+                var results = new List<ForcedRangeBlockQueueItem>();
                 foreach (var item in items)
                 {
                     var blockType = (BlockType)item.BlockType;
@@ -762,33 +634,26 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
                         throw GetBlockTypeException(queuedForcedBlocksRequest, blockType);
                     }
                 }
+
+                return results;
             }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
-
-            throw;
-        }
-
-        return results;
+        });
     }
 
     private async Task<IList<ForcedListBlockQueueItem>> GetForcedListBlocksAsync(
         QueuedForcedBlocksRequest queuedForcedBlocksRequest)
     {
-        var results = new List<ForcedListBlockQueueItem>();
-        var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(queuedForcedBlocksRequest.TaskId)
-            .ConfigureAwait(false);
-
-        try
+        return await RetryHelper.WithRetry(async (transactionScope) =>
         {
+            var results = new List<ForcedListBlockQueueItem>();
+            var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(queuedForcedBlocksRequest.TaskId)
+                .ConfigureAwait(false);
             using (var dbContext = await GetDbContextAsync(queuedForcedBlocksRequest.TaskId).ConfigureAwait(false))
 
 
             {
-                var items = await ForcedBlockQueueQueryBuilder.GetForcedBlockQueueQueryItems(dbContext, taskDefinition.TaskDefinitionId,
+                var items = await ForcedBlockQueueQueryBuilder.GetForcedBlockQueueQueryItems(dbContext,
+                    taskDefinition.TaskDefinitionId,
                     queuedForcedBlocksRequest.BlockType).ConfigureAwait(false);
 
                 foreach (var item in items)
@@ -823,32 +688,26 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
                     }
                 }
             }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
 
-            throw;
-        }
-
-        return results;
+            return results;
+        });
     }
 
     private async Task<IList<ForcedObjectBlockQueueItem<T>>> GetForcedObjectBlocksAsync<T>(
         QueuedForcedBlocksRequest queuedForcedBlocksRequest)
     {
-        var results = new List<ForcedObjectBlockQueueItem<T>>();
-        var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(queuedForcedBlocksRequest.TaskId)
-            .ConfigureAwait(false);
-
-        try
+        return await RetryHelper.WithRetry(async (transactionScope) =>
         {
+            var results = new List<ForcedObjectBlockQueueItem<T>>();
+            var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(queuedForcedBlocksRequest.TaskId)
+                .ConfigureAwait(false);
+
             using (var dbContext = await GetDbContextAsync(queuedForcedBlocksRequest.TaskId).ConfigureAwait(false))
 
 
             {
-                var items = await ForcedBlockQueueQueryBuilder.GetForcedBlockQueueQueryItems(dbContext, taskDefinition.TaskDefinitionId,
+                var items = await ForcedBlockQueueQueryBuilder.GetForcedBlockQueueQueryItems(dbContext,
+                    taskDefinition.TaskDefinitionId,
                     queuedForcedBlocksRequest.BlockType).ConfigureAwait(false);
 
 
@@ -882,30 +741,23 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
                     }
                 }
             }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
 
-            throw;
-        }
-
-        return results;
+            return results;
+        });
     }
 
-    private static ExecutionException GetBlockTypeException(BlockRequestBase queuedForcedBlocksRequest,
+    private static ExecutionException GetBlockTypeException(IBlockRequest blockTypedRequest,
         BlockType blockType)
     {
         return new ExecutionException(
             @"The block type of the process does not match the block type of the queued item. 
 This could occur if the block type of the process has been changed during a new development. Expected: " +
-            queuedForcedBlocksRequest.BlockType + " but queued block is: " + blockType);
+            blockTypedRequest.BlockType + " but queued block is: " + blockType);
     }
 
     private async Task UpdateForcedBlocksAsync(DequeueForcedBlocksRequest dequeueForcedBlocksRequest)
     {
-        try
+        await RetryHelper.WithRetry(async (transactionScope) =>
         {
             using (var dbContext = await GetDbContextAsync(dequeueForcedBlocksRequest.TaskId).ConfigureAwait(false))
             {
@@ -920,31 +772,15 @@ This could occur if the block type of the process has been changed during a new 
 
                 await dbContext.SaveChangesAsync().ConfigureAwait(false);
             }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
-
-            throw;
-        }
+        });
     }
 
     #endregion .: Force Block Queue :.
 
 
-    private DateTime EnsureSqlSafeDateTime(DateTime dateTime)
-    {
-        if (dateTime.Year < 1900)
-            return new DateTime(1900, 1, 1);
-
-        return dateTime;
-    }
-
     private async Task<long> AddBlockExecutionAsync(BlockExecutionCreateRequest executionCreateRequest)
     {
-        long blockExecutionId = 0;
-        try
+        return await RetryHelper.WithRetry(async (transactionScope) =>
         {
             using (var dbContext = await GetDbContextAsync(executionCreateRequest.TaskId).ConfigureAwait(false))
 
@@ -961,19 +797,8 @@ This could occur if the block type of the process has been changed during a new 
                 await dbContext.SaveChangesAsync().ConfigureAwait(false);
                 return blockExecution.BlockExecutionId;
             }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
-
-            throw;
-        }
-
-        return blockExecutionId;
+        });
     }
 
     #endregion .: Private Methods :.
-
-  
 }

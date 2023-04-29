@@ -25,13 +25,13 @@ public class ObjectBlockRepository : DbOperationsService, IObjectBlockRepository
         await ChangeStatusOfExecutionAsync(changeStatusRequest).ConfigureAwait(false);
     }
 
-    public async Task<ObjectBlock<T>> GetLastObjectBlockAsync<T>(LastBlockRequest lastRangeBlockRequest)
+    public async Task<ObjectBlock<T>?> GetLastObjectBlockAsync<T>(LastBlockRequest lastRangeBlockRequest)
     {
-        var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(lastRangeBlockRequest.TaskId)
-            .ConfigureAwait(false);
 
-        try
+        return await RetryHelper.WithRetry(async (transactionScope) =>
         {
+            var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(lastRangeBlockRequest.TaskId)
+                .ConfigureAwait(false);
             using (var dbContext = await GetDbContextAsync(lastRangeBlockRequest.TaskId).ConfigureAwait(false))
             {
                 var blockData = await dbContext.Blocks.Where(i => i.TaskDefinitionId == taskDefinition.TaskDefinitionId && i.IsPhantom == false)
@@ -50,22 +50,18 @@ public class ObjectBlockRepository : DbOperationsService, IObjectBlockRepository
                     };
                 }
             }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
 
-            throw;
-        }
+            return null;
+        });
 
-        return null;
+
+
     }
 
 
     private async Task ChangeStatusOfExecutionAsync(BlockExecutionChangeStatusRequest changeStatusRequest)
     {
-        try
+        await RetryHelper.WithRetry(async (transactionScope) =>
         {
             using (var dbContext = await GetDbContextAsync(changeStatusRequest.TaskId))
             {
@@ -89,13 +85,8 @@ public class ObjectBlockRepository : DbOperationsService, IObjectBlockRepository
                     await dbContext.SaveChangesAsync().ConfigureAwait(false);
                 }
             }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
 
-            throw;
-        }
+        });
+
     }
 }

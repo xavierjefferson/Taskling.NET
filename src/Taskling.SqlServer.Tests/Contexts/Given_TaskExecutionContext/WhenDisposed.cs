@@ -6,7 +6,7 @@ using Taskling.SqlServer.Tokens.Executions;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_TaskExecutionContext;
-
+[Collection(Constants.CollectionName)]
 public class WhenDisposed
 {
     public WhenDisposed()

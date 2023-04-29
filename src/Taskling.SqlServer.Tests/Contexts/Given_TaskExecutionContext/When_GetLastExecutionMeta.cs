@@ -5,7 +5,7 @@ using Xunit;
 using TaskExecutionStatus = Taskling.Tasks.TaskExecutionStatus;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_TaskExecutionContext;
-
+[Collection(Constants.CollectionName)]
 public class When_GetLastExecutionMeta
 {
     private readonly int _taskDefinitionId;

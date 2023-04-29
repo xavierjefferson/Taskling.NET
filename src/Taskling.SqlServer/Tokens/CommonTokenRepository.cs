@@ -9,15 +9,34 @@ public class CommonTokenRepository : ICommonTokenRepository
     public async Task AcquireRowLockAsync(int taskDefinitionId, int taskExecutionId,
         TasklingDbContext dbContext)
     {
-        var taskDefinitions =
-            await dbContext.TaskDefinitions.Where(i => i.TaskDefinitionId == taskDefinitionId).ToListAsync();
-        foreach (var taskDefinition in taskDefinitions)
+        try
         {
-            taskDefinition.HoldLockTaskExecutionId = taskExecutionId;
-            dbContext.TaskDefinitions.Update(taskDefinition);
+            var exampleEntity =
+                dbContext.TaskDefinitions.Attach(new TaskDefinition { TaskDefinitionId = taskDefinitionId });
+            exampleEntity.Entity.HoldLockTaskExecutionId = taskExecutionId;
+            exampleEntity.Property(i => i.HoldLockTaskExecutionId).IsModified = true;
+            await dbContext.SaveChangesAsync();
+            exampleEntity.State = EntityState.Detached;
         }
+        catch (DbUpdateException)
+        {
+            //do nothing
+        }
+        //exampleEntity.ExampleProperty = "abc";
+        //dbcontext.Entry<TaskDefinition>(exampleEntity).Property(ee => ee.ExampleProperty).IsModified = true;
+        //dbcontext.Configuration.ValidateOnSaveEnabled = false;
+        //dbcontext.SaveChanges();
 
-        await dbContext.SaveChangesAsync();
+
+        //var taskDefinitions =
+        //    await dbContext.TaskDefinitions.Where(i => i.TaskDefinitionId == taskDefinitionId).ToListAsync();
+        //foreach (var taskDefinition in taskDefinitions)
+        //{
+        //    taskDefinition.HoldLockTaskExecutionId = taskExecutionId;
+        //    dbContext.TaskDefinitions.Update(taskDefinition);
+        //}
+
+        //await dbContext.SaveChangesAsync();
     }
 
     public async Task<List<TaskExecutionState>> GetTaskExecutionStatesAsync(List<int> taskExecutionIds,

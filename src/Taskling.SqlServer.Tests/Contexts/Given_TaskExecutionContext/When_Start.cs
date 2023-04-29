@@ -6,7 +6,7 @@ using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_TaskExecutionContext;
-
+[Collection(Constants.CollectionName)]
 public class When_Start
 {
     private readonly int _taskDefinitionId;

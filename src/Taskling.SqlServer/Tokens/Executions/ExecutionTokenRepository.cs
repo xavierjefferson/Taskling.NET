@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.AncilliaryServices;
+using Taskling.SqlServer.Blocks;
 using Taskling.SqlServer.Configuration;
 using Taskling.SqlServer.Models;
 
@@ -20,16 +21,16 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
 
     public async Task<TokenResponse> TryAcquireExecutionTokenAsync(TokenRequest tokenRequest)
     {
-        var response = new TokenResponse();
-        response.StartedAt = DateTime.UtcNow;
-
-        using (var dbContext = await GetDbContextAsync(tokenRequest.TaskId))
+        return await RetryHelper.WithRetry(async (transactionScope) =>
         {
-            using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            var response = new TokenResponse();
+            response.StartedAt = DateTime.UtcNow;
 
-
-            try
+            using (var dbContext = await GetDbContextAsync(tokenRequest.TaskId))
             {
+                
+
+
                 await AcquireRowLockAsync(tokenRequest.TaskDefinitionId, tokenRequest.TaskExecutionId,
                         dbContext)
                     .ConfigureAwait(false);
@@ -53,49 +54,33 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
                 if (adjusted)
                     await PersistTokensAsync(tokenRequest.TaskDefinitionId, tokens, dbContext).ConfigureAwait(false);
 
-                await transaction.CommitAsync();
+                
                 return response;
+
             }
-            catch (SqlException sqlEx)
-            {
-                TryRollBack(transaction, sqlEx);
-                throw;
-            }
-            catch (Exception ex)
-            {
-                TryRollback(transaction, ex);
-                throw;
-            }
-        }
+        });
+
     }
 
     public async Task ReturnExecutionTokenAsync(TokenRequest tokenRequest, Guid executionTokenId)
     {
-        using (var dbContext = await GetDbContextAsync(tokenRequest.TaskId).ConfigureAwait(false))
-        {
-            using (var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable))
-            {
-                try
-                {
-                    await AcquireRowLockAsync(tokenRequest.TaskDefinitionId, tokenRequest.TaskExecutionId,
-                            dbContext)
-                        .ConfigureAwait(false);
-                    var tokens = await GetTokensAsync(tokenRequest.TaskDefinitionId, dbContext)
-                        .ConfigureAwait(false);
-                    SetTokenAsAvailable(tokens, executionTokenId);
-                    await PersistTokensAsync(tokenRequest.TaskDefinitionId, tokens, dbContext).ConfigureAwait(false);
-                    await transaction.CommitAsync();
-                }
-                catch (SqlException sqlEx)
-                {
-                    TryRollBack(transaction, sqlEx);
-                }
-                catch (Exception ex)
-                {
-                    TryRollback(transaction, ex);
-                }
-            }
-        }
+        await RetryHelper.WithRetry(async (transactionScope) =>
+       {
+           using (var dbContext = await GetDbContextAsync(tokenRequest.TaskId).ConfigureAwait(false))
+           {
+              
+                   
+                       await AcquireRowLockAsync(tokenRequest.TaskDefinitionId, tokenRequest.TaskExecutionId,
+                                dbContext)
+                            .ConfigureAwait(false);
+                       var tokens = await GetTokensAsync(tokenRequest.TaskDefinitionId, dbContext)
+                            .ConfigureAwait(false);
+                       SetTokenAsAvailable(tokens, executionTokenId);
+                       await PersistTokensAsync(tokenRequest.TaskDefinitionId, tokens, dbContext).ConfigureAwait(false);
+                      
+           }
+       }, 10, 60000, 1000);
+
     }
 
 

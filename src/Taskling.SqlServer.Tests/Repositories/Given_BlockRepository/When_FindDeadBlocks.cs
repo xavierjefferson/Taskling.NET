@@ -5,12 +5,13 @@ using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.SqlServer.Blocks;
 using Taskling.SqlServer.Tasks;
+using Taskling.SqlServer.Tests.Contexts.Given_ObjectBlockContext;
 using Taskling.SqlServer.Tests.Helpers;
 using Taskling.Tasks;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
-
+[Collection(Constants.CollectionName)]
 public class When_FindDeadBlocks
 {
     private readonly TimeSpan FiveMinuteSpan = new(0, 5, 0);

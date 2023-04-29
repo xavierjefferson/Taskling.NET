@@ -11,6 +11,7 @@ using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_ObjectBlockContext;
 
+[Collection(Constants.CollectionName)]
 public class When_GetObjectBlocksFromExecutionContext
 {
     private readonly BlocksHelper _blocksHelper;
@@ -97,8 +98,8 @@ public class When_GetObjectBlocksFromExecutionContext
                 Assert.Equal(0, _blocksHelper.GetBlockCount(TestConstants.ApplicationName, TestConstants.TaskName));
 
                 var lastEvent = _executionHelper.GetLastEvent(_taskDefinitionId);
-                Assert.Equal(EventType.CheckPoint, lastEvent.Item1);
-                Assert.Equal("No values for generate the block. Emtpy Block context returned.", lastEvent.Item2);
+                Assert.Equal(EventType.CheckPoint, lastEvent.EventType);
+                Assert.Equal("No values for generate the block. Emtpy Block context returned.", lastEvent.Message);
             }
         }
     }

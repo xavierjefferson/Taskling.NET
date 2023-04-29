@@ -6,6 +6,7 @@ using Taskling.Exceptions;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.AncilliaryServices;
+using Taskling.SqlServer.Blocks;
 using Taskling.SqlServer.Events;
 using Taskling.SqlServer.Models;
 using Taskling.SqlServer.TaskExecution.QueryBuilders;
@@ -88,84 +89,92 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
 
     private async Task UpdateTaskExecution(Action<Models.TaskExecution> action, int taskExecutionId, TaskId taskId)
     {
-        var c = taskExecutionId;
-        using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
+        await RetryHelper.WithRetry(async (transactionScope) =>
         {
-            var taskExecutions = await dbContext.TaskExecutions
-                .Where(i => i.TaskExecutionId == taskExecutionId)
-                .ToListAsync().ConfigureAwait(false);
-            foreach (var taskExecution in taskExecutions)
-            {
-                action(taskExecution);
-                dbContext.TaskExecutions.Update(taskExecution);
-            }
 
-            await dbContext.SaveChangesAsync().ConfigureAwait(false);
-        }
+            using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
+            {
+                var taskExecutions = await dbContext.TaskExecutions
+                    .Where(i => i.TaskExecutionId == taskExecutionId)
+                    .ToListAsync().ConfigureAwait(false);
+                foreach (var taskExecution in taskExecutions)
+                {
+                    action(taskExecution);
+                    dbContext.TaskExecutions.Update(taskExecution);
+                }
+
+                await dbContext.SaveChangesAsync().ConfigureAwait(false);
+            }
+        });
+
     }
 
     public async Task<TaskExecutionMetaResponse> GetLastExecutionMetasAsync(
         TaskExecutionMetaRequest taskExecutionMetaRequest)
     {
-        var response = new TaskExecutionMetaResponse();
-        var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(taskExecutionMetaRequest.TaskId)
-            .ConfigureAwait(false);
-        using (var dbContext = await GetDbContextAsync(taskExecutionMetaRequest.TaskId))
-
+        return await RetryHelper.WithRetry(async (transactionScope) =>
         {
-            var items = await dbContext.TaskExecutions.Where(i => i.TaskDefinitionId == taskDefinition.TaskDefinitionId)
-                .Take(taskExecutionMetaRequest.ExecutionsToRetrieve).OrderByDescending(i => i.TaskExecutionId).ToListAsync()
+            var response = new TaskExecutionMetaResponse();
+            var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(taskExecutionMetaRequest.TaskId)
                 .ConfigureAwait(false);
-
-
-            var now = DateTime.UtcNow;
+            using (var dbContext = await GetDbContextAsync(taskExecutionMetaRequest.TaskId))
 
             {
-                foreach (var reader in items)
+                var items = await dbContext.TaskExecutions.Where(i => i.TaskDefinitionId == taskDefinition.TaskDefinitionId)
+                    .Take(taskExecutionMetaRequest.ExecutionsToRetrieve).OrderByDescending(i => i.TaskExecutionId).ToListAsync()
+                    .ConfigureAwait(false);
+
+
+                var now = DateTime.UtcNow;
+
                 {
-                    var executionMeta = new TaskExecutionMetaItem();
-                    executionMeta.StartedAt = reader.StartedAt;
-
-                    if (reader.CompletedAt != null)
+                    foreach (var reader in items)
                     {
-                        executionMeta.CompletedAt = reader.CompletedAt;
+                        var executionMeta = new TaskExecutionMetaItem();
+                        executionMeta.StartedAt = reader.StartedAt;
 
-                        var failed = reader.Failed;
-                        var blocked = reader.Blocked;
-
-                        if (failed)
-                            executionMeta.Status = TaskExecutionStatus.Failed;
-                        else if (blocked)
-                            executionMeta.Status = TaskExecutionStatus.Blocked;
-                        else
-                            executionMeta.Status = TaskExecutionStatus.Completed;
-                    }
-                    else
-                    {
-                        var taskDeathMode = (TaskDeathMode)reader.TaskDeathMode;
-                        if (taskDeathMode == TaskDeathMode.KeepAlive)
+                        if (reader.CompletedAt != null)
                         {
-                            var lastKeepAlive = reader.LastKeepAlive;
-                            var keepAliveThreshold = reader.KeepAliveDeathThreshold;
-                            var dbServerUtcNow = now;
+                            executionMeta.CompletedAt = reader.CompletedAt;
 
-                            var timeSinceLastKeepAlive = dbServerUtcNow - lastKeepAlive;
-                            if (timeSinceLastKeepAlive > keepAliveThreshold)
-                                executionMeta.Status = TaskExecutionStatus.Dead;
+                            var failed = reader.Failed;
+                            var blocked = reader.Blocked;
+
+                            if (failed)
+                                executionMeta.Status = TaskExecutionStatus.Failed;
+                            else if (blocked)
+                                executionMeta.Status = TaskExecutionStatus.Blocked;
                             else
-                                executionMeta.Status = TaskExecutionStatus.InProgress;
+                                executionMeta.Status = TaskExecutionStatus.Completed;
                         }
+                        else
+                        {
+                            var taskDeathMode = (TaskDeathMode)reader.TaskDeathMode;
+                            if (taskDeathMode == TaskDeathMode.KeepAlive)
+                            {
+                                var lastKeepAlive = reader.LastKeepAlive;
+                                var keepAliveThreshold = reader.KeepAliveDeathThreshold;
+                                var dbServerUtcNow = now;
+
+                                var timeSinceLastKeepAlive = dbServerUtcNow - lastKeepAlive;
+                                if (timeSinceLastKeepAlive > keepAliveThreshold)
+                                    executionMeta.Status = TaskExecutionStatus.Dead;
+                                else
+                                    executionMeta.Status = TaskExecutionStatus.InProgress;
+                            }
+                        }
+
+
+                        executionMeta.Header = reader.ExecutionHeader;
+                        executionMeta.ReferenceValue = reader.ReferenceValue;
+                        response.Executions.Add(executionMeta);
                     }
-
-
-                    executionMeta.Header = reader.ExecutionHeader;
-                    executionMeta.ReferenceValue = reader.ReferenceValue;
-                    response.Executions.Add(executionMeta);
                 }
             }
-        }
 
-        return response;
+            return response;
+        });
+
     }
 
 

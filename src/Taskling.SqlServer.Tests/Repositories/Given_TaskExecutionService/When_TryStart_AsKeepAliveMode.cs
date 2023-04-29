@@ -8,6 +8,7 @@ using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Events;
 using Taskling.SqlServer.TaskExecution;
 using Taskling.SqlServer.Tasks;
+using Taskling.SqlServer.Tests.Contexts.Given_ObjectBlockContext;
 using Taskling.SqlServer.Tests.Helpers;
 using Taskling.SqlServer.Tokens;
 using Taskling.SqlServer.Tokens.Executions;
@@ -15,7 +16,7 @@ using Taskling.Tasks;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_TaskExecutionService;
-
+[Collection(Constants.CollectionName)]
 public class When_TryStart_AsKeepAliveMode
 {
     public When_TryStart_AsKeepAliveMode()
@@ -363,7 +364,7 @@ public class When_TryStart_AsKeepAliveMode
         // ARRANGE
         var executionHelper = new ExecutionsHelper();
         var taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        executionHelper.InsertExecutionToken(taskDefinitionId, new List<Tuple<ExecutionTokenStatus, int>>
+        executionHelper.InsertExecutionToken(taskDefinitionId, new List<Execinfo>
         {
             new(ExecutionTokenStatus.Unavailable, 0),
             new(ExecutionTokenStatus.Available, 1)
@@ -390,7 +391,7 @@ public class When_TryStart_AsKeepAliveMode
         // ARRANGE
         var executionHelper = new ExecutionsHelper();
         var taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        executionHelper.InsertExecutionToken(taskDefinitionId, new List<Tuple<ExecutionTokenStatus, int>>
+        executionHelper.InsertExecutionToken(taskDefinitionId, new List<Execinfo>
         {
             new(ExecutionTokenStatus.Unavailable, 0),
             new(ExecutionTokenStatus.Unavailable, 1)

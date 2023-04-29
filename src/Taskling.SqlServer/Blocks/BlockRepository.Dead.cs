@@ -1,5 +1,4 @@
-﻿using System.Data;
-using System.Data.SqlClient;
+﻿using System.Data.SqlClient;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ObjectBlocks;
 using Taskling.Blocks.RangeBlocks;
@@ -7,7 +6,7 @@ using Taskling.Exceptions;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.Blocks.ListBlocks;
 using Taskling.SqlServer.AncilliaryServices;
-using Taskling.SqlServer.Blocks.Serialization;
+using Taskling.SqlServer.Blocks.QueryBuilders;
 using Taskling.Tasks;
 
 namespace Taskling.SqlServer.Blocks;
@@ -16,179 +15,90 @@ public partial class BlockRepository
 {
     public async Task<IList<ProtoListBlock>> FindDeadListBlocksAsync(FindDeadBlocksRequest deadBlocksRequest)
     {
-        if (deadBlocksRequest.BlockType == BlockType.List)
-        {
-            var query = string.Empty;
-            if (deadBlocksRequest.TaskDeathMode == TaskDeathMode.KeepAlive)
-                query = DeadBlocksQueryBuilder.GetFindDeadListBlocksWithKeepAliveQuery(
-                    deadBlocksRequest.BlockCountLimit);
-            else
-                query = DeadBlocksQueryBuilder.GetFindDeadListBlocksQuery(deadBlocksRequest.BlockCountLimit);
-
-            return await FindDeadListBlocksAsync(deadBlocksRequest, query).ConfigureAwait(false);
-        }
-
-        throw new NotSupportedException(UnexpectedBlockTypeMessage);
+        var funcRunner = GetDeadBlockFuncRunner(deadBlocksRequest, BlockType.List);
+        return await FindSearchableListBlocksAsync(deadBlocksRequest, funcRunner).ConfigureAwait(false);
     }
 
     public async Task<IList<RangeBlock>> FindDeadRangeBlocksAsync(FindDeadBlocksRequest deadBlocksRequest)
     {
-        var query = string.Empty;
-        switch (deadBlocksRequest.BlockType)
-        {
-            case BlockType.DateRange:
-                if (deadBlocksRequest.TaskDeathMode == TaskDeathMode.KeepAlive)
-                    query = DeadBlocksQueryBuilder.GetFindDeadDateRangeBlocksWithKeepAliveQuery(deadBlocksRequest
-                        .BlockCountLimit);
-                else
-                    query = DeadBlocksQueryBuilder.GetFindDeadDateRangeBlocksQuery(deadBlocksRequest.BlockCountLimit);
-                break;
-            case BlockType.NumericRange:
-                if (deadBlocksRequest.TaskDeathMode == TaskDeathMode.KeepAlive)
-                    query = DeadBlocksQueryBuilder.GetFindDeadNumericRangeBlocksWithKeepAliveQuery(deadBlocksRequest
-                        .BlockCountLimit);
-                else
-                    query = DeadBlocksQueryBuilder.GetFindDeadNumericRangeBlocksQuery(deadBlocksRequest
-                        .BlockCountLimit);
-                break;
-            default:
-                throw new NotSupportedException("This range type is not supported");
-        }
-
-        return await FindDeadDateRangeBlocksAsync(deadBlocksRequest, query).ConfigureAwait(false);
+        var funcRunner = GetDeadBlockFuncRunner(deadBlocksRequest, deadBlocksRequest.BlockType);
+        return await FindSearchableDateRangeBlocksAsync(deadBlocksRequest, funcRunner).ConfigureAwait(false);
     }
 
     public async Task<IList<ObjectBlock<T>>> FindDeadObjectBlocksAsync<T>(FindDeadBlocksRequest deadBlocksRequest)
     {
-        if (deadBlocksRequest.BlockType == BlockType.Object)
+        var funcRunner = GetDeadBlockFuncRunner(deadBlocksRequest, BlockType.Object);
+        return await FindSearchableObjectBlocksAsync<T>(deadBlocksRequest, funcRunner).ConfigureAwait(false);
+    }
+
+    private static BlockItemDelegateRunner GetFailedBlockFuncRunner(FindFailedBlocksRequest failedBlocksRequest, BlockType blockType)
+    {
+        BlockItemDelegateRunner query;
+        ;
+        if (failedBlocksRequest.BlockType == blockType)
+            query = new BlockItemDelegateRunner(failedBlocksRequest
+                .BlockCountLimit, FailedBlocksQueryBuilder.GetFindFailedBlocksQuery, blockType);
+        else
+            throw new NotSupportedException(UnexpectedBlockTypeMessage);
+
+        return query;
+    }
+
+    private static BlockItemDelegateRunner GetDeadBlockFuncRunner(FindDeadBlocksRequest deadBlocksRequest, BlockType blockType)
+    {
+        BlockItemDelegateRunner query;
+        ;
+        if (deadBlocksRequest.BlockType == blockType)
         {
-            var query = string.Empty;
             if (deadBlocksRequest.TaskDeathMode == TaskDeathMode.KeepAlive)
-                query = DeadBlocksQueryBuilder.GetFindDeadObjectBlocksWithKeepAliveQuery(deadBlocksRequest
-                    .BlockCountLimit);
+                query = new BlockItemDelegateRunner(deadBlocksRequest
+                    .BlockCountLimit, DeadBlocksQueryBuilder.GetFindDeadBlocksWithKeepAliveQuery, blockType);
             else
-                query = DeadBlocksQueryBuilder.GetFindDeadObjectBlocksQuery(deadBlocksRequest.BlockCountLimit);
-
-            return await FindDeadObjectBlocksAsync<T>(deadBlocksRequest, query).ConfigureAwait(false);
+                query = new BlockItemDelegateRunner(deadBlocksRequest
+                    .BlockCountLimit, DeadBlocksQueryBuilder.GetFindDeadBlocksQuery, blockType);
+        }
+        else
+        {
+            throw new NotSupportedException(UnexpectedBlockTypeMessage);
         }
 
-        throw new NotSupportedException(UnexpectedBlockTypeMessage);
+        return query;
     }
 
-    private async Task<IList<RangeBlock>> FindDeadDateRangeBlocksAsync(FindDeadBlocksRequest deadBlocksRequest,
-        string query)
+    private async Task<List<RangeBlock>> FindSearchableDateRangeBlocksAsync(ISearchableBlockRequest request,
+        BlockItemDelegateRunner blockItemDelegateRunner)
     {
-        var results = new List<RangeBlock>();
-        var taskDefinition =
-            await _taskRepository.EnsureTaskDefinitionAsync(deadBlocksRequest.TaskId).ConfigureAwait(false);
 
-        try
+        return await RetryHelper.WithRetry(async (transactionScope) =>
         {
-            using (var connection = await CreateNewConnectionAsync(deadBlocksRequest.TaskId).ConfigureAwait(false))
+            var taskDefinition =
+                await _taskRepository.EnsureTaskDefinitionAsync(request.TaskId).ConfigureAwait(false);
+
+
+            using (var dbContext = await GetDbContextAsync(request.TaskId).ConfigureAwait(false))
             {
-                var command = connection.CreateCommand();
-                command.CommandText = query;
-                command.CommandTimeout =
-                    ConnectionStore.Instance.GetConnection(deadBlocksRequest.TaskId).QueryTimeoutSeconds;
-                command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinition.TaskDefinitionId;
-                command.Parameters.Add("@SearchPeriodBegin", SqlDbType.DateTime).Value =
-                    deadBlocksRequest.SearchPeriodBegin;
-                command.Parameters.Add("@SearchPeriodEnd", SqlDbType.DateTime).Value =
-                    deadBlocksRequest.SearchPeriodEnd;
-                command.Parameters.Add("@AttemptLimit", SqlDbType.Int).Value =
-                    deadBlocksRequest.RetryLimit + 1; // RetryLimit + 1st attempt
+                var items = await GetBlockQueryItems(request, blockItemDelegateRunner, taskDefinition, dbContext);
 
-                using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
-                {
-                    while (await reader.ReadAsync().ConfigureAwait(false))
-                    {
-                        var blockType = (BlockType)reader.GetInt32("BlockType");
-                        if (blockType == deadBlocksRequest.BlockType)
-                        {
-                            var rangeBlockId = reader.GetInt64("BlockId");
-                            var attempt = reader.GetInt32("Attempt");
-
-                            long rangeBegin;
-                            long rangeEnd;
-                            if (deadBlocksRequest.BlockType == BlockType.DateRange)
-                            {
-                                rangeBegin = reader.GetDateTime(1).Ticks;
-                                rangeEnd = reader.GetDateTime(2).Ticks;
-                            }
-                            else
-                            {
-                                rangeBegin = reader.GetInt64("FromNumber");
-                                rangeEnd = reader.GetInt64("ToNumber");
-                            }
-
-                            results.Add(new RangeBlock(rangeBlockId, attempt, rangeBegin, rangeEnd, blockType));
-                        }
-                    }
-                }
+                return GetRangeBlocks(request, items);
             }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
+        });
 
-            throw;
-        }
-
-        return results;
     }
 
-    private async Task<IList<ProtoListBlock>> FindDeadListBlocksAsync(FindDeadBlocksRequest deadBlocksRequest,
-        string query)
+    private async Task<IList<ProtoListBlock>> FindSearchableListBlocksAsync(ISearchableBlockRequest deadBlocksRequest,
+        BlockItemDelegateRunner blockItemDelegateRunner)
     {
-        var results = new List<ProtoListBlock>();
-        var taskDefinition =
-            await _taskRepository.EnsureTaskDefinitionAsync(deadBlocksRequest.TaskId).ConfigureAwait(false);
-
-        try
+        return await RetryHelper.WithRetry(async (transactionScope) =>
         {
-            using (var connection = await CreateNewConnectionAsync(deadBlocksRequest.TaskId).ConfigureAwait(false))
+            var results = new List<ProtoListBlock>();
+            var taskDefinition =
+                await _taskRepository.EnsureTaskDefinitionAsync(deadBlocksRequest.TaskId).ConfigureAwait(false);
+            using (var dbContext = await GetDbContextAsync(deadBlocksRequest.TaskId).ConfigureAwait(false))
             {
-                var command = connection.CreateCommand();
-                command.CommandText = query;
-                command.CommandTimeout =
-                    ConnectionStore.Instance.GetConnection(deadBlocksRequest.TaskId).QueryTimeoutSeconds;
-                command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinition.TaskDefinitionId;
-                command.Parameters.Add("@SearchPeriodBegin", SqlDbType.DateTime).Value =
-                    deadBlocksRequest.SearchPeriodBegin;
-                command.Parameters.Add("@SearchPeriodEnd", SqlDbType.DateTime).Value =
-                    deadBlocksRequest.SearchPeriodEnd;
-                command.Parameters.Add("@AttemptLimit", SqlDbType.Int).Value =
-                    deadBlocksRequest.RetryLimit + 1; // RetryLimit + 1st attempt
-
-                using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
-                {
-                    while (await reader.ReadAsync().ConfigureAwait(false))
-                    {
-                        var blockType = (BlockType)reader.GetInt32("BlockType");
-                        if (blockType == deadBlocksRequest.BlockType)
-                        {
-                            var listBlock = new ProtoListBlock();
-
-                            listBlock.ListBlockId = reader.GetInt64("BlockId");
-                            listBlock.Attempt = reader.GetInt32("Attempt");
-                            listBlock.Header =
-                                SerializedValueReader.ReadValueAsString(reader, "ObjectData", "CompressedObjectData");
-
-                            results.Add(listBlock);
-                        }
-                    }
-                }
+                var items = await GetBlockQueryItems(deadBlocksRequest, blockItemDelegateRunner, taskDefinition, dbContext);
+                return GetListBlocks(deadBlocksRequest, items);
             }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
 
-            throw;
-        }
-
-        return results;
+        });
     }
 }

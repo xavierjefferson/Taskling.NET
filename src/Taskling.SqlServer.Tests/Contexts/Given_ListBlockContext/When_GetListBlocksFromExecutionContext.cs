@@ -7,11 +7,12 @@ using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
 using Taskling.Contexts;
 using Taskling.Events;
+using Taskling.SqlServer.Tests.Contexts.Given_ObjectBlockContext;
 using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_ListBlockContext;
-
+[Collection(Constants.CollectionName)]
 public class When_GetListBlocksFromExecutionContext
 {
     private readonly BlocksHelper _blocksHelper;
@@ -226,8 +227,8 @@ public class When_GetListBlocksFromExecutionContext
                         x.WithSingleUnitCommit(values, maxBlockSize));
                 Assert.False(listBlock.Any());
                 var execEvent = _executionHelper.GetLastEvent(_taskDefinitionId);
-                Assert.Equal(EventType.CheckPoint, execEvent.Item1);
-                Assert.Equal("No values for generate the block. Emtpy Block context returned.", execEvent.Item2);
+                Assert.Equal(EventType.CheckPoint, execEvent.EventType);
+                Assert.Equal("No values for generate the block. Emtpy Block context returned.", execEvent.Message);
             }
         }
     }

@@ -9,7 +9,7 @@ using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
-
+[Collection(Constants.CollectionName)]
 public class When_FindFailedBlocks
 {
     private readonly BlocksHelper _blocksHelper;

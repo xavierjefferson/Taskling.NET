@@ -35,14 +35,12 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
         }
     }
 
-    public async Task<RangeBlock> GetLastRangeBlockAsync(LastBlockRequest lastRangeBlockRequest)
+    public async Task<RangeBlock?> GetLastRangeBlockAsync(LastBlockRequest lastRangeBlockRequest)
     {
-        var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(lastRangeBlockRequest.TaskId)
-            .ConfigureAwait(false);
-
-
-        try
+        return await RetryHelper.WithRetry(async (transactionScope) =>
         {
+            var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(lastRangeBlockRequest.TaskId)
+                .ConfigureAwait(false);
             using (var dbContext = await GetDbContextAsync(lastRangeBlockRequest.TaskId))
             {
                 var blockQueryable = dbContext.Blocks.Where(i =>
@@ -109,16 +107,14 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
                         lastRangeBlockRequest.BlockType);
                 }
             }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
 
-            throw;
-        }
+            return null;
 
-        return null;
+        });
+
+
+
+
     }
 
 
@@ -158,8 +154,9 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
 
     private async Task ChangeStatusOfNumericRangeExecutionAsync(BlockExecutionChangeStatusRequest changeStatusRequest)
     {
-        try
+        await RetryHelper.WithRetry(async (transactionScope) =>
         {
+
             using (var dbContext = await GetDbContextAsync(changeStatusRequest.TaskId).ConfigureAwait(false))
             {
                 var blockExecution = await dbContext.BlockExecutions.FirstOrDefaultAsync(i =>
@@ -183,13 +180,7 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
                     await dbContext.SaveChangesAsync().ConfigureAwait(false);
                 }
             }
-        }
-        catch (SqlException sqlEx)
-        {
-            if (TransientErrorDetector.IsTransient(sqlEx))
-                throw new TransientException("A transient exception has occurred", sqlEx);
+        });
 
-            throw;
-        }
     }
 }
