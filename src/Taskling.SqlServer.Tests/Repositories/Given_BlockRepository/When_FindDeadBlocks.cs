@@ -1,19 +1,27 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
 using Taskling.InfrastructureContracts;
+using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
-using Taskling.SqlServer.Blocks;
-using Taskling.SqlServer.Tasks;
-using Taskling.SqlServer.Tests.Contexts.Given_ObjectBlockContext;
+using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
 using Taskling.Tasks;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
+
 [Collection(Constants.CollectionName)]
 public class When_FindDeadBlocks
 {
+    private readonly IBlockRepository _blockRepository;
+    private readonly IBlocksHelper _blocksHelper;
+    private readonly IClientHelper _clientHelper;
+
+    private readonly IExecutionsHelper _executionsHelper;
+    private readonly ILogger<When_FindDeadBlocks> _logger;
+    private readonly int _taskDefinitionId;
     private readonly TimeSpan FiveMinuteSpan = new(0, 5, 0);
     private readonly TimeSpan OneMinuteSpan = new(0, 1, 0);
     private readonly TimeSpan TwentySecondSpan = new(0, 0, 20);
@@ -22,33 +30,34 @@ public class When_FindDeadBlocks
     private long _block3;
     private long _block4;
     private long _block5;
-    private readonly BlocksHelper _blocksHelper;
-
-    private readonly ExecutionsHelper _executionHelper;
-    private readonly int _taskDefinitionId;
     private int _taskExecution1;
 
-    public When_FindDeadBlocks()
+    public When_FindDeadBlocks(IBlockRepository blockRepository, IBlocksHelper blocksHelper,
+        IExecutionsHelper executionsHelper, IClientHelper clientHelper, ILogger<When_FindDeadBlocks> logger,
+        ITaskRepository taskRepository)
     {
-        _blocksHelper = new BlocksHelper();
+        _blockRepository = blockRepository;
+        _blocksHelper = blocksHelper;
+        _clientHelper = clientHelper;
         _blocksHelper.DeleteBlocks(TestConstants.ApplicationName);
-        _executionHelper = new ExecutionsHelper();
-        _executionHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+        _executionsHelper = executionsHelper;
+        _logger = logger;
+        _executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
 
-        _taskDefinitionId = _executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        _executionHelper.InsertAvailableExecutionToken(_taskDefinitionId);
+        _taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertAvailableExecutionToken(_taskDefinitionId);
 
-        TaskRepository.ClearCache();
+        taskRepository.ClearCache();
     }
 
     private void InsertDateRangeTestData(TaskDeathMode taskDeathMode)
     {
         var now = DateTime.UtcNow;
         if (taskDeathMode == TaskDeathMode.Override)
-            _taskExecution1 = _executionHelper.InsertOverrideTaskExecution(_taskDefinitionId, OneMinuteSpan,
+            _taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId, OneMinuteSpan,
                 now.AddMinutes(-250), now.AddMinutes(-179));
         else
-            _taskExecution1 = _executionHelper.InsertKeepAliveTaskExecution(_taskDefinitionId, TwentySecondSpan,
+            _taskExecution1 = _executionsHelper.InsertKeepAliveTaskExecution(_taskDefinitionId, TwentySecondSpan,
                 FiveMinuteSpan, now.AddMinutes(-250), now.AddMinutes(-179));
 
         InsertDateRangeBlocksTestData();
@@ -78,10 +87,10 @@ public class When_FindDeadBlocks
     {
         var now = DateTime.UtcNow;
         if (taskDeathMode == TaskDeathMode.Override)
-            _taskExecution1 = _executionHelper.InsertOverrideTaskExecution(_taskDefinitionId, OneMinuteSpan,
+            _taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId, OneMinuteSpan,
                 now.AddMinutes(-250), now.AddMinutes(-179));
         else
-            _taskExecution1 = _executionHelper.InsertKeepAliveTaskExecution(_taskDefinitionId, TwentySecondSpan,
+            _taskExecution1 = _executionsHelper.InsertKeepAliveTaskExecution(_taskDefinitionId, TwentySecondSpan,
                 FiveMinuteSpan, now.AddMinutes(-250), now.AddMinutes(-179));
 
         InsertNumericRangeBlocksTestData();
@@ -111,10 +120,10 @@ public class When_FindDeadBlocks
     {
         var now = DateTime.UtcNow;
         if (taskDeathMode == TaskDeathMode.Override)
-            _taskExecution1 = _executionHelper.InsertOverrideTaskExecution(_taskDefinitionId, OneMinuteSpan,
+            _taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId, OneMinuteSpan,
                 now.AddMinutes(-250), now.AddMinutes(-179));
         else
-            _taskExecution1 = _executionHelper.InsertKeepAliveTaskExecution(_taskDefinitionId, TwentySecondSpan,
+            _taskExecution1 = _executionsHelper.InsertKeepAliveTaskExecution(_taskDefinitionId, TwentySecondSpan,
                 FiveMinuteSpan, now.AddMinutes(-250), now.AddMinutes(-179));
 
         InsertListBlocksTestData();
@@ -144,10 +153,10 @@ public class When_FindDeadBlocks
     {
         var now = DateTime.UtcNow;
         if (taskDeathMode == TaskDeathMode.Override)
-            _taskExecution1 = _executionHelper.InsertOverrideTaskExecution(_taskDefinitionId, OneMinuteSpan,
+            _taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId, OneMinuteSpan,
                 now.AddMinutes(-250), now.AddMinutes(-179));
         else
-            _taskExecution1 = _executionHelper.InsertKeepAliveTaskExecution(_taskDefinitionId, TwentySecondSpan,
+            _taskExecution1 = _executionsHelper.InsertKeepAliveTaskExecution(_taskDefinitionId, TwentySecondSpan,
                 FiveMinuteSpan, now.AddMinutes(-250), now.AddMinutes(-179));
 
         InsertObjectBlocksTestData();
@@ -173,9 +182,9 @@ public class When_FindDeadBlocks
             BlockExecutionStatus.Started, 3);
     }
 
-    private BlockRepository CreateSut()
+    private IBlockRepository CreateSut()
     {
-        return new BlockRepository(new TaskRepository());
+        return _blockRepository;
     }
 
     private FindDeadBlocksRequest CreateDeadBlockRequest(BlockType blockType, TaskDeathMode taskDeathMode,
@@ -290,7 +299,7 @@ public class When_FindDeadBlocks
     {
         // ARRANGE
         InsertDateRangeTestData(TaskDeathMode.KeepAlive);
-        _executionHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
+        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
 
         var blockCountLimit = 5;
         var request = CreateDeadBlockRequest(BlockType.DateRange, TaskDeathMode.KeepAlive, blockCountLimit);
@@ -314,7 +323,7 @@ public class When_FindDeadBlocks
     {
         // ARRANGE
         InsertDateRangeTestData(TaskDeathMode.KeepAlive);
-        _executionHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
+        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
 
         var blockCountLimit = 2;
         var request = CreateDeadBlockRequest(BlockType.DateRange, TaskDeathMode.KeepAlive, blockCountLimit);
@@ -336,7 +345,7 @@ public class When_FindDeadBlocks
     {
         // ARRANGE
         InsertDateRangeTestData(TaskDeathMode.KeepAlive);
-        _executionHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-2));
+        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-2));
 
         var blockCountLimit = 5;
         var request = CreateDeadBlockRequest(BlockType.DateRange, TaskDeathMode.KeepAlive, blockCountLimit);
@@ -357,7 +366,7 @@ public class When_FindDeadBlocks
     {
         // ARRANGE
         InsertDateRangeTestData(TaskDeathMode.KeepAlive);
-        _executionHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-50));
+        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-50));
 
         var blockCountLimit = 5;
         var request = CreateDeadBlockRequest(BlockType.DateRange, TaskDeathMode.KeepAlive, blockCountLimit, 3, -100);
@@ -465,7 +474,7 @@ public class When_FindDeadBlocks
     {
         // ARRANGE
         InsertNumericRangeTestData(TaskDeathMode.KeepAlive);
-        _executionHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
+        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
 
         var blockCountLimit = 5;
         var request = CreateDeadBlockRequest(BlockType.NumericRange, TaskDeathMode.KeepAlive, blockCountLimit);
@@ -489,7 +498,7 @@ public class When_FindDeadBlocks
     {
         // ARRANGE
         InsertNumericRangeTestData(TaskDeathMode.KeepAlive);
-        _executionHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
+        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
 
         var blockCountLimit = 2;
         var request = CreateDeadBlockRequest(BlockType.NumericRange, TaskDeathMode.KeepAlive, blockCountLimit);
@@ -512,7 +521,7 @@ public class When_FindDeadBlocks
     {
         // ARRANGE
         InsertNumericRangeTestData(TaskDeathMode.KeepAlive);
-        _executionHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-2));
+        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-2));
 
         var blockCountLimit = 5;
         var request = CreateDeadBlockRequest(BlockType.NumericRange, TaskDeathMode.KeepAlive, blockCountLimit);
@@ -533,7 +542,7 @@ public class When_FindDeadBlocks
     {
         // ARRANGE
         InsertNumericRangeTestData(TaskDeathMode.KeepAlive);
-        _executionHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-50));
+        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-50));
 
         var blockCountLimit = 5;
         var request = CreateDeadBlockRequest(BlockType.NumericRange, TaskDeathMode.KeepAlive, blockCountLimit, 3, -100);
@@ -640,7 +649,7 @@ public class When_FindDeadBlocks
     {
         // ARRANGE
         InsertListTestData(TaskDeathMode.KeepAlive);
-        _executionHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
+        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
 
         var blockCountLimit = 5;
         var request = CreateDeadBlockRequest(BlockType.List, TaskDeathMode.KeepAlive, blockCountLimit);
@@ -664,7 +673,7 @@ public class When_FindDeadBlocks
     {
         // ARRANGE
         InsertListTestData(TaskDeathMode.KeepAlive);
-        _executionHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
+        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
 
         var blockCountLimit = 2;
         var request = CreateDeadBlockRequest(BlockType.List, TaskDeathMode.KeepAlive, blockCountLimit);
@@ -686,7 +695,7 @@ public class When_FindDeadBlocks
     {
         // ARRANGE
         InsertListTestData(TaskDeathMode.KeepAlive);
-        _executionHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-2));
+        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-2));
 
         var blockCountLimit = 5;
         var request = CreateDeadBlockRequest(BlockType.List, TaskDeathMode.KeepAlive, blockCountLimit);
@@ -707,7 +716,7 @@ public class When_FindDeadBlocks
     {
         // ARRANGE
         InsertListTestData(TaskDeathMode.KeepAlive);
-        _executionHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-50));
+        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-50));
 
         var blockCountLimit = 5;
         var request = CreateDeadBlockRequest(BlockType.List, TaskDeathMode.KeepAlive, blockCountLimit, 3, -100);
@@ -814,7 +823,7 @@ public class When_FindDeadBlocks
     {
         // ARRANGE
         InsertObjectTestData(TaskDeathMode.KeepAlive);
-        _executionHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
+        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
 
         var blockCountLimit = 5;
         var request = CreateDeadBlockRequest(BlockType.Object, TaskDeathMode.KeepAlive, blockCountLimit);
@@ -838,7 +847,7 @@ public class When_FindDeadBlocks
     {
         // ARRANGE
         InsertObjectTestData(TaskDeathMode.KeepAlive);
-        _executionHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
+        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
 
         var blockCountLimit = 2;
         var request = CreateDeadBlockRequest(BlockType.Object, TaskDeathMode.KeepAlive, blockCountLimit);
@@ -860,7 +869,7 @@ public class When_FindDeadBlocks
     {
         // ARRANGE
         InsertObjectTestData(TaskDeathMode.KeepAlive);
-        _executionHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-2));
+        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-2));
 
         var blockCountLimit = 5;
         var request = CreateDeadBlockRequest(BlockType.Object, TaskDeathMode.KeepAlive, blockCountLimit);
@@ -881,7 +890,7 @@ public class When_FindDeadBlocks
     {
         // ARRANGE
         InsertObjectTestData(TaskDeathMode.KeepAlive);
-        _executionHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-50));
+        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-50));
 
         var blockCountLimit = 5;
         var request = CreateDeadBlockRequest(BlockType.Object, TaskDeathMode.KeepAlive, blockCountLimit, 3, -100);

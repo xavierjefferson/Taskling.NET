@@ -1,6 +1,6 @@
 ﻿namespace Taskling.Configuration;
 
-public interface ITasklingConfiguration
+public interface ITaskConfigurationRepository
 {
     TaskConfiguration GetTaskConfiguration(string applicationName, string taskName);
 }

@@ -3,31 +3,39 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
 using Taskling.Contexts;
 using Taskling.Events;
-using Taskling.SqlServer.Tests.Contexts.Given_ObjectBlockContext;
+using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_ListBlockContext;
+
 [Collection(Constants.CollectionName)]
 public class When_GetListBlocksWithHeaderFromExecutionContext
 {
-    private readonly BlocksHelper _blocksHelper;
-    private readonly ExecutionsHelper _executionHelper;
+    private readonly IBlocksHelper _blocksHelper;
+    private readonly IClientHelper _clientHelper;
+    private readonly ILogger<When_GetListBlocksWithHeaderFromExecutionContext> _logger;
+    private readonly IExecutionsHelper _executionsHelper;
     private readonly int _taskDefinitionId;
 
-    public When_GetListBlocksWithHeaderFromExecutionContext()
+    public When_GetListBlocksWithHeaderFromExecutionContext(IBlocksHelper blocksHelper,
+        IExecutionsHelper executionsHelper, IClientHelper clientHelper,
+        ILogger<When_GetListBlocksWithHeaderFromExecutionContext> logger, ITaskRepository taskRepository)
     {
-        _blocksHelper = new BlocksHelper();
+        _blocksHelper = blocksHelper;
+        _clientHelper = clientHelper;
+        _logger = logger;
         _blocksHelper.DeleteBlocks(TestConstants.ApplicationName);
-        _executionHelper = new ExecutionsHelper();
-        _executionHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+        _executionsHelper = executionsHelper;
+        _executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
 
-        _taskDefinitionId = _executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        _executionHelper.InsertAvailableExecutionToken(_taskDefinitionId);
+        _taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertAvailableExecutionToken(_taskDefinitionId);
     }
 
     [Fact]
@@ -48,7 +56,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext
             {
                 var testHeader = GetTestHeader();
                 var values = GetPersonList(9);
-                short maxBlockSize = 4;
+                int maxBlockSize = 4;
                 var listBlocks =
                     await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x =>
                         x.WithSingleUnitCommit(values, testHeader, maxBlockSize));
@@ -133,7 +141,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext
             {
                 var testHeader = GetTestHeader();
                 var values = GetPersonList(9);
-                short maxBlockSize = 4;
+                int maxBlockSize = 4;
                 var listBlock =
                     (await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x =>
                         x.WithSingleUnitCommit(values, testHeader, maxBlockSize))).First();
@@ -173,7 +181,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext
             startedOk = await executionContext.TryStartAsync();
             if (startedOk)
             {
-                short maxBlockSize = 4;
+                int maxBlockSize = 4;
                 var listBlock =
                     (await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x =>
                         x.WithSingleUnitCommit(values, largeTestHeader, maxBlockSize))).First();
@@ -194,7 +202,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext
             {
                 var testHeader = GetTestHeader();
                 var emptyPersonList = new List<PersonDto>();
-                short maxBlockSize = 4;
+                int maxBlockSize = 4;
                 var listBlock = (await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x =>
                     x.WithSingleUnitCommit(emptyPersonList, testHeader, maxBlockSize))).First();
                 listBlockId = listBlock.Block.ListBlockId;
@@ -234,12 +242,12 @@ public class When_GetListBlocksWithHeaderFromExecutionContext
             {
                 var testHeader = GetTestHeader();
                 var values = new List<PersonDto>();
-                short maxBlockSize = 4;
+                int maxBlockSize = 4;
                 var listBlock =
                     await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x =>
                         x.WithSingleUnitCommit(values, testHeader, maxBlockSize));
                 Assert.False(listBlock.Any());
-                var execEvent = _executionHelper.GetLastEvent(_taskDefinitionId);
+                var execEvent = _executionsHelper.GetLastEvent(_taskDefinitionId);
                 Assert.Equal(EventType.CheckPoint, execEvent.EventType);
                 Assert.Equal("No values for generate the block. Emtpy Block context returned.", execEvent.Message);
             }
@@ -264,7 +272,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext
             {
                 var testHeader = GetTestHeader();
                 var values = GetPersonList(9);
-                short maxBlockSize = 4;
+                int maxBlockSize = 4;
                 var listBlock =
                     (await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x =>
                         x.WithSingleUnitCommit(values, testHeader, maxBlockSize))).First();
@@ -306,7 +314,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext
             {
                 var testHeader = GetTestHeader();
                 var values = GetPersonList(9);
-                short maxBlockSize = 4;
+                int maxBlockSize = 4;
                 var listBlocks =
                     await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x =>
                         x.WithBatchCommitAtEnd(values, testHeader, maxBlockSize));
@@ -390,7 +398,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext
             {
                 var testHeader = GetTestHeader();
                 var values = GetPersonList(26);
-                short maxBlockSize = 15;
+                int maxBlockSize = 15;
                 var listBlocks = await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x =>
                     x.WithPeriodicCommit(values, testHeader, maxBlockSize, BatchSize.Ten));
                 // There should be 2 blocks - 15, 11
@@ -488,7 +496,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext
             {
                 var testHeader = GetTestHeader();
                 var values = GetPersonList(14);
-                short maxBlockSize = 20;
+                int maxBlockSize = 20;
                 var listBlock = (await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x =>
                     x.WithPeriodicCommit(values, testHeader, maxBlockSize, BatchSize.Ten))).First();
                 listBlockId = listBlock.Block.ListBlockId;
@@ -527,7 +535,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext
             {
                 var testHeader = GetTestHeader();
                 var values = GetPersonList(14);
-                short maxBlockSize = 20;
+                int maxBlockSize = 20;
                 var listBlock = (await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x =>
                     x.WithPeriodicCommit(values, testHeader, maxBlockSize, BatchSize.Ten))).First();
                 listBlockId = listBlock.Block.ListBlockId;
@@ -566,7 +574,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext
             if (startedOk)
             {
                 var values = GetPersonList(26);
-                short maxBlockSize = 15;
+                int maxBlockSize = 15;
                 var listBlocks = await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x =>
                     x.WithPeriodicCommit(values, testHeader, maxBlockSize, BatchSize.Ten));
 
@@ -649,7 +657,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext
             if (startedOk)
             {
                 var values = GetPersonList(3);
-                short maxBlockSize = 15;
+                int maxBlockSize = 15;
                 var listBlocks = await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x =>
                     x.WithPeriodicCommit(values, testHeader, maxBlockSize, BatchSize.Ten));
 
@@ -700,7 +708,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext
             {
                 var testHeader = GetTestHeader();
                 var values = GetPersonList(9);
-                short maxBlockSize = 4;
+                int maxBlockSize = 4;
                 var listBlock =
                     (await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x =>
                         x.WithSingleUnitCommit(values, testHeader, maxBlockSize))).First();
@@ -745,7 +753,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext
             {
                 var testHeader = GetTestHeader();
                 var values = GetPersonList(9);
-                short maxBlockSize = 3;
+                int maxBlockSize = 3;
                 var listBlocks = await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x =>
                     x.WithPeriodicCommit(values, testHeader, maxBlockSize, BatchSize.Fifty));
 
@@ -830,7 +838,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext
             {
                 var testHeader = GetTestHeader();
                 var values = GetPersonList(8);
-                short maxBlockSize = 4;
+                int maxBlockSize = 4;
                 var listBlocks = await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x => x
                     .WithSingleUnitCommit(values, testHeader, maxBlockSize)
                     .OverrideConfiguration()
@@ -872,7 +880,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext
             {
                 var testHeader = GetTestHeader();
                 var values = GetPersonList(8);
-                short maxBlockSize = 4;
+                int maxBlockSize = 4;
                 var listBlocks =
                     await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x =>
                         x.WithSingleUnitCommit(values, testHeader, maxBlockSize));
@@ -903,7 +911,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext
             {
                 var testHeader = GetTestHeader();
                 var values = GetPersonList(10);
-                short maxBlockSize = 1;
+                int maxBlockSize = 1;
                 var listBlocks =
                     await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x =>
                         x.WithSingleUnitCommit(values, testHeader, maxBlockSize));
@@ -940,7 +948,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext
             if (startedOk)
             {
                 var values = GetPersonList(3);
-                short maxBlockSize = 15;
+                int maxBlockSize = 15;
                 var listBlocks = await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x =>
                     x.WithPeriodicCommit(values, forcedBlockTestHeader, maxBlockSize, BatchSize.Ten));
 
@@ -1020,7 +1028,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext
             {
                 var testHeader = GetTestHeader();
                 var values = GetPersonList(10);
-                short maxBlockSize = 1;
+                int maxBlockSize = 1;
                 var listBlocks =
                     await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x =>
                         x.WithSingleUnitCommit(values, testHeader, maxBlockSize));
@@ -1047,7 +1055,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext
             if (startedOk)
             {
                 var values = GetPersonList(6);
-                short maxBlockSize = 3;
+                int maxBlockSize = 3;
                 var listBlocks = await executionContext.GetListBlocksAsync<PersonDto>(x =>
                     x.WithPeriodicCommit(values, maxBlockSize, BatchSize.Ten));
 
@@ -1071,7 +1079,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext
             if (startedOk)
             {
                 var values = GetPersonList(6);
-                short maxBlockSize = 3;
+                int maxBlockSize = 3;
                 var listBlocks = await executionContext.GetListBlocksAsync<PersonDto>(x =>
                     x.WithPeriodicCommit(values, maxBlockSize, BatchSize.Ten));
 
@@ -1079,20 +1087,20 @@ public class When_GetListBlocksWithHeaderFromExecutionContext
             }
         }
 
-        var executionHelper = new ExecutionsHelper();
-        executionHelper.SetLastExecutionAsDead(_taskDefinitionId);
+        var executionsHelper = _executionsHelper;
+        executionsHelper.SetLastExecutionAsDead(_taskDefinitionId);
     }
 
     private ITaskExecutionContext CreateTaskExecutionContext(int maxBlocksToGenerate = 10)
     {
-        return ClientHelper.GetExecutionContext(TestConstants.TaskName,
-            ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing(maxBlocksToGenerate));
+        return _clientHelper.GetExecutionContext(TestConstants.TaskName,
+            _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing(maxBlocksToGenerate));
     }
 
     private ITaskExecutionContext CreateTaskExecutionContextWithNoReprocessing()
     {
-        return ClientHelper.GetExecutionContext(TestConstants.TaskName,
-            ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndNoReprocessing());
+        return _clientHelper.GetExecutionContext(TestConstants.TaskName,
+            _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndNoReprocessing());
     }
 
     private List<PersonDto> GetPersonList(int count, int skip = 0)

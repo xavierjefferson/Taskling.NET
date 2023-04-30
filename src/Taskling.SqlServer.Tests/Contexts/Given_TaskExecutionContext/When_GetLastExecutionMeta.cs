@@ -1,21 +1,29 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 using TaskExecutionStatus = Taskling.Tasks.TaskExecutionStatus;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_TaskExecutionContext;
+
 [Collection(Constants.CollectionName)]
 public class When_GetLastExecutionMeta
 {
+    private readonly IExecutionsHelper _executionsHelper;
+    private readonly IClientHelper _clientHelper;
     private readonly int _taskDefinitionId;
 
-    public When_GetLastExecutionMeta()
+    public When_GetLastExecutionMeta(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper,
+        IClientHelper clientHelper, ILogger<When_GetLastExecutionMeta> logger, ITaskRepository taskRepository)
     {
-        var executionHelper = new ExecutionsHelper();
-        executionHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+        _executionsHelper = executionsHelper;
+        _clientHelper = clientHelper;
 
-        _taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+
+        _taskDefinitionId = executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
     }
 
     [Fact]
@@ -27,8 +35,8 @@ public class When_GetLastExecutionMeta
 
         for (var i = 0; i < 5; i++)
         {
-            using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                       ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+            using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
             {
                 await executionContext.TryStartAsync("My reference value" + i);
             }
@@ -37,8 +45,8 @@ public class When_GetLastExecutionMeta
         }
 
         // ACT and ASSERT
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             var executionMeta = await executionContext.GetLastExecutionMetaAsync();
             Assert.Equal("My reference value4", executionMeta.ReferenceValue);
@@ -54,8 +62,8 @@ public class When_GetLastExecutionMeta
 
         for (var i = 0; i < 5; i++)
         {
-            using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                       ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+            using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
             {
                 await executionContext.TryStartAsync("My reference value" + i);
             }
@@ -64,8 +72,8 @@ public class When_GetLastExecutionMeta
         }
 
         // ACT and ASSERT
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             var executionMetas = await executionContext.GetLastExecutionMetasAsync(3);
             Assert.Equal(3, executionMetas.Count);
@@ -83,8 +91,8 @@ public class When_GetLastExecutionMeta
         // ARRANGE
 
         // ACT and ASSERT
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             var executionMeta = await executionContext.GetLastExecutionMetaAsync();
             Assert.Null(executionMeta);
@@ -106,8 +114,8 @@ public class When_GetLastExecutionMeta
                 Id = i
             };
 
-            using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                       ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+            using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
             {
                 await executionContext.TryStartAsync(myHeader);
             }
@@ -116,8 +124,8 @@ public class When_GetLastExecutionMeta
         }
 
         // ACT and ASSERT
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             var executionMeta = await executionContext.GetLastExecutionMetaAsync<MyHeader>();
             Assert.Equal(4, executionMeta.Header.Id);
@@ -139,8 +147,8 @@ public class When_GetLastExecutionMeta
                 Id = i
             };
 
-            using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                       ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+            using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
             {
                 await executionContext.TryStartAsync(myHeader);
             }
@@ -149,8 +157,8 @@ public class When_GetLastExecutionMeta
         }
 
         // ACT and ASSERT
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             var executionMetas = await executionContext.GetLastExecutionMetasAsync<MyHeader>(3);
             Assert.Equal(3, executionMetas.Count);
@@ -169,8 +177,8 @@ public class When_GetLastExecutionMeta
         // ACT
 
         // ASSERT
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             var executionMeta = await executionContext.GetLastExecutionMetaAsync<MyHeader>();
             Assert.Null(executionMeta);
@@ -183,8 +191,8 @@ public class When_GetLastExecutionMeta
     public async Task If_LastExecutionCompleted_ThenReturnStatusIsCompleted()
     {
         // ARRANGE
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             await executionContext.TryStartAsync();
         }
@@ -193,8 +201,8 @@ public class When_GetLastExecutionMeta
 
 
         // ACT and ASSERT
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             var executionMeta = await executionContext.GetLastExecutionMetaAsync();
             Assert.Equal(TaskExecutionStatus.Completed, executionMeta.Status);
@@ -207,8 +215,8 @@ public class When_GetLastExecutionMeta
     public async Task If_LastExecutionFailed_ThenReturnStatusIsFailed()
     {
         // ARRANGE
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             await executionContext.TryStartAsync();
             await executionContext.ErrorAsync("", true);
@@ -218,8 +226,8 @@ public class When_GetLastExecutionMeta
 
 
         // ACT and ASSERT
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             var executionMeta = await executionContext.GetLastExecutionMetaAsync();
             Assert.Equal(TaskExecutionStatus.Failed, executionMeta.Status);
@@ -232,14 +240,14 @@ public class When_GetLastExecutionMeta
     public async Task If_LastExecutionBlocked_ThenReturnStatusIsBlockedAsync()
     {
         // ARRANGE
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             await executionContext.TryStartAsync();
             Thread.Sleep(200);
 
-            using (var executionContext2 = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                       ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+            using (var executionContext2 = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
             {
                 await executionContext2.TryStartAsync();
                 await executionContext2.CompleteAsync();
@@ -250,8 +258,8 @@ public class When_GetLastExecutionMeta
 
 
         // ACT and ASSERT
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             var executionMeta = await executionContext.GetLastExecutionMetaAsync();
             Assert.Equal(TaskExecutionStatus.Blocked, executionMeta.Status);
@@ -266,14 +274,14 @@ public class When_GetLastExecutionMeta
     public async Task If_LastExecutionInProgress_ThenReturnStatusIsInProgress()
     {
         // ARRANGE, ACT, ASSERT
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             await executionContext.TryStartAsync();
             Thread.Sleep(200);
 
-            using (var executionContext2 = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                       ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+            using (var executionContext2 = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
             {
                 var executionMeta = await executionContext2.GetLastExecutionMetaAsync();
                 Assert.Equal(TaskExecutionStatus.InProgress, executionMeta.Status);
@@ -287,16 +295,16 @@ public class When_GetLastExecutionMeta
     public async Task If_LastExecutionDead_ThenReturnStatusIsDead()
     {
         // ARRANGE, ACT, ASSERT
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             await executionContext.TryStartAsync();
             Thread.Sleep(200);
-            var helper = new ExecutionsHelper();
+            var helper = _executionsHelper;
             helper.SetLastExecutionAsDead(_taskDefinitionId);
 
-            using (var executionContext2 = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                       ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+            using (var executionContext2 = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
             {
                 var executionMeta = await executionContext2.GetLastExecutionMetaAsync();
                 Assert.Equal(TaskExecutionStatus.Dead, executionMeta.Status);

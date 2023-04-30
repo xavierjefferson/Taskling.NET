@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Taskling.Blocks.Factories;
 using Taskling.Exceptions;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.CriticalSections;
@@ -18,8 +19,8 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
     private readonly ICommonTokenRepository _commonTokenRepository;
     private readonly ITaskRepository _taskRepository;
 
-    public CriticalSectionRepository(ITaskRepository taskRepository,
-        ICommonTokenRepository commonTokenRepository)
+    public CriticalSectionRepository(ITaskRepository taskRepository, TasklingOptions tasklingOptions,
+        ICommonTokenRepository commonTokenRepository, IConnectionStore connectionStore) : base(connectionStore)
     {
         _taskRepository = taskRepository;
         _commonTokenRepository = commonTokenRepository;
@@ -63,7 +64,7 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
     private async Task<CompleteCriticalSectionResponse> ReturnCriticalSectionTokenAsync(TaskId taskId,
         int taskDefinitionId, int taskExecutionId, CriticalSectionType criticalSectionType)
     {
-        return await RetryHelper.WithRetry(async (transactionScope) =>
+        return await RetryHelper.WithRetry(async () =>
         {
             var response = new CompleteCriticalSectionResponse();
 
@@ -116,7 +117,7 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
     private async Task<bool> TryAcquireCriticalSectionAsync(TaskId taskId, int taskDefinitionId, int taskExecutionId,
         CriticalSectionType criticalSectionType)
     {
-        return await RetryHelper.WithRetry(async (transactionScope) =>
+        return await RetryHelper.WithRetry(async () =>
         {
             var granted = false;
             using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))

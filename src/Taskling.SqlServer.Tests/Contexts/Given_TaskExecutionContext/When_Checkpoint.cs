@@ -1,22 +1,27 @@
-﻿using System;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Taskling.Events;
-using Taskling.SqlServer.Tests.Contexts.Given_ObjectBlockContext;
+using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_TaskExecutionContext;
+
 [Collection(Constants.CollectionName)]
 public class When_Checkpoint
 {
+    private readonly IClientHelper _clientHelper;
+    private readonly IExecutionsHelper _executionsHelper;
     private readonly int _taskDefinitionId;
 
-    public When_Checkpoint()
+    public When_Checkpoint(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper, IClientHelper clientHelper,
+        ILogger<When_Checkpoint> logger, ITaskRepository taskRepository)
     {
-        var executionHelper = new ExecutionsHelper();
-        executionHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+        _clientHelper = clientHelper;
+        _executionsHelper = executionsHelper;
+        executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
 
-        _taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _taskDefinitionId = executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
     }
 
     [Fact]
@@ -25,18 +30,18 @@ public class When_Checkpoint
     public async Task If_Checkpoint_ThenCheckpointEventCreated()
     {
         // ARRANGE
-        var executionHelper = new ExecutionsHelper();
+        var executionsHelper = _executionsHelper;
 
         // ACT
         bool startedOk;
         GetLastEventResponse lastEvent = null;
 
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             startedOk = await executionContext.TryStartAsync();
             await executionContext.CheckpointAsync("Test checkpoint");
-            lastEvent = executionHelper.GetLastEvent(_taskDefinitionId);
+            lastEvent = executionsHelper.GetLastEvent(_taskDefinitionId);
         }
 
         // ASSERT

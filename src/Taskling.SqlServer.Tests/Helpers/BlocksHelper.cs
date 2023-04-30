@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Taskling.Blocks.Common;
@@ -11,11 +10,11 @@ using Taskling.SqlServer.Models;
 
 namespace Taskling.SqlServer.Tests.Helpers;
 
-public class BlocksHelper : RepositoryBase
+public class BlocksHelper : RepositoryBase, IBlocksHelper
 {
     public int GetListBlockItemCountByStatus(long blockId, ItemStatus status)
     {
-        return RetryHelper.WithRetry(_ =>
+        return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -34,7 +33,7 @@ public class BlocksHelper : RepositoryBase
 
     public long GetLastBlockId(string applicationName, string taskName)
     {
-        return RetryHelper.WithRetry(_ =>
+        return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -55,7 +54,7 @@ public class BlocksHelper : RepositoryBase
 
     public List<ListBlockItem<T>> GetListBlockItems<T>(long blockId, ItemStatus status)
     {
-        return RetryHelper.WithRetry(_ =>
+        return RetryHelper.WithRetry(() =>
         {
             var items = new List<ListBlockItem<T>>();
             using (var dbContext = GetDbContext())
@@ -105,7 +104,7 @@ public class BlocksHelper : RepositoryBase
 
     public void EnqueueForcedBlock(long blockId)
     {
-        RetryHelper.WithRetry(_ =>
+        RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -117,6 +116,7 @@ public class BlocksHelper : RepositoryBase
                     ProcessingStatus = "Pending"
                 };
                 dbContext.ForceBlockQueues.Add(forceBlockQueue);
+                dbContext.SaveChanges();
             }
             //using (var connection = GetConnection())
             //{
@@ -130,7 +130,7 @@ public class BlocksHelper : RepositoryBase
 
     public void InsertPhantomDateRangeBlock(string applicationName, string taskName, DateTime fromDate, DateTime toDate)
     {
-        RetryHelper.WithRetry(_ =>
+        RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -155,18 +155,9 @@ public class BlocksHelper : RepositoryBase
         });
     }
 
-    private void OnTaskDefinitionFound(TasklingDbContext dbContext, string applicationName, string taskName,
-        Action<int, TasklingDbContext> action)
-    {
-        var tid = dbContext.TaskDefinitions
-            .Where(i => i.TaskName == taskName && i.ApplicationName == applicationName)
-            .Select(i => i.TaskDefinitionId).FirstOrDefault();
-        if (tid != default) action(tid, dbContext);
-    }
-
     public void InsertPhantomNumericBlock(string applicationName, string taskName, long fromId, long toId)
     {
-        RetryHelper.WithRetry(_ =>
+        RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -192,30 +183,84 @@ public class BlocksHelper : RepositoryBase
 
     public void InsertPhantomListBlock(string applicationName, string taskName)
     {
-        RetryHelper.WithRetry(_ =>
+        RetryHelper.WithRetry(() =>
         {
-            using (var connection = GetConnection())
+            using (var dbContext = GetDbContext())
             {
-                var command = connection.CreateCommand();
-                command.CommandText = InsertPhantomListBlockQuery;
-                command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
-                command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
-                command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.List;
-                command.ExecuteNonQuery();
+                OnTaskDefinitionFound(dbContext, applicationName, taskName,
+                    (taskDefinitionId, context) =>
+                    {
+                        var block = new Block
+                        {
+                            TaskDefinitionId = taskDefinitionId,
+                            BlockType = (int)BlockType.List,
+                            IsPhantom = true,
+                            CreatedDate = DateTime.UtcNow
+                        };
+                        context.Blocks.Add(block);
+                        //have to save changes to get a block id
+                        context.SaveChanges();
+                        if (block.BlockId <= 0) throw new InvalidOperationException($"{nameof(block.BlockId)} is invalid");
+                        var listBlockItem = new ListBlockItem
+                        {
+                            BlockId = block.BlockId,
+                            Value = "test",
+                            Status = 1
+                        };
+                        context.ListBlockItems.Add(listBlockItem);
+                        context.SaveChanges();
+                    });
             }
+            //            using (var connection = GetConnection())
+            //            {
+            //                var command = connection.CreateCommand();
+            //                command.CommandText = @"DECLARE @TaskDefinitionId INT = (
+            //	SELECT TaskDefinitionId 
+            //	FROM [Taskling].[TaskDefinition]
+            //	WHERE ApplicationName = @ApplicationName
+            //	AND TaskName = @TaskName)
+
+            //INSERT INTO [Taskling].[Block]
+            //           ([TaskDefinitionId]
+            //           ,[BlockType]
+            //           ,[IsPhantom]
+            //           ,[CreatedDate])
+            //     VALUES
+            //           (@TaskDefinitionId
+            //           ,@BlockType
+            //           ,1
+            //           ,GETUTCDATE())
+
+            //DECLARE @BlockId BIGINT = (SELECT CAST(SCOPE_IDENTITY() AS BIGINT))
+
+            //INSERT INTO [Taskling].[ListBlockItem]
+            //           ([BlockId]
+            //           ,[Value]
+            //           ,[Status])
+            //     VALUES
+            //           (@BlockId
+            //           ,'test'
+            //           ,1)";
+            //                command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
+            //                command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
+            //                command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.List;
+            //                command.ExecuteNonQuery();
+            //            }
         });
     }
 
     public void InsertPhantomObjectBlock(string applicationName, string taskName)
     {
-        RetryHelper.WithRetry(_ =>
+        RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
-                OnTaskDefinitionFound(dbContext, applicationName, taskName, (i, context) =>
-                {
-                    AddObjectBlock(context, i, DateTime.UtcNow, JsonGenericSerializer.Serialize("My phantom block"), true);
-                });
+                OnTaskDefinitionFound(dbContext, applicationName, taskName,
+                    (taskDefinitionId, context) =>
+                    {
+                        AddObjectBlock(context, taskDefinitionId, DateTime.UtcNow, JsonGenericSerializer.Serialize("My phantom block"),
+                            true);
+                    });
             }
             //using (var connection = GetConnection())
             //{
@@ -235,7 +280,7 @@ public class BlocksHelper : RepositoryBase
 
     public int GetBlockCount(string applicationName, string taskName)
     {
-        return RetryHelper.WithRetry(_ =>
+        return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -256,6 +301,16 @@ public class BlocksHelper : RepositoryBase
     }
 
     #endregion .: Get Block Counts :.
+
+    private delegate void TaskDefinitionDelegate(int taskDefinitionId, TasklingDbContext dbContext);
+    private void OnTaskDefinitionFound(TasklingDbContext dbContext, string applicationName, string taskName,
+        TaskDefinitionDelegate action)
+    {
+        var taskDefinitionId = dbContext.TaskDefinitions
+            .Where(i => i.TaskName == taskName && i.ApplicationName == applicationName)
+            .Select(i => i.TaskDefinitionId).FirstOrDefault();
+        if (taskDefinitionId != default) action(taskDefinitionId, dbContext);
+    }
 
     #region .: Queries :.
 
@@ -426,34 +481,6 @@ INSERT INTO [Taskling].[Block]
            ,1
            ,GETUTCDATE())";
 
-    private const string InsertPhantomListBlockQuery = @"DECLARE @TaskDefinitionId INT = (
-	SELECT TaskDefinitionId 
-	FROM [Taskling].[TaskDefinition]
-	WHERE ApplicationName = @ApplicationName
-	AND TaskName = @TaskName)
-
-INSERT INTO [Taskling].[Block]
-           ([TaskDefinitionId]
-           ,[BlockType]
-           ,[IsPhantom]
-           ,[CreatedDate])
-     VALUES
-           (@TaskDefinitionId
-           ,@BlockType
-           ,1
-           ,GETUTCDATE())
-
-DECLARE @BlockId BIGINT = (SELECT CAST(SCOPE_IDENTITY() AS BIGINT))
-
-INSERT INTO [Taskling].[ListBlockItem]
-           ([BlockId]
-           ,[Value]
-           ,[Status])
-     VALUES
-           (@BlockId
-           ,'test'
-           ,1)";
-
     private const string InsertPhantomObjectBlockQuery = @"DECLARE @TaskDefinitionId INT = (
 	SELECT TaskDefinitionId 
 	FROM [Taskling].[TaskDefinition]
@@ -484,7 +511,7 @@ INSERT INTO [Taskling].[Block]
 
     public long InsertDateRangeBlock(int taskDefinitionId, DateTime fromDate, DateTime toDate, DateTime createdAt)
     {
-        return RetryHelper.WithRetry(_ =>
+        return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -524,7 +551,7 @@ INSERT INTO [Taskling].[Block]
 
     public long InsertNumericRangeBlock(int taskDefinitionId, long fromNumber, long toNumber, DateTime createdDate)
     {
-        return RetryHelper.WithRetry(_ =>
+        return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -567,16 +594,18 @@ INSERT INTO [Taskling].[Block]
 
     public long InsertListBlock(int taskDefinitionId, DateTime createdDate, string objectData = null)
     {
-        return RetryHelper.WithRetry(_ =>
+        return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
+                var isPhantom = false;
                 var objectBlock = new Block
                 {
                     TaskDefinitionId = taskDefinitionId,
                     CreatedDate = createdDate,
                     ObjectData = objectData,
-                    BlockType = (int)BlockType.List
+                    BlockType = (int)BlockType.List,
+                    IsPhantom = isPhantom
                 };
                 dbContext.Blocks.Add(objectBlock);
                 dbContext.SaveChanges();
@@ -601,7 +630,7 @@ INSERT INTO [Taskling].[Block]
 
     public long InsertObjectBlock(int taskDefinitionId, DateTime createdDate, string objectData)
     {
-        return RetryHelper.WithRetry(_ =>
+        return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -641,7 +670,7 @@ INSERT INTO [Taskling].[Block]
     public long InsertBlockExecution(int taskExecutionId, long blockId, DateTime createdAt, DateTime? startedAt,
         DateTime? completedAt, BlockExecutionStatus executionStatus, int attempt = 1)
     {
-        return RetryHelper.WithRetry(_ =>
+        return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -686,7 +715,7 @@ INSERT INTO [Taskling].[Block]
 
     public void DeleteBlocks(string applicationName)
     {
-        RetryHelper.WithRetry(_ =>
+        RetryHelper.WithRetry(() =>
             {
                 using (var dbContext = GetDbContext())
                 {
@@ -706,36 +735,36 @@ INSERT INTO [Taskling].[Block]
                     dbContext.SaveChanges();
                 }
             }
-//            using (var connection = GetConnection())
-//            {
-//                var command = connection.CreateCommand();
-//                command.CommandText = @"
-//DELETE BE FROM [Taskling].[BlockExecution] BE
-//inner JOIN [Taskling].[TaskExecution] TE ON BE.TaskExecutionId = TE.TaskExecutionId
-//inner JOIN [Taskling].[TaskDefinition] T ON TE.TaskDefinitionId = T.TaskDefinitionId
-//WHERE (T.ApplicationName = @ApplicationName);
+        //            using (var connection = GetConnection())
+        //            {
+        //                var command = connection.CreateCommand();
+        //                command.CommandText = @"
+        //DELETE BE FROM [Taskling].[BlockExecution] BE
+        //inner JOIN [Taskling].[TaskExecution] TE ON BE.TaskExecutionId = TE.TaskExecutionId
+        //inner JOIN [Taskling].[TaskDefinition] T ON TE.TaskDefinitionId = T.TaskDefinitionId
+        //WHERE (T.ApplicationName = @ApplicationName);
 
-            //DELETE Q FROM [Taskling].[ListBlockItem] Q inner join [Taskling].[Block] B on q.BLockid = b.blockid
-            //inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
-            //WHERE (T.ApplicationName = @ApplicationName);
+        //DELETE Q FROM [Taskling].[ListBlockItem] Q inner join [Taskling].[Block] B on q.BLockid = b.blockid
+        //inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
+        //WHERE (T.ApplicationName = @ApplicationName);
 
-            //DELETE Q FROM [Taskling].[ForceBlockQueue] Q inner join [Taskling].[Block] B on q.BLockid = b.blockid
-            //inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
-            //WHERE (T.ApplicationName = @ApplicationName);
+        //DELETE Q FROM [Taskling].[ForceBlockQueue] Q inner join [Taskling].[Block] B on q.BLockid = b.blockid
+        //inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
+        //WHERE (T.ApplicationName = @ApplicationName);
 
-            //DELETE B FROM [Taskling].[Block] B
-            //inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
-            //WHERE (T.ApplicationName = @ApplicationName);
+        //DELETE B FROM [Taskling].[Block] B
+        //inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
+        //WHERE (T.ApplicationName = @ApplicationName);
 
-            //DELETE LBI FROM [Taskling].[ListBlockItem] LBI
-            //inner JOIN [Taskling].[Block] B ON LBI.BlockId = B.BlockId 
-            //inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
-            //WHERE (T.ApplicationName = @ApplicationName);
-            //";
-            //                command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
-            //                command.ExecuteNonQuery();
-            //            }
-            //        }
+        //DELETE LBI FROM [Taskling].[ListBlockItem] LBI
+        //inner JOIN [Taskling].[Block] B ON LBI.BlockId = B.BlockId 
+        //inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
+        //WHERE (T.ApplicationName = @ApplicationName);
+        //";
+        //                command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
+        //                command.ExecuteNonQuery();
+        //            }
+        //        }
         );
     }
 
@@ -746,7 +775,7 @@ INSERT INTO [Taskling].[Block]
     public int GetBlockExecutionCountByStatus(string applicationName, string taskName,
         BlockExecutionStatus blockExecutionStatus)
     {
-        return RetryHelper.WithRetry(_ =>
+        return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -769,7 +798,7 @@ INSERT INTO [Taskling].[Block]
 
     public int GetBlockExecutionItemCount(long blockExecutionId)
     {
-        return RetryHelper.WithRetry(_ =>
+        return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {

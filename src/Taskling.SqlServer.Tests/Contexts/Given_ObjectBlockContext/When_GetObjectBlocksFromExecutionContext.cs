@@ -2,10 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ObjectBlocks;
 using Taskling.Contexts;
 using Taskling.Events;
+using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
@@ -14,19 +16,25 @@ namespace Taskling.SqlServer.Tests.Contexts.Given_ObjectBlockContext;
 [Collection(Constants.CollectionName)]
 public class When_GetObjectBlocksFromExecutionContext
 {
-    private readonly BlocksHelper _blocksHelper;
-    private readonly ExecutionsHelper _executionHelper;
+    private readonly IBlocksHelper _blocksHelper;
+    private readonly IClientHelper _clientHelper;
+    private readonly ILogger<When_GetObjectBlocksFromExecutionContext> _logger;
+    private readonly IExecutionsHelper _executionsHelper;
     private readonly int _taskDefinitionId;
 
-    public When_GetObjectBlocksFromExecutionContext()
+    public When_GetObjectBlocksFromExecutionContext(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper,
+        IClientHelper clientHelper, ILogger<When_GetObjectBlocksFromExecutionContext> logger,
+        ITaskRepository taskRepository)
     {
-        _blocksHelper = new BlocksHelper();
+        _blocksHelper = blocksHelper;
+        _clientHelper = clientHelper;
+        _logger = logger;
         _blocksHelper.DeleteBlocks(TestConstants.ApplicationName);
-        _executionHelper = new ExecutionsHelper();
-        _executionHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+        _executionsHelper = executionsHelper;
+        _executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
 
-        _taskDefinitionId = _executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        _executionHelper.InsertAvailableExecutionToken(_taskDefinitionId);
+        _taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertAvailableExecutionToken(_taskDefinitionId);
     }
 
     [Fact]
@@ -97,7 +105,7 @@ public class When_GetObjectBlocksFromExecutionContext
                 var rangeBlocks = await executionContext.GetObjectBlocksAsync<string>(x => x.WithNoNewBlocks());
                 Assert.Equal(0, _blocksHelper.GetBlockCount(TestConstants.ApplicationName, TestConstants.TaskName));
 
-                var lastEvent = _executionHelper.GetLastEvent(_taskDefinitionId);
+                var lastEvent = _executionsHelper.GetLastEvent(_taskDefinitionId);
                 Assert.Equal(EventType.CheckPoint, lastEvent.EventType);
                 Assert.Equal("No values for generate the block. Emtpy Block context returned.", lastEvent.Message);
             }
@@ -300,8 +308,8 @@ public class When_GetObjectBlocksFromExecutionContext
 
         // ACT and // ASSERT
         bool startedOk;
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             startedOk = await executionContext.TryStartAsync(referenceValue);
             Assert.True(startedOk);
@@ -329,8 +337,8 @@ public class When_GetObjectBlocksFromExecutionContext
             }
         }
 
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             startedOk = await executionContext.TryStartAsync();
             Assert.True(startedOk);
@@ -355,8 +363,8 @@ public class When_GetObjectBlocksFromExecutionContext
 
         // ACT and // ASSERT
         bool startedOk;
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             startedOk = await executionContext.TryStartAsync(referenceValue);
             Assert.True(startedOk);
@@ -384,8 +392,8 @@ public class When_GetObjectBlocksFromExecutionContext
             }
         }
 
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             startedOk = await executionContext.TryStartAsync();
             Assert.True(startedOk);
@@ -555,14 +563,14 @@ public class When_GetObjectBlocksFromExecutionContext
 
     private ITaskExecutionContext CreateTaskExecutionContext()
     {
-        return ClientHelper.GetExecutionContext(TestConstants.TaskName,
-            ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing());
+        return _clientHelper.GetExecutionContext(TestConstants.TaskName,
+            _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing());
     }
 
     private ITaskExecutionContext CreateTaskExecutionContextWithNoReprocessing()
     {
-        return ClientHelper.GetExecutionContext(TestConstants.TaskName,
-            ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndNoReprocessing());
+        return _clientHelper.GetExecutionContext(TestConstants.TaskName,
+            _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndNoReprocessing());
     }
 
     private async Task CreateFailedObjectBlockTaskAsync()
@@ -599,7 +607,7 @@ public class When_GetObjectBlocksFromExecutionContext
             }
         }
 
-        var executionHelper = new ExecutionsHelper();
-        executionHelper.SetLastExecutionAsDead(_taskDefinitionId);
+        var executionsHelper = _executionsHelper;
+        executionsHelper.SetLastExecutionAsDead(_taskDefinitionId);
     }
 }

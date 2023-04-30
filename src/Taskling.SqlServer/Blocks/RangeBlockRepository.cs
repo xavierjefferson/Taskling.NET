@@ -15,7 +15,7 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
 {
     private readonly ITaskRepository _taskRepository;
 
-    public RangeBlockRepository(ITaskRepository taskRepository)
+    public RangeBlockRepository(ITaskRepository taskRepository, IConnectionStore connectionStore) : base(connectionStore)
     {
         _taskRepository = taskRepository;
     }
@@ -37,7 +37,7 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
 
     public async Task<RangeBlock?> GetLastRangeBlockAsync(LastBlockRequest lastRangeBlockRequest)
     {
-        return await RetryHelper.WithRetry(async (transactionScope) =>
+        return await RetryHelper.WithRetry(async () =>
         {
             var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(lastRangeBlockRequest.TaskId)
                 .ConfigureAwait(false);
@@ -126,7 +126,7 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
         //    using (var connection = await CreateNewConnectionAsync(changeStatusRequest.TaskId).ConfigureAwait(false))
         //    {
         //        var command = connection.CreateCommand();
-        //        command.CommandTimeout = ConnectionStore.Instance.GetConnection(changeStatusRequest.TaskId)
+        //        command.CommandTimeout = _connectionStore.GetConnection(changeStatusRequest.TaskId)
         //            .QueryTimeoutSeconds;
         //        if (changeStatusRequest.BlockExecutionStatus == BlockExecutionStatus.Completed ||
         //            changeStatusRequest.BlockExecutionStatus == BlockExecutionStatus.Failed)
@@ -154,7 +154,7 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
 
     private async Task ChangeStatusOfNumericRangeExecutionAsync(BlockExecutionChangeStatusRequest changeStatusRequest)
     {
-        await RetryHelper.WithRetry(async (transactionScope) =>
+        await RetryHelper.WithRetry(async () =>
         {
 
             using (var dbContext = await GetDbContextAsync(changeStatusRequest.TaskId).ConfigureAwait(false))

@@ -5,27 +5,28 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Taskling.Events;
 using Taskling.InfrastructureContracts;
+using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Blocks;
-using Taskling.SqlServer.Models;
 using Taskling.SqlServer.Tasks;
 using Taskling.SqlServer.Tokens.Executions;
 using Taskling.Tasks;
+using TaskDefinition = Taskling.SqlServer.Models.TaskDefinition;
 
 namespace Taskling.SqlServer.Tests.Helpers;
 
-public class ExecutionsHelper : RepositoryBase
+public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
 {
-    public ExecutionsHelper()
+    public ExecutionsHelper(IConnectionStore connectionStore, ITaskRepository taskRepository)
     {
-        TaskRepository.ClearCache();
-        ConnectionStore.Instance.SetConnection(new TaskId(TestConstants.ApplicationName, TestConstants.TaskName),
+        taskRepository.ClearCache();
+        connectionStore.SetConnection(new TaskId(TestConstants.ApplicationName, TestConstants.TaskName),
             new ClientConnectionSettings(TestConstants.TestConnectionString, TestConstants.QueryTimeout));
     }
 
 
     public void DeleteRecordsOfApplication(string applicationName)
     {
-        RetryHelper.WithRetry(_ =>
+        RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -99,7 +100,7 @@ public class ExecutionsHelper : RepositoryBase
 
     public void SetKeepAlive(int taskExecutionId, DateTime keepAliveDateTime)
     {
-        RetryHelper.WithRetry(_ =>
+        RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -128,7 +129,7 @@ public class ExecutionsHelper : RepositoryBase
 
     public DateTime GetLastKeepAlive(int taskDefinitionId)
     {
-        return RetryHelper.WithRetry(_ =>
+        return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -148,7 +149,7 @@ public class ExecutionsHelper : RepositoryBase
 
     public GetLastEventResponse GetLastEvent(int taskDefinitionId)
     {
-        return RetryHelper.WithRetry(_ =>
+        return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -194,7 +195,7 @@ public class ExecutionsHelper : RepositoryBase
 
     public int InsertTask(string applicationName, string taskName)
     {
-        return RetryHelper.WithRetry(_ =>
+        return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -418,7 +419,7 @@ AND T.TaskName = @TaskName";
 
     public void InsertExecutionToken(int taskDefinitionId, List<Execinfo> tokens)
     {
-        RetryHelper.WithRetry(_ =>
+        RetryHelper.WithRetry(() =>
         {
             var tokenString = GenerateTokensString(tokens);
             using (var dbContext = GetDbContext())
@@ -432,7 +433,7 @@ AND T.TaskName = @TaskName";
                     dbContext.SaveChanges();
                     entity.State = EntityState.Detached;
                 }
-                catch (DbUpdateException d)
+                catch (DbUpdateException)
                 {
                     //do nothing
                 }
@@ -472,7 +473,7 @@ AND T.TaskName = @TaskName";
 
     public ExecutionTokenList GetExecutionTokens(string applicationName, string taskName)
     {
-        return RetryHelper.WithRetry(_ =>
+        return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -508,7 +509,7 @@ AND T.TaskName = @TaskName";
 
     public ExecutionTokenStatus GetExecutionTokenStatus(string applicationName, string taskName)
     {
-        return RetryHelper.WithRetry(_ =>
+        return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -562,7 +563,7 @@ AND T.TaskName = @TaskName";
     public int InsertKeepAliveTaskExecution(int taskDefinitionId, TimeSpan keepAliveInterval,
         TimeSpan keepAliveDeathThreshold, DateTime startedAt, DateTime? completedAt)
     {
-        return RetryHelper.WithRetry(_ =>
+        return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -585,6 +586,7 @@ AND T.TaskName = @TaskName";
                     TasklingVersion = "N/A"
                 };
                 dbContext.TaskExecutions.Add(taskExecution);
+                dbContext.SaveChanges();
                 return taskExecution.TaskExecutionId;
             }
             //using (var connection = GetConnection())
@@ -622,7 +624,7 @@ AND T.TaskName = @TaskName";
     public int InsertOverrideTaskExecution(int taskDefinitionId, TimeSpan overrideThreshold, DateTime startedAt,
         DateTime? completedAt)
     {
-        return RetryHelper.WithRetry(_ =>
+        return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -642,6 +644,7 @@ AND T.TaskName = @TaskName";
                     TasklingVersion = "N/A"
                 };
                 dbContext.TaskExecutions.Add(taskExecution);
+                dbContext.SaveChanges();
                 return taskExecution.TaskExecutionId;
             }
             //using (var connection = GetConnection())
@@ -671,7 +674,7 @@ AND T.TaskName = @TaskName";
 
     public void SetTaskExecutionAsCompleted(int taskExecutionId)
     {
-        RetryHelper.WithRetry(_ =>
+        RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -700,7 +703,7 @@ AND T.TaskName = @TaskName";
 
     public void SetLastExecutionAsDead(int taskDefinitionId)
     {
-        RetryHelper.WithRetry(_ =>
+        RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -729,7 +732,7 @@ AND T.TaskName = @TaskName";
 
     public bool GetBlockedStatusOfLastExecution(int taskDefinitionId)
     {
-        return RetryHelper.WithRetry(_ =>
+        return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -758,7 +761,7 @@ AND T.TaskName = @TaskName";
 
     public string GetLastExecutionVersion(int taskDefinitionId)
     {
-        return RetryHelper.WithRetry(_ =>
+        return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -787,7 +790,7 @@ AND T.TaskName = @TaskName";
 
     public string GetLastExecutionHeader(int taskDefinitionId)
     {
-        return RetryHelper.WithRetry(_ =>
+        return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -831,7 +834,7 @@ AND T.TaskName = @TaskName";
 
     private void InsertCriticalSectionToken(int taskDefinitionId, int taskExecutionId, int status)
     {
-        RetryHelper.WithRetry(_ =>
+        RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -867,7 +870,7 @@ AND T.TaskName = @TaskName";
 
     public int GetQueueCount(int taskExecutionId)
     {
-        return RetryHelper.WithRetry(_ =>
+        return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -885,7 +888,7 @@ AND T.TaskName = @TaskName";
 
     public void InsertIntoCriticalSectionQueue(int taskDefinitionId, int queueIndex, int taskExecutionId)
     {
-        RetryHelper.WithRetry(_ =>
+        RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
@@ -923,7 +926,7 @@ AND T.TaskName = @TaskName";
 
     public int GetCriticalSectionTokenStatus(string applicationName, string taskName)
     {
-        return RetryHelper.WithRetry(_ =>
+        return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {

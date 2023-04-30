@@ -10,7 +10,7 @@ public class EventsRepository : DbOperationsService, IEventsRepository
 {
     public async Task LogEventAsync(TaskId taskId, int taskExecutionId, EventType eventType, string message)
     {
-        await RetryHelper.WithRetry(async (transactionScope) =>
+        await RetryHelper.WithRetry(async () =>
         {
             using (var context = await GetDbContextAsync(taskId).ConfigureAwait(false))
             {
@@ -26,5 +26,9 @@ public class EventsRepository : DbOperationsService, IEventsRepository
             }
         });
 
+    }
+
+    public EventsRepository(IConnectionStore connectionStore) : base(connectionStore)
+    {
     }
 }

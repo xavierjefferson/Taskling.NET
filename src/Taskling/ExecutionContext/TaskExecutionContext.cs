@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.Factories;
 using Taskling.Blocks.ListBlocks;
@@ -43,20 +44,23 @@ public class TaskExecutionContext : ITaskExecutionContext
     private readonly IRangeBlockRepository _rangeBlockRepository;
     private readonly IListBlockRepository _listBlockRepository;
     private readonly IObjectBlockRepository _objectBlockRepository;
+    private readonly TasklingOptions _tasklingOptions;
     private readonly ICriticalSectionRepository _criticalSectionRepository;
     private readonly IBlockFactory _blockFactory;
     private readonly ICleanUpService _cleanUpService;
-    private readonly ITasklingConfiguration _configuration;
+   
+    private readonly ILogger<TaskExecutionContext> _logger;
+    private  ITaskConfigurationRepository _taskConfigurationRepository;
 
-    private readonly TaskExecutionInstance _taskExecutionInstance;
-    private readonly TaskExecutionOptions _taskExecutionOptions;
+    private TaskExecutionInstance _taskExecutionInstance;
+    private TaskExecutionOptions _taskExecutionOptions;
     private bool _startedCalled;
     private bool _completeCalled;
     private bool _executionHasFailed;
     private KeepAliveDaemon _keepAliveDaemon;
     private ICriticalSectionContext _userCriticalSectionContext;
     private ICriticalSectionContext _clientCriticalSectionContext;
-    private readonly TaskConfiguration _taskConfiguration;
+    private TaskConfiguration _taskConfiguration;
     private object _taskExecutionHeader;
 
     private const string NotActiveMessage =
@@ -68,29 +72,14 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     #endregion .: Fields and services :.
 
+    
     #region .: Constructors and disposal :.
 
-    public TaskExecutionContext(ITasklingConfiguration configuration,
-        ITaskExecutionRepository taskExecutionRepository,
-        ICriticalSectionRepository criticalSectionRepository,
-        IBlockFactory blockFactory,
-        IRangeBlockRepository rangeBlockRepository,
-        IListBlockRepository listBlockRepository,
-        IObjectBlockRepository objectBlockRepository,
-        ICleanUpService cleanUpService,
-        string applicationName,
+    public void SetOptions(string applicationName,
         string taskName,
-        TaskExecutionOptions taskExecutionOptions)
+        TaskExecutionOptions taskExecutionOptions, ITaskConfigurationRepository taskConfigurationRepository)
     {
-        _configuration = configuration;
-        _taskExecutionRepository = taskExecutionRepository;
-        _criticalSectionRepository = criticalSectionRepository;
-        _blockFactory = blockFactory;
-        _rangeBlockRepository = rangeBlockRepository;
-        _listBlockRepository = listBlockRepository;
-        _objectBlockRepository = objectBlockRepository;
-        _cleanUpService = cleanUpService;
-
+        _taskConfigurationRepository = taskConfigurationRepository;
         _taskExecutionInstance = new TaskExecutionInstance();
         _taskExecutionInstance.ApplicationName = applicationName;
         _taskExecutionInstance.TaskName = taskName;
@@ -98,8 +87,46 @@ public class TaskExecutionContext : ITaskExecutionContext
         _taskExecutionOptions = taskExecutionOptions;
 
         _executionHasFailed = false;
+        _taskConfiguration = taskConfigurationRepository.GetTaskConfiguration(applicationName, taskName);
+    }
 
-        _taskConfiguration = _configuration.GetTaskConfiguration(applicationName, taskName);
+    public TaskExecutionContext(ITaskExecutionRepository taskExecutionRepository,
+        ICriticalSectionRepository criticalSectionRepository,
+        IBlockFactory blockFactory,
+        IRangeBlockRepository rangeBlockRepository,
+        IListBlockRepository listBlockRepository,
+        IObjectBlockRepository objectBlockRepository, TasklingOptions tasklingOptions,
+        ICleanUpService cleanUpService, ILogger<TaskExecutionContext> logger )
+    {
+        _taskExecutionRepository =
+            taskExecutionRepository ?? throw new ArgumentNullException(nameof(taskExecutionRepository));
+        ;
+        _criticalSectionRepository = criticalSectionRepository ??
+                                     throw new ArgumentNullException(nameof(criticalSectionRepository));
+        ;
+        _blockFactory = blockFactory ?? throw new ArgumentNullException(nameof(blockFactory));
+        ;
+        _rangeBlockRepository = rangeBlockRepository ?? throw new ArgumentNullException(nameof(rangeBlockRepository));
+        ;
+        _listBlockRepository = listBlockRepository ?? throw new ArgumentNullException(nameof(listBlockRepository));
+        ;
+        _objectBlockRepository =
+            objectBlockRepository ?? throw new ArgumentNullException(nameof(objectBlockRepository));
+        _tasklingOptions = tasklingOptions;
+        ;
+        _cleanUpService = cleanUpService ?? throw new ArgumentNullException(nameof(cleanUpService));
+ 
+        _logger = logger;
+
+        //_taskExecutionInstance = new TaskExecutionInstance();
+        //_taskExecutionInstance.ApplicationName = applicationName;
+        //_taskExecutionInstance.TaskName = taskName;
+
+        //_taskExecutionOptions = taskExecutionOptions;
+
+        //_executionHasFailed = false;
+
+        //_taskConfiguration = _configuration.GetTaskConfiguration(applicationName, taskName);
     }
 
     ~TaskExecutionContext()
@@ -140,38 +167,47 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     public async Task<bool> TryStartAsync(string referenceValue)
     {
-        if (!_taskExecutionOptions.Enabled) return false;
-
-        if (_startedCalled)
-            throw new ExecutionException("The execution context has already been started");
-
-        _startedCalled = true;
-
-        CleanUpOldData();
-        var startRequest = CreateStartRequest(referenceValue);
-
+        _logger.LogDebug($"Entered {nameof(TryStartAsync)}");
         try
         {
-            var response = await _taskExecutionRepository.StartAsync(startRequest).ConfigureAwait(false);
-            _taskExecutionInstance.TaskExecutionId = response.TaskExecutionId;
-            _taskExecutionInstance.ExecutionTokenId = response.ExecutionTokenId;
+            if (!_taskExecutionOptions.Enabled) return false;
 
-            if (response.GrantStatus == GrantStatus.Denied)
+            if (_startedCalled)
+                throw new ExecutionException("The execution context has already been started");
+
+            _startedCalled = true;
+
+            CleanUpOldData();
+            var startRequest = CreateStartRequest(referenceValue);
+
+            try
             {
-                await CompleteAsync().ConfigureAwait(false);
-                return false;
+                var response = await _taskExecutionRepository.StartAsync(startRequest).ConfigureAwait(false);
+                _taskExecutionInstance.TaskExecutionId = response.TaskExecutionId;
+                _taskExecutionInstance.ExecutionTokenId = response.ExecutionTokenId;
+
+                if (response.GrantStatus == GrantStatus.Denied)
+                {
+                    await CompleteAsync().ConfigureAwait(false);
+                    return false;
+                }
+
+                if (_taskExecutionOptions.TaskDeathMode == TaskDeathMode.KeepAlive)
+                    StartKeepAlive();
+            }
+            catch (Exception)
+            {
+                _completeCalled = true;
+                throw;
             }
 
-            if (_taskExecutionOptions.TaskDeathMode == TaskDeathMode.KeepAlive)
-                StartKeepAlive();
-        }
-        catch (Exception)
-        {
-            _completeCalled = true;
-            throw;
-        }
 
-        return true;
+            return true;
+        }
+        finally
+        {
+            _logger.LogDebug($"Exiting {nameof(TryStartAsync)}");
+        }
     }
 
     public async Task<bool> TryStartAsync<TExecutionHeader>(TExecutionHeader executionHeader)
@@ -188,22 +224,30 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     public async Task CompleteAsync()
     {
-        if (IsExecutionContextActive)
+        _logger.LogDebug($"Entered {nameof(CompleteAsync)}");
+        try
         {
-            _completeCalled = true;
+            if (IsExecutionContextActive)
+            {
+                _completeCalled = true;
 
-            if (_keepAliveDaemon != null)
-                _keepAliveDaemon.Stop();
+                if (_keepAliveDaemon != null)
+                    _keepAliveDaemon.Stop();
 
-            var completeRequest = new TaskExecutionCompleteRequest(
-                new TaskId(_taskExecutionInstance.ApplicationName, _taskExecutionInstance.TaskName),
-                _taskExecutionInstance.TaskExecutionId,
-                _taskExecutionInstance.ExecutionTokenId);
-            completeRequest.Failed = _executionHasFailed;
+                var completeRequest = new TaskExecutionCompleteRequest(
+                    new TaskId(_taskExecutionInstance.ApplicationName, _taskExecutionInstance.TaskName),
+                    _taskExecutionInstance.TaskExecutionId,
+                    _taskExecutionInstance.ExecutionTokenId);
+                completeRequest.Failed = _executionHasFailed;
 
 
-            var response = await _taskExecutionRepository.CompleteAsync(completeRequest).ConfigureAwait(false);
-            _taskExecutionInstance.CompletedAt = response.CompletedAt;
+                var response = await _taskExecutionRepository.CompleteAsync(completeRequest).ConfigureAwait(false);
+                _taskExecutionInstance.CompletedAt = response.CompletedAt;
+            }
+        }
+        finally
+        {
+            _logger.LogDebug($"Exiting {nameof(CompleteAsync)}");
         }
     }
 
@@ -258,7 +302,7 @@ public class TaskExecutionContext : ITaskExecutionContext
         _userCriticalSectionContext = new CriticalSectionContext(_criticalSectionRepository,
             _taskExecutionInstance,
             _taskExecutionOptions,
-            CriticalSectionType.User);
+            CriticalSectionType.User, _tasklingOptions);
 
         return _userCriticalSectionContext;
     }
@@ -266,159 +310,216 @@ public class TaskExecutionContext : ITaskExecutionContext
     public async Task<IList<IDateRangeBlockContext>> GetDateRangeBlocksAsync(
         Func<IFluentDateRangeBlockDescriptor, object> fluentBlockRequest)
     {
-        if (!IsExecutionContextActive)
-            throw new ExecutionException(NotActiveMessage);
 
-        var fluentDescriptor = fluentBlockRequest(new FluentRangeBlockDescriptor());
-        var settings = (IBlockSettings)fluentDescriptor;
+        return await GetBlocksAsync<IDateRangeBlockContext, FluentRangeBlockDescriptor, DateRangeBlockRequest, IBlockSettings>(
+            fluentBlockRequest, ConvertToDateRangeBlockRequest, _blockFactory.GenerateDateRangeBlocksAsync);
 
-        var request = ConvertToDateRangeBlockRequest(settings);
-        if (ShouldProtect(request))
+        //if (!IsExecutionContextActive)
+        //    throw new ExecutionException(NotActiveMessage);
+
+        //var fluentDescriptor = fluentBlockRequest(new FluentRangeBlockDescriptor());
+        //var settings = (IBlockSettings)fluentDescriptor;
+
+        //var request = ConvertToDateRangeBlockRequest(settings);
+        //if (ShouldProtect(request))
+        //{
+        //    var csContext = CreateClientCriticalSection();
+        //    try
+        //    {
+        //        var csStarted = await csContext.TryStartAsync(new TimeSpan(0, 0, 20), 3).ConfigureAwait(false);
+        //        if (csStarted)
+        //            return await _blockFactory.GenerateDateRangeBlocksAsync(request).ConfigureAwait(false);
+
+        //        throw new CriticalSectionException("Could not start a critical section in the alloted time");
+        //    }
+        //    finally
+        //    {
+        //        await csContext.CompleteAsync().ConfigureAwait(false);
+        //    }
+        //}
+
+        //return await _blockFactory.GenerateDateRangeBlocksAsync(request).ConfigureAwait(false);
+    }
+
+    public async Task<IList<T>> GetBlocksAsync<T, U, V, W>(Func<U, object> fluentBlockRequest,
+        Func<W, V> createRequestFunc,
+        Func<V, Task<IList<T>>> generateFunc)
+        where V : BlockRequest where U : new()
+    {
+        _logger.LogDebug($"Entering block request for {typeof(T).Name}");
+        try
         {
-            var csContext = CreateClientCriticalSection();
-            try
-            {
-                var csStarted = await csContext.TryStartAsync(new TimeSpan(0, 0, 20), 3).ConfigureAwait(false);
-                if (csStarted)
-                    return await _blockFactory.GenerateDateRangeBlocksAsync(request).ConfigureAwait(false);
+            if (!IsExecutionContextActive)
+                throw new ExecutionException(NotActiveMessage);
 
-                throw new CriticalSectionException("Could not start a critical section in the alloted time");
-            }
-            finally
+            var fluentDescriptor = fluentBlockRequest(new U());
+            var settings = (W)fluentDescriptor;
+
+            var request = createRequestFunc(settings);
+            if (ShouldProtect(request))
             {
-                await csContext.CompleteAsync().ConfigureAwait(false);
+                _logger.LogDebug($"Request is protected - creating critical section");
+                var csContext = CreateClientCriticalSection();
+                try
+                {
+                    var csStarted = await csContext.TryStartAsync(_tasklingOptions.CriticalSectionRetry, _tasklingOptions.CriticalSectionAttemptCount).ConfigureAwait(false);
+                    if (csStarted)
+                        return await generateFunc(request).ConfigureAwait(false);
+
+                    throw new CriticalSectionException("Could not start a critical section in the alloted time");
+                }
+                finally
+                {
+                    await csContext.CompleteAsync().ConfigureAwait(false);
+                }
             }
+
+            _logger.LogDebug($"Request is unprotected");
+            return await generateFunc(request).ConfigureAwait(false);
         }
-
-        return await _blockFactory.GenerateDateRangeBlocksAsync(request).ConfigureAwait(false);
+        finally
+        {
+            _logger.LogDebug($"Exiting block request for {typeof(T).Name}");
+        }
     }
 
     public async Task<IList<INumericRangeBlockContext>> GetNumericRangeBlocksAsync(
         Func<IFluentNumericRangeBlockDescriptor, object> fluentBlockRequest)
     {
-        if (!IsExecutionContextActive)
-            throw new ExecutionException(NotActiveMessage);
+        return await GetBlocksAsync<INumericRangeBlockContext, FluentRangeBlockDescriptor, NumericRangeBlockRequest, IBlockSettings>(
+            fluentBlockRequest, ConvertToNumericRangeBlockRequest, _blockFactory.GenerateNumericRangeBlocksAsync);
 
-        var fluentDescriptor = fluentBlockRequest(new FluentRangeBlockDescriptor());
-        var settings = (IBlockSettings)fluentDescriptor;
+        //if (!IsExecutionContextActive)
+        //    throw new ExecutionException(NotActiveMessage);
 
-        var request = ConvertToNumericRangeBlockRequest(settings);
-        if (ShouldProtect(request))
-        {
-            var csContext = CreateClientCriticalSection();
-            try
-            {
-                var csStarted = await csContext.TryStartAsync(new TimeSpan(0, 0, 20), 3).ConfigureAwait(false);
-                if (csStarted)
-                    return await _blockFactory.GenerateNumericRangeBlocksAsync(request).ConfigureAwait(false);
+        //var fluentDescriptor = fluentBlockRequest(new FluentRangeBlockDescriptor());
+        //var settings = (IBlockSettings)fluentDescriptor;
 
-                throw new CriticalSectionException("Could not start a critical section in the alloted time");
-            }
-            finally
-            {
-                await csContext.CompleteAsync().ConfigureAwait(false);
-            }
-        }
+        //var request = ConvertToNumericRangeBlockRequest(settings);
+        //if (ShouldProtect(request))
+        //{
+        //    var csContext = CreateClientCriticalSection();
+        //    try
+        //    {
+        //        var csStarted = await csContext.TryStartAsync(new TimeSpan(0, 0, 20), 3).ConfigureAwait(false);
+        //        if (csStarted)
+        //            return await _blockFactory.GenerateNumericRangeBlocksAsync(request).ConfigureAwait(false);
 
-        return await _blockFactory.GenerateNumericRangeBlocksAsync(request).ConfigureAwait(false);
+        //        throw new CriticalSectionException("Could not start a critical section in the alloted time");
+        //    }
+        //    finally
+        //    {
+        //        await csContext.CompleteAsync().ConfigureAwait(false);
+        //    }
+        //}
+
+        //return await _blockFactory.GenerateNumericRangeBlocksAsync(request).ConfigureAwait(false);
     }
 
     public async Task<IList<IListBlockContext<T>>> GetListBlocksAsync<T>(
         Func<IFluentListBlockDescriptorBase<T>, object> fluentBlockRequest)
     {
-        if (!IsExecutionContextActive)
-            throw new ExecutionException(NotActiveMessage);
 
-        var fluentDescriptor = fluentBlockRequest(new FluentListBlockDescriptorBase<T>());
-        var settings = (IBlockSettings)fluentDescriptor;
+        return await GetBlocksAsync<IListBlockContext<T>, FluentListBlockDescriptorBase<T>, ListBlockRequest, IBlockSettings>(
+            fluentBlockRequest, ConvertToListBlockRequest, _blockFactory.GenerateListBlocksAsync<T>);
 
-        if (settings.BlockType == BlockType.List)
-        {
-            var request = ConvertToListBlockRequest(settings);
-            if (ShouldProtect(request))
-            {
-                var csContext = CreateClientCriticalSection();
-                try
-                {
-                    var csStarted = await csContext.TryStartAsync(new TimeSpan(0, 0, 20), 3).ConfigureAwait(false);
-                    if (csStarted)
-                        return await _blockFactory.GenerateListBlocksAsync<T>(request).ConfigureAwait(false);
-                    throw new CriticalSectionException("Could not start a critical section in the alloted time");
-                }
-                finally
-                {
-                    await csContext.CompleteAsync().ConfigureAwait(false);
-                }
-            }
+        //if (!IsExecutionContextActive)
+        //    throw new ExecutionException(NotActiveMessage);
 
-            return await _blockFactory.GenerateListBlocksAsync<T>(request).ConfigureAwait(false);
-        }
+        //var fluentDescriptor = fluentBlockRequest(new FluentListBlockDescriptorBase<T>());
+        //var settings = (IBlockSettings)fluentDescriptor;
 
-        throw new NotSupportedException("BlockType not supported");
+        //if (settings.BlockType == BlockType.List)
+        //{
+        //    var request = ConvertToListBlockRequest(settings);
+        //    if (ShouldProtect(request))
+        //    {
+        //        var csContext = CreateClientCriticalSection();
+        //        try
+        //        {
+        //            var csStarted = await csContext.TryStartAsync(new TimeSpan(0, 0, 20), 3).ConfigureAwait(false);
+        //            if (csStarted)
+        //                return await _blockFactory.GenerateListBlocksAsync<T>(request).ConfigureAwait(false);
+        //            throw new CriticalSectionException("Could not start a critical section in the alloted time");
+        //        }
+        //        finally
+        //        {
+        //            await csContext.CompleteAsync().ConfigureAwait(false);
+        //        }
+        //    }
+
+        //    return await _blockFactory.GenerateListBlocksAsync<T>(request).ConfigureAwait(false);
+        //}
+
+        //throw new NotSupportedException("BlockType not supported");
     }
 
     public async Task<IList<IListBlockContext<TItem, THeader>>> GetListBlocksAsync<TItem, THeader>(
         Func<IFluentListBlockDescriptorBase<TItem, THeader>, object> fluentBlockRequest)
     {
-        if (!IsExecutionContextActive)
-            throw new ExecutionException(NotActiveMessage);
+        return await GetBlocksAsync<IListBlockContext<TItem, THeader>, FluentListBlockDescriptorBase<TItem, THeader>, ListBlockRequest, IBlockSettings>(
+            fluentBlockRequest, ConvertToListBlockRequest, _blockFactory.GenerateListBlocksAsync<TItem, THeader>);
+        //if (!IsExecutionContextActive)
+        //    throw new ExecutionException(NotActiveMessage);
 
-        var fluentDescriptor = fluentBlockRequest(new FluentListBlockDescriptorBase<TItem, THeader>());
-        var settings = (IBlockSettings)fluentDescriptor;
+        //var fluentDescriptor = fluentBlockRequest(new FluentListBlockDescriptorBase<TItem, THeader>());
+        //var settings = (IBlockSettings)fluentDescriptor;
 
-        if (settings.BlockType == BlockType.List)
-        {
-            var request = ConvertToListBlockRequest(settings);
-            if (ShouldProtect(request))
-            {
-                var csContext = CreateClientCriticalSection();
-                try
-                {
-                    var csStarted = await csContext.TryStartAsync(new TimeSpan(0, 0, 20), 3).ConfigureAwait(false);
-                    if (csStarted)
-                        return await _blockFactory.GenerateListBlocksAsync<TItem, THeader>(request)
-                            .ConfigureAwait(false);
-                    throw new CriticalSectionException("Could not start a critical section in the alloted time");
-                }
-                finally
-                {
-                    await csContext.CompleteAsync().ConfigureAwait(false);
-                }
-            }
+        //if (settings.BlockType == BlockType.List)
+        //{
+        //    var request = ConvertToListBlockRequest(settings);
+        //    if (ShouldProtect(request))
+        //    {
+        //        var csContext = CreateClientCriticalSection();
+        //        try
+        //        {
+        //            var csStarted = await csContext.TryStartAsync(new TimeSpan(0, 0, 20), 3).ConfigureAwait(false);
+        //            if (csStarted)
+        //                return await _blockFactory.GenerateListBlocksAsync<TItem, THeader>(request)
+        //                    .ConfigureAwait(false);
+        //            throw new CriticalSectionException("Could not start a critical section in the alloted time");
+        //        }
+        //        finally
+        //        {
+        //            await csContext.CompleteAsync().ConfigureAwait(false);
+        //        }
+        //    }
 
-            return await _blockFactory.GenerateListBlocksAsync<TItem, THeader>(request).ConfigureAwait(false);
-        }
+        //    return await _blockFactory.GenerateListBlocksAsync<TItem, THeader>(request).ConfigureAwait(false);
+        //}
 
-        throw new NotSupportedException("BlockType not supported");
+        //throw new NotSupportedException("BlockType not supported");
     }
 
     public async Task<IList<IObjectBlockContext<T>>> GetObjectBlocksAsync<T>(
         Func<IFluentObjectBlockDescriptorBase<T>, object> fluentBlockRequest)
     {
-        if (!IsExecutionContextActive)
-            throw new ExecutionException(NotActiveMessage);
+        return await GetBlocksAsync<IObjectBlockContext<T>, FluentObjectBlockDescriptorBase<T>, ObjectBlockRequest<T>, IObjectBlockSettings<T>>(
+            fluentBlockRequest, ConvertToObjectBlockRequest, _blockFactory.GenerateObjectBlocksAsync<T>);
+        //if (!IsExecutionContextActive)
+        //    throw new ExecutionException(NotActiveMessage);
 
-        var fluentDescriptor = fluentBlockRequest(new FluentObjectBlockDescriptorBase<T>());
-        var settings = (IObjectBlockSettings<T>)fluentDescriptor;
+        //var fluentDescriptor = fluentBlockRequest(new FluentObjectBlockDescriptorBase<T>());
+        //var settings = (IObjectBlockSettings<T>)fluentDescriptor;
 
-        var request = ConvertToObjectBlockRequest(settings);
-        if (ShouldProtect(request))
-        {
-            var csContext = CreateClientCriticalSection();
-            try
-            {
-                var csStarted = await csContext.TryStartAsync(new TimeSpan(0, 0, 20), 3).ConfigureAwait(false);
-                if (csStarted)
-                    return await _blockFactory.GenerateObjectBlocksAsync(request).ConfigureAwait(false);
-                throw new CriticalSectionException("Could not start a critical section in the alloted time");
-            }
-            finally
-            {
-                await csContext.CompleteAsync().ConfigureAwait(false);
-            }
-        }
+        //var request = ConvertToObjectBlockRequest(settings);
+        //if (ShouldProtect(request))
+        //{
+        //    var csContext = CreateClientCriticalSection();
+        //    try
+        //    {
+        //        var csStarted = await csContext.TryStartAsync(new TimeSpan(0, 0, 20), 3).ConfigureAwait(false);
+        //        if (csStarted)
+        //            return await _blockFactory.GenerateObjectBlocksAsync(request).ConfigureAwait(false);
+        //        throw new CriticalSectionException("Could not start a critical section in the alloted time");
+        //    }
+        //    finally
+        //    {
+        //        await csContext.CompleteAsync().ConfigureAwait(false);
+        //    }
+        //}
 
-        return await _blockFactory.GenerateObjectBlocksAsync(request).ConfigureAwait(false);
+        //return await _blockFactory.GenerateObjectBlocksAsync(request).ConfigureAwait(false);
     }
 
     public async Task<IDateRangeBlock> GetLastDateRangeBlockAsync(LastBlockOrder lastBlockOrder)
@@ -553,7 +654,7 @@ public class TaskExecutionContext : ITaskExecutionContext
     private void CleanUpOldData()
     {
         _cleanUpService.CleanOldData(_taskExecutionInstance.ApplicationName, _taskExecutionInstance.TaskName,
-            _taskExecutionInstance.TaskExecutionId);
+            _taskExecutionInstance.TaskExecutionId, _taskConfigurationRepository);
     }
 
     private TaskExecutionStartRequest CreateStartRequest(string referenceValue)
@@ -789,7 +890,7 @@ public class TaskExecutionContext : ITaskExecutionContext
         _clientCriticalSectionContext = new CriticalSectionContext(_criticalSectionRepository,
             _taskExecutionInstance,
             _taskExecutionOptions,
-            CriticalSectionType.Client);
+            CriticalSectionType.Client, _tasklingOptions);
 
         return _clientCriticalSectionContext;
     }

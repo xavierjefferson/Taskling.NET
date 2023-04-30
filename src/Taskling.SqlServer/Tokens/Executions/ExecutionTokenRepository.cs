@@ -14,14 +14,14 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
 {
     private readonly ICommonTokenRepository _commonTokenRepository;
 
-    public ExecutionTokenRepository(ICommonTokenRepository commonTokenRepository)
+    public ExecutionTokenRepository(ICommonTokenRepository commonTokenRepository, IConnectionStore connectionStore) : base(connectionStore)
     {
         _commonTokenRepository = commonTokenRepository;
     }
 
     public async Task<TokenResponse> TryAcquireExecutionTokenAsync(TokenRequest tokenRequest)
     {
-        return await RetryHelper.WithRetry(async (transactionScope) =>
+        return await RetryHelper.WithRetry(async () =>
         {
             var response = new TokenResponse();
             response.StartedAt = DateTime.UtcNow;
@@ -64,7 +64,7 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
 
     public async Task ReturnExecutionTokenAsync(TokenRequest tokenRequest, Guid executionTokenId)
     {
-        await RetryHelper.WithRetry(async (transactionScope) =>
+        await RetryHelper.WithRetry(async () =>
        {
            using (var dbContext = await GetDbContextAsync(tokenRequest.TaskId).ConfigureAwait(false))
            {

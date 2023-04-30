@@ -7,28 +7,32 @@ using Taskling.InfrastructureContracts.TaskExecution;
 
 namespace Taskling.CleanUp;
 
+ 
+
+ 
 public class CleanUpService : ICleanUpService
 {
     private readonly ICleanUpRepository _cleanUpRepository;
     private readonly ITaskExecutionRepository _taskExecutionRepository;
-    private readonly ITasklingConfiguration _tasklingConfiguration;
 
-    public CleanUpService(ITasklingConfiguration tasklingConfiguration,
-        ICleanUpRepository cleanUpRepository,
+
+    public CleanUpService (ICleanUpRepository cleanUpRepository,
         ITaskExecutionRepository taskExecutionRepository)
     {
         _cleanUpRepository = cleanUpRepository;
-        _tasklingConfiguration = tasklingConfiguration;
+        
         _taskExecutionRepository = taskExecutionRepository;
     }
 
-    public void CleanOldData(string applicationName, string taskName, int taskExecutionId)
+    public void CleanOldData(string applicationName, string taskName, int taskExecutionId,
+        ITaskConfigurationRepository taskConfigurationRepository)
     {
+
         Task.Run(async () =>
-            await StartCleanOldDataAsync(applicationName, taskName, taskExecutionId).ConfigureAwait(false));
+            await StartCleanOldDataAsync(applicationName, taskName, taskExecutionId, taskConfigurationRepository).ConfigureAwait(false));
     }
 
-    private async Task StartCleanOldDataAsync(string applicationName, string taskName, int taskExecutionId)
+    private async Task StartCleanOldDataAsync(string applicationName, string taskName, int taskExecutionId, ITaskConfigurationRepository taskConfigurationRepository)
     {
         var checkpoint = new TaskExecutionCheckpointRequest
         {
@@ -38,7 +42,7 @@ public class CleanUpService : ICleanUpService
 
         try
         {
-            var configuration = _tasklingConfiguration.GetTaskConfiguration(applicationName, taskName);
+            var configuration = taskConfigurationRepository.GetTaskConfiguration(applicationName, taskName);
             var request = new CleanUpRequest
             {
                 TaskId = new TaskId(applicationName, taskName),

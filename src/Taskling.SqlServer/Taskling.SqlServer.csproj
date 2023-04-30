@@ -23,6 +23,8 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="microsoft.extensions.dependencyinjection.abstractions" Version="6.0.0" />
+    <PackageReference Include="microsoft.extensions.logging.abstractions" Version="6.0.0" />
     <PackageReference Include="newtonsoft.json" Version="9.0.1" />
     <PackageReference Include="system.data.sqlclient" Version="4.8.5" />
   </ItemGroup>

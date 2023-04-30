@@ -5,6 +5,7 @@ using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
 using Taskling.Blocks.ObjectBlocks;
 using Taskling.Blocks.RangeBlocks;
+using Taskling.Configuration;
 using Taskling.Fluent;
 using Taskling.Fluent.RangeBlocks;
 using Taskling.Tasks;
@@ -13,6 +14,9 @@ namespace Taskling.Contexts;
 
 public interface ITaskExecutionContext : IDisposable
 {
+    void SetOptions(string applicationName,
+        string taskName,
+        TaskExecutionOptions taskExecutionOptions, ITaskConfigurationRepository taskConfigurationRepository);
     bool IsStarted { get; }
     Task<bool> TryStartAsync();
     Task<bool> TryStartAsync(string referenceValue);

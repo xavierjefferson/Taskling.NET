@@ -12,7 +12,7 @@ namespace ConsoleApp1
         {
             //const string conn = "Server=.;Database=TasklingDb;Trusted_Connection=True;";
             //var builder = new DbContextOptionsBuilder<TasklingDbContext>();
-            //// var clientConnectionSettings = ConnectionStore.Instance.GetConnection(conn);
+            //// var clientConnectionSettings = _connectionStore.GetConnection(conn);
             //builder.UseSqlServer(conn, options =>
             //{
 

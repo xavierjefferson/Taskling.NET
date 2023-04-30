@@ -4,16 +4,22 @@ using System.Threading.Tasks;
 using Taskling.Blocks.Common;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
-using Taskling.SqlServer.Blocks;
-using Taskling.SqlServer.Tasks;
+using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_RangeBlockRepository;
+
 [Collection(Constants.CollectionName)]
 public class When_GetLastNumericRangeBlock
 {
+    private readonly IBlocksHelper _blocksHelper;
+    private readonly IClientHelper _clientHelper;
+    private readonly IExecutionsHelper _executionsHelper;
+    private readonly IRangeBlockRepository _rangeBlockRepository;
+
+    private readonly int _taskDefinitionId;
     private readonly ITestOutputHelper output;
     private DateTime _baseDateTime;
 
@@ -22,34 +28,34 @@ public class When_GetLastNumericRangeBlock
     private long _block3;
     private long _block4;
     private long _block5;
-    private readonly BlocksHelper _blocksHelper;
-    private readonly ExecutionsHelper _executionHelper;
-
-    private readonly int _taskDefinitionId;
     private int _taskExecution1;
 
-    public When_GetLastNumericRangeBlock(ITestOutputHelper output)
+    public When_GetLastNumericRangeBlock(ITestOutputHelper output, IBlocksHelper blocksHelper,
+        IExecutionsHelper executionsHelper, IClientHelper clientHelper, IRangeBlockRepository rangeBlockRepository,
+        ITaskRepository taskRepository)
     {
         this.output = output;
-        _blocksHelper = new BlocksHelper();
+        _blocksHelper = blocksHelper;
+        _clientHelper = clientHelper;
         _blocksHelper.DeleteBlocks(TestConstants.ApplicationName);
-        _executionHelper = new ExecutionsHelper();
-        _executionHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+        _executionsHelper = executionsHelper;
+        _rangeBlockRepository = rangeBlockRepository;
+        _executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
 
-        _taskDefinitionId = _executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        _executionHelper.InsertUnlimitedExecutionToken(_taskDefinitionId);
+        _taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertUnlimitedExecutionToken(_taskDefinitionId);
 
-        TaskRepository.ClearCache();
+        taskRepository.ClearCache();
     }
 
-    private RangeBlockRepository CreateSut()
+    private IRangeBlockRepository CreateSut()
     {
-        return new RangeBlockRepository(new TaskRepository());
+        return _rangeBlockRepository;
     }
 
     private void InsertBlocks()
     {
-        _taskExecution1 = _executionHelper.InsertOverrideTaskExecution(_taskDefinitionId);
+        _taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId);
 
         _baseDateTime = new DateTime(2016, 1, 1);
         _block1 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 1000, 1100, DateTime.UtcNow);

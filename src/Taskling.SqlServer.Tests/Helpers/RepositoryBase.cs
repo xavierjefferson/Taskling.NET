@@ -1,28 +1,32 @@
-﻿using Microsoft.EntityFrameworkCore;
-using System.Data.SqlClient;
-using System.Threading.Tasks;
-using Taskling.InfrastructureContracts;
+﻿using System.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using Taskling.SqlServer.Models;
 
 namespace Taskling.SqlServer.Tests.Helpers;
 
 public abstract class RepositoryBase
 {
+    private static bool created;
+    private static readonly object _mutex = new();
+
     public TasklingDbContext GetDbContext()
     {
-        var builder = new DbContextOptionsBuilder<TasklingDbContext>();
-        
-        builder.UseSqlServer(TestConstants.TestConnectionString);
-        
+        lock (_mutex)
+        {
+            var builder = new DbContextOptionsBuilder<TasklingDbContext>();
 
-        var tasklingDbContext = new TasklingDbContext(builder.Options);
-        
-        return tasklingDbContext;
-    }
-    public SqlConnection GetConnection()
-    {
-        var connection = new SqlConnection(TestConstants.TestConnectionString);
-        connection.Open();
-        return connection;
+            builder.UseSqlServer(TestConstants.TestConnectionString);
+
+
+            var tasklingDbContext = new TasklingDbContext(builder.Options);
+
+            if (!created)
+            {
+                tasklingDbContext.Database.EnsureCreated();
+                created = true;
+            }
+
+            return tasklingDbContext;
+        }
     }
 }

@@ -7,7 +7,7 @@ namespace Taskling.Fluent.ListBlocks;
 
 public class FluentListBlockDescriptorBase<T> : IFluentListBlockDescriptorBase<T>
 {
-    public IOverrideConfigurationDescriptor WithSingleUnitCommit(List<T> values, short maxBlockSize)
+    public IOverrideConfigurationDescriptor WithSingleUnitCommit(List<T> values, int maxBlockSize)
     {
         var jsonValues = Serialize(values);
         var listBlockDescriptor = new FluentBlockSettingsDescriptor(jsonValues, maxBlockSize);
@@ -16,7 +16,7 @@ public class FluentListBlockDescriptorBase<T> : IFluentListBlockDescriptorBase<T
         return listBlockDescriptor;
     }
 
-    public IOverrideConfigurationDescriptor WithPeriodicCommit(List<T> values, short maxBlockSize, BatchSize batchSize)
+    public IOverrideConfigurationDescriptor WithPeriodicCommit(List<T> values, int maxBlockSize, BatchSize batchSize)
     {
         var jsonValues = Serialize(values);
         var listBlockDescriptor = new FluentBlockSettingsDescriptor(jsonValues, maxBlockSize);
@@ -44,7 +44,7 @@ public class FluentListBlockDescriptorBase<T> : IFluentListBlockDescriptorBase<T
         return listBlockDescriptor;
     }
 
-    public IOverrideConfigurationDescriptor WithBatchCommitAtEnd(List<T> values, short maxBlockSize)
+    public IOverrideConfigurationDescriptor WithBatchCommitAtEnd(List<T> values, int maxBlockSize)
     {
         var jsonValues = Serialize(values);
         var listBlockDescriptor = new FluentBlockSettingsDescriptor(jsonValues, maxBlockSize);
@@ -88,7 +88,7 @@ public class FluentListBlockDescriptorBase<T> : IFluentListBlockDescriptorBase<T
 
 public class FluentListBlockDescriptorBase<TItem, THeader> : IFluentListBlockDescriptorBase<TItem, THeader>
 {
-    public IOverrideConfigurationDescriptor WithSingleUnitCommit(List<TItem> values, THeader header, short maxBlockSize)
+    public IOverrideConfigurationDescriptor WithSingleUnitCommit(List<TItem> values, THeader header, int maxBlockSize)
     {
         var jsonValues = Serialize(values);
         var jsonHeader = Serialize(header);
@@ -99,7 +99,7 @@ public class FluentListBlockDescriptorBase<TItem, THeader> : IFluentListBlockDes
         return listBlockDescriptor;
     }
 
-    public IOverrideConfigurationDescriptor WithPeriodicCommit(List<TItem> values, THeader header, short maxBlockSize,
+    public IOverrideConfigurationDescriptor WithPeriodicCommit(List<TItem> values, THeader header, int maxBlockSize,
         BatchSize batchSize)
     {
         var jsonValues = Serialize(values);
@@ -129,7 +129,7 @@ public class FluentListBlockDescriptorBase<TItem, THeader> : IFluentListBlockDes
         return listBlockDescriptor;
     }
 
-    public IOverrideConfigurationDescriptor WithBatchCommitAtEnd(List<TItem> values, THeader header, short maxBlockSize)
+    public IOverrideConfigurationDescriptor WithBatchCommitAtEnd(List<TItem> values, THeader header, int maxBlockSize)
     {
         var jsonValues = Serialize(values);
         var jsonHeader = Serialize(header);

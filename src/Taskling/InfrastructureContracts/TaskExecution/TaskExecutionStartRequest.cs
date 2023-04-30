@@ -8,8 +8,8 @@ public class TaskExecutionStartRequest : RequestBase
     public TaskExecutionStartRequest(TaskId taskId,
         TaskDeathMode taskDeathMode,
         int concurrencyLimit,
-        short failedTaskRetryLimit,
-        short deadTaskRetryLimit
+        int failedTaskRetryLimit,
+        int deadTaskRetryLimit
     )
         : base(taskId)
     {
@@ -26,7 +26,7 @@ public class TaskExecutionStartRequest : RequestBase
     public TimeSpan? KeepAliveDeathThreshold { get; set; }
     public string ReferenceValue { get; set; }
     public int ConcurrencyLimit { get; set; }
-    public short FailedTaskRetryLimit { get; set; }
-    public short DeadTaskRetryLimit { get; set; }
+    public int FailedTaskRetryLimit { get; set; }
+    public int DeadTaskRetryLimit { get; set; }
     public string TaskExecutionHeader { get; set; }
 }

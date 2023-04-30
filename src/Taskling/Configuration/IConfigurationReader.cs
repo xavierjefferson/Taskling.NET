@@ -1,6 +1,10 @@
 ﻿namespace Taskling.Configuration;
 
+public interface IConfig
+{
+    string DB { get; }
+}
 public interface IConfigurationReader
 {
-    string GetTaskConfigurationString(string applicationName, string taskName);
+    ConfigurationOptions GetTaskConfigurationString(string applicationName, string taskName);
 }

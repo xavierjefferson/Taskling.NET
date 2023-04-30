@@ -23,7 +23,7 @@ public interface IBlockSettings
     // ListBlocks
     List<string> Values { get; set; }
     string Header { get; set; }
-    short MaxBlockSize { get; set; }
+    int MaxBlockSize { get; set; }
     ListUpdateMode ListUpdateMode { get; set; }
     int UncommittedItemsThreshold { get; set; }
 
@@ -34,11 +34,11 @@ public interface IBlockSettings
     // Configuration Overridable
     bool? MustReprocessFailedTasks { get; set; }
     TimeSpan? FailedTaskDetectionRange { get; set; }
-    short? FailedTaskRetryLimit { get; set; }
+    int? FailedTaskRetryLimit { get; set; }
 
     bool? MustReprocessDeadTasks { get; set; }
     TimeSpan? DeadTaskDetectionRange { get; set; }
-    short? DeadTaskRetryLimit { get; set; }
+    int? DeadTaskRetryLimit { get; set; }
 
     int? MaximumNumberOfBlocksLimit { get; set; }
 }

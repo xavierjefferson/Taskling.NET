@@ -10,8 +10,9 @@ public class RetryHelper
     private const int DefaultMaxRetries = 10;
     private const int DefaultDelayMilliseconds = 1000;
 
-    public static async Task WithRetry(Func<RetryEvent, Task> action,
-        int maxRetries = DefaultMaxRetries, int maxDelayMilliseconds = DefaultMaxDelayMilliseconds, int delayMilliseconds = DefaultDelayMilliseconds)
+    public static async Task WithRetry(Func<Task> action,
+        int maxRetries = DefaultMaxRetries, int maxDelayMilliseconds = DefaultMaxDelayMilliseconds,
+        int delayMilliseconds = DefaultDelayMilliseconds)
     {
         var retryInfo = new RetryInfo(maxRetries, maxDelayMilliseconds, delayMilliseconds);
 
@@ -21,10 +22,8 @@ public class RetryHelper
             {
                 using (var transactionScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
                 {
-                    var retryEvent = new RetryEvent();
-                    await action(retryEvent).ConfigureAwait(false);
-                    if (!retryEvent.Cancelled)
-                        transactionScope.Complete();
+                    await action().ConfigureAwait(false);
+                    transactionScope.Complete();
                     return;
                 }
             }
@@ -36,8 +35,9 @@ public class RetryHelper
         throw new AggregateException(retryInfo.Exceptions);
     }
 
-    public static void WithRetry(Action<RetryEvent> action,
-        int maxRetries = DefaultMaxRetries, int maxDelayMilliseconds = DefaultMaxDelayMilliseconds, int delayMilliseconds = DefaultDelayMilliseconds)
+    public static void WithRetry(Action action,
+        int maxRetries = DefaultMaxRetries, int maxDelayMilliseconds = DefaultMaxDelayMilliseconds,
+        int delayMilliseconds = DefaultDelayMilliseconds)
     {
         var retryInfo = new RetryInfo(maxRetries, maxDelayMilliseconds, delayMilliseconds);
 
@@ -47,10 +47,8 @@ public class RetryHelper
             {
                 using (var transactionScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
                 {
-                    var retryEvent = new RetryEvent();
-                    action(retryEvent);
-                    if (!retryEvent.Cancelled)
-                        transactionScope.Complete();
+                    action();
+                    transactionScope.Complete();
                     return;
                 }
             }
@@ -62,8 +60,9 @@ public class RetryHelper
         throw new AggregateException(retryInfo.Exceptions);
     }
 
-    public static T WithRetry<T>(Func<RetryEvent, T> action,
-        int maxRetries = DefaultMaxRetries, int maxDelayMilliseconds = DefaultMaxDelayMilliseconds, int delayMilliseconds = DefaultDelayMilliseconds)
+    public static T WithRetry<T>(Func<T> action,
+        int maxRetries = DefaultMaxRetries, int maxDelayMilliseconds = DefaultMaxDelayMilliseconds,
+        int delayMilliseconds = DefaultDelayMilliseconds)
     {
         var retryInfo = new RetryInfo(maxRetries, maxDelayMilliseconds, delayMilliseconds);
 
@@ -74,10 +73,8 @@ public class RetryHelper
             {
                 using (var transactionScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
                 {
-                    var retryEvent = new RetryEvent();
-                    var tmp = action(retryEvent);
-                    if (!retryEvent.Cancelled)
-                        transactionScope.Complete();
+                    var tmp = action();
+                    transactionScope.Complete();
                     return tmp;
                 }
             }
@@ -101,8 +98,9 @@ public class RetryHelper
         return null;
     }
 
-    public static async Task<T> WithRetry<T>(Func<RetryEvent, Task<T>> action,
-        int maxRetries = DefaultMaxRetries, int maxDelayMilliseconds = DefaultMaxDelayMilliseconds, int delayMilliseconds = DefaultDelayMilliseconds)
+    public static async Task<T> WithRetry<T>(Func<Task<T>> action,
+        int maxRetries = DefaultMaxRetries, int maxDelayMilliseconds = DefaultMaxDelayMilliseconds,
+        int delayMilliseconds = DefaultDelayMilliseconds)
     {
         var r0 = new RetryInfo(maxRetries, maxDelayMilliseconds, delayMilliseconds);
 
@@ -112,10 +110,9 @@ public class RetryHelper
             {
                 using (var transactionScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
                 {
-                    var r = new RetryEvent();
-                    var tmp = await action(r).ConfigureAwait(false);
-                    if (!r.Cancelled)
-                        transactionScope.Complete();
+
+                    var tmp = await action().ConfigureAwait(false);
+                    transactionScope.Complete();
                     return tmp;
                 }
             }
@@ -134,7 +131,8 @@ public class RetryHelper
 
     private class RetryInfo
     {
-        public RetryInfo(int maxRetries = DefaultMaxRetries, int maxDelayMilliseconds = DefaultMaxDelayMilliseconds, int delayMilliseconds = DefaultDelayMilliseconds)
+        public RetryInfo(int maxRetries = DefaultMaxRetries, int maxDelayMilliseconds = DefaultMaxDelayMilliseconds,
+            int delayMilliseconds = DefaultDelayMilliseconds)
         {
             Backoff = new ExponentialBackoff(delayMilliseconds, maxDelayMilliseconds);
 
@@ -200,16 +198,6 @@ public class RetryHelper
 
             var delay = Math.Min(_delayMilliseconds * (_pow - 1) / 2, _maxDelayMilliseconds);
             return Task.Delay(delay);
-        }
-    }
-
-    public class RetryEvent : EventArgs
-    {
-        public bool Cancelled { get; private set; }
-
-        public void Cancel()
-        {
-            Cancelled = true;
         }
     }
 }

@@ -27,12 +27,12 @@ public class TaskConfiguration
     // reprocess failed tasks
     public bool ReprocessFailedTasks { get; set; }
     public TimeSpan ReprocessFailedTasksDetectionRange { get; set; }
-    public short FailedTaskRetryLimit { get; set; }
+    public int FailedTaskRetryLimit { get; set; }
 
     // reprocess dead tasks
     public bool ReprocessDeadTasks { get; set; }
     public TimeSpan ReprocessDeadTasksDetectionRange { get; set; }
-    public short DeadTaskRetryLimit { get; set; }
+    public int DeadTaskRetryLimit { get; set; }
 
     // Blocks
     public int MaxBlocksToGenerate { get; set; }
@@ -46,7 +46,6 @@ public class TaskConfiguration
         ApplicationName = applicationName;
         TaskName = taskName;
         DatabaseConnectionString = databaseConnString;
-
         DatabaseTimeoutSeconds = 120;
         Enabled = true;
         ConcurrencyLimit = -1;

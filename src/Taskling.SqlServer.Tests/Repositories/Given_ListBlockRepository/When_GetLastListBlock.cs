@@ -1,19 +1,27 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
+using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.Serialization;
-using Taskling.SqlServer.Blocks;
-using Taskling.SqlServer.Tasks;
 using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_ListBlockRepository;
+
 [Collection(Constants.CollectionName)]
 public class When_GetLastListBlock
 {
+    private readonly IBlocksHelper _blocksHelper;
+    private readonly IClientHelper _clientHelper;
+    private readonly IExecutionsHelper _executionsHelper;
+    private readonly IListBlockRepository _listBlockRepository;
+    private readonly ILogger<When_GetLastListBlock> _logger;
+
+    private readonly int _taskDefinitionId;
     private DateTime _baseDateTime;
 
     private long _block1;
@@ -21,33 +29,29 @@ public class When_GetLastListBlock
     private long _block3;
     private long _block4;
     private long _block5;
-    private readonly BlocksHelper _blocksHelper;
-    private readonly ExecutionsHelper _executionHelper;
-
-    private readonly int _taskDefinitionId;
     private int _taskExecution1;
 
-    public When_GetLastListBlock()
+    public When_GetLastListBlock(IBlocksHelper blocksHelper, IListBlockRepository listBlockRepository,
+        IExecutionsHelper executionsHelper, IClientHelper clientHelper, ILogger<When_GetLastListBlock> logger,
+        ITaskRepository taskRepository)
     {
-        _blocksHelper = new BlocksHelper();
+        _blocksHelper = blocksHelper;
+        _clientHelper = clientHelper;
+        _listBlockRepository = listBlockRepository;
         _blocksHelper.DeleteBlocks(TestConstants.ApplicationName);
-        _executionHelper = new ExecutionsHelper();
-        _executionHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+        _executionsHelper = executionsHelper;
+        _logger = logger;
+        _executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
 
-        _taskDefinitionId = _executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        _executionHelper.InsertUnlimitedExecutionToken(_taskDefinitionId);
+        _taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertUnlimitedExecutionToken(_taskDefinitionId);
 
-        TaskRepository.ClearCache();
-    }
-
-    private ListBlockRepository CreateSut()
-    {
-        return new ListBlockRepository(new TaskRepository());
+        taskRepository.ClearCache();
     }
 
     private void InsertBlocks()
     {
-        _taskExecution1 = _executionHelper.InsertOverrideTaskExecution(_taskDefinitionId);
+        _taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId);
 
         _baseDateTime = new DateTime(2016, 1, 1);
         var dateRange1 = new DateRange { FromDate = _baseDateTime.AddMinutes(-20), ToDate = _baseDateTime };
@@ -94,7 +98,7 @@ public class When_GetLastListBlock
         InsertBlocks();
 
         // ACT
-        var sut = CreateSut();
+        var sut = _listBlockRepository;
         var block = await sut.GetLastListBlockAsync(CreateRequest());
 
         // ASSERT

@@ -23,9 +23,12 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="microsoft.extensions.dependencyinjection.abstractions" Version="6.0.0" />
+    <PackageReference Include="microsoft.extensions.logging.abstractions" Version="6.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="9.0.1" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="Extensions\" />
     <Folder Include="Properties\" />
   </ItemGroup>
 </Project>

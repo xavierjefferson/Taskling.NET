@@ -1,4 +1,5 @@
-﻿using System.Data.SqlClient;
+﻿using Microsoft.Extensions.Logging;
+using System.Data.SqlClient;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ObjectBlocks;
 using Taskling.Blocks.RangeBlocks;
@@ -69,7 +70,7 @@ public partial class BlockRepository
         BlockItemDelegateRunner blockItemDelegateRunner)
     {
 
-        return await RetryHelper.WithRetry(async (transactionScope) =>
+        return await RetryHelper.WithRetry(async () =>
         {
             var taskDefinition =
                 await _taskRepository.EnsureTaskDefinitionAsync(request.TaskId).ConfigureAwait(false);
@@ -88,15 +89,17 @@ public partial class BlockRepository
     private async Task<IList<ProtoListBlock>> FindSearchableListBlocksAsync(ISearchableBlockRequest deadBlocksRequest,
         BlockItemDelegateRunner blockItemDelegateRunner)
     {
-        return await RetryHelper.WithRetry(async (transactionScope) =>
+        return await RetryHelper.WithRetry(async () =>
         {
-            var results = new List<ProtoListBlock>();
+       
             var taskDefinition =
                 await _taskRepository.EnsureTaskDefinitionAsync(deadBlocksRequest.TaskId).ConfigureAwait(false);
             using (var dbContext = await GetDbContextAsync(deadBlocksRequest.TaskId).ConfigureAwait(false))
             {
                 var items = await GetBlockQueryItems(deadBlocksRequest, blockItemDelegateRunner, taskDefinition, dbContext);
-                return GetListBlocks(deadBlocksRequest, items);
+                var results = GetListBlocks(deadBlocksRequest, items);
+                _logger.LogDebug($"{nameof(FindSearchableListBlocksAsync)} is returning {results.Count} rows");
+                return results;
             }
 
         });

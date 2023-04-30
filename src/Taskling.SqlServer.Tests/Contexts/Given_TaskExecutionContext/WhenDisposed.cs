@@ -6,13 +6,19 @@ using Taskling.SqlServer.Tokens.Executions;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_TaskExecutionContext;
+
 [Collection(Constants.CollectionName)]
 public class WhenDisposed
 {
-    public WhenDisposed()
+    private readonly IClientHelper _clientHelper;
+    private readonly IExecutionsHelper _executionsHelper;
+
+    public WhenDisposed(IClientHelper clientHelper, IExecutionsHelper executionsHelper)
     {
-        var executionHelper = new ExecutionsHelper();
-        executionHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+        _clientHelper = clientHelper;
+        _executionsHelper = executionsHelper;
+
+        executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
     }
 
     [Fact]
@@ -21,17 +27,17 @@ public class WhenDisposed
     public async Task If_InUsingBlockAndNoExecutionTokenExists_ThenExecutionTokenCreatedAutomatically()
     {
         // ARRANGE
-        var executionHelper = new ExecutionsHelper();
-        var taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        var executionsHelper = _executionsHelper;
+        var taskDefinitionId = executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
 
         // ACT
-        var executionsHelper = new ExecutionsHelper();
+      
         bool startedOk;
         ExecutionTokenStatus tokenStatusAfterStart;
         ExecutionTokenStatus tokenStatusAfterUsingBlock;
 
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             startedOk = await executionContext.TryStartAsync();
             tokenStatusAfterStart =
@@ -54,18 +60,18 @@ public class WhenDisposed
     public async Task If_InUsingBlock_ThenExecutionCompletedOnEndOfBlock()
     {
         // ARRANGE
-        var executionHelper = new ExecutionsHelper();
-        var taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        executionHelper.InsertAvailableExecutionToken(taskDefinitionId);
+        var executionsHelper = _executionsHelper;
+        var taskDefinitionId = executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
         // ACT
-        var executionsHelper = new ExecutionsHelper();
+        
         bool startedOk;
         ExecutionTokenStatus tokenStatusAfterStart;
         ExecutionTokenStatus tokenStatusAfterUsingBlock;
 
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             startedOk = await executionContext.TryStartAsync();
             tokenStatusAfterStart =
@@ -89,9 +95,9 @@ public class WhenDisposed
     public async Task If_KeepAlive_ThenKeepAliveContinuesUntilExecutionContextDies()
     {
         // ARRANGE
-        var executionHelper = new ExecutionsHelper();
-        var taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        executionHelper.InsertAvailableExecutionToken(taskDefinitionId);
+        var executionsHelper = _executionsHelper;
+        var taskDefinitionId = executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
         // ACT
         await StartContextWithoutUsingOrCompleteAsync();
@@ -100,14 +106,14 @@ public class WhenDisposed
 
         // ASSERT
         var expectedLastKeepAliveMax = DateTime.UtcNow.AddSeconds(-5);
-        var lastKeepAlive = executionHelper.GetLastKeepAlive(taskDefinitionId);
+        var lastKeepAlive = executionsHelper.GetLastKeepAlive(taskDefinitionId);
         Assert.True(lastKeepAlive < expectedLastKeepAliveMax);
     }
 
     private async Task StartContextWithoutUsingOrCompleteAsync()
     {
-        var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-            ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing());
+        var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+            _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing());
         await executionContext.TryStartAsync();
     }
 }

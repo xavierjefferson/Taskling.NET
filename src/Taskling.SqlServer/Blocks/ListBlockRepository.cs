@@ -26,14 +26,14 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
 {
     private readonly ITaskRepository _taskRepository;
 
-    public ListBlockRepository(ITaskRepository taskRepository)
+    public ListBlockRepository(ITaskRepository taskRepository, IConnectionStore connectionStore) : base(connectionStore)
     {
         _taskRepository = taskRepository;
     }
 
     public async Task ChangeStatusAsync(BlockExecutionChangeStatusRequest changeStatusRequest)
     {
-        await RetryHelper.WithRetry(async (transactionScope) =>
+        await RetryHelper.WithRetry(async () =>
         {
 
             using (var dbContext = await GetDbContextAsync(changeStatusRequest.TaskId))
@@ -50,7 +50,6 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
                         case BlockExecutionStatus.Completed:
                         case BlockExecutionStatus.Failed:
                             blockExecution.CompletedAt = DateTime.UtcNow;
-
                             break;
                         default:
                             blockExecution.StartedAt = DateTime.UtcNow;
@@ -69,7 +68,7 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
 
     public async Task<IList<ProtoListBlockItem>> GetListBlockItemsAsync(TaskId taskId, long listBlockId)
     {
-        return await RetryHelper.WithRetry(async (transactionScope) =>
+        return await RetryHelper.WithRetry(async () =>
         {
             var results = new List<ProtoListBlockItem>();
             using (var dbContext = await GetDbContextAsync(taskId))
@@ -83,7 +82,7 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
                     var listBlock = new ProtoListBlockItem
                     {
                         ListBlockItemId = item.ListBlockItemId,
-                        Value = SerializedValueReader.ReadValueAsString(item, i => i.Value, i => i.CompressedValue),
+                        Value = SerializedValueReader.ReadValueAsString(item.Value, item.CompressedValue),
                         Status = (ItemStatus)item.Status,
                         LastUpdated = item.LastUpdated ?? DateTime.MinValue,
                         StatusReason = item.StatusReason,
@@ -146,7 +145,7 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
 
     public async Task BatchUpdateListBlockItemsAsync(BatchUpdateRequest batchUpdateRequest)
     {
-        await RetryHelper.WithRetry(async (retryEvent) =>
+        await RetryHelper.WithRetry(async () =>
         {
             using (var dbContext = await GetDbContextAsync(batchUpdateRequest.TaskId))
             {
@@ -183,27 +182,24 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
                 var listBlockItemIds = batchUpdateRequest.ListBlockItems.Select(i => i.ListBlockItemId).ToList();
                 var listBlockItems = await dbContext.ListBlockItems.Where(i => i.BlockId == batchUpdateRequest.ListBlockId)
                     .Where(i => listBlockItemIds.Contains(i.ListBlockItemId)).ToListAsync().ConfigureAwait(false);
-                if (!listBlockItems.Any())
+                if (listBlockItems.Any())
                 {
-                    retryEvent.Cancel();
-                    return;
-                }
-                foreach (var item in batchUpdateRequest.ListBlockItems)
-                {
-                    var listBlockItem = listBlockItems.FirstOrDefault(i =>
-                        i.ListBlockItemId == item.ListBlockItemId && i.BlockId == batchUpdateRequest.ListBlockId);
-                    if (listBlockItem != null)
+                    foreach (var item in batchUpdateRequest.ListBlockItems)
                     {
-                        var singeUpdateRequest = item;
-                        listBlockItem.Status = (int)singeUpdateRequest.Status;
-                        listBlockItem.StatusReason = singeUpdateRequest.StatusReason;
-                        listBlockItem.Step = singeUpdateRequest.Step;
-                        dbContext.ListBlockItems.Update(listBlockItem);
+                        var listBlockItem = listBlockItems.FirstOrDefault(i =>
+                            i.ListBlockItemId == item.ListBlockItemId && i.BlockId == batchUpdateRequest.ListBlockId);
+                        if (listBlockItem != null)
+                        {
+                            var singeUpdateRequest = item;
+                            listBlockItem.Status = (int)singeUpdateRequest.Status;
+                            listBlockItem.StatusReason = singeUpdateRequest.StatusReason;
+                            listBlockItem.Step = singeUpdateRequest.Step;
+                            dbContext.ListBlockItems.Update(listBlockItem);
+                        }
                     }
+
+                    await dbContext.SaveChangesAsync().ConfigureAwait(false);
                 }
-
-                await dbContext.SaveChangesAsync().ConfigureAwait(false);
-
             }
         });
 
@@ -212,7 +208,7 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
 
     public async Task<ProtoListBlock?> GetLastListBlockAsync(LastBlockRequest lastRangeBlockRequest)
     {
-        return await RetryHelper.WithRetry(async (transactionScope) =>
+        return await RetryHelper.WithRetry(async () =>
         {
             var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(lastRangeBlockRequest.TaskId)
             .ConfigureAwait(false);
@@ -231,8 +227,7 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
                         await GetListBlockItemsAsync(lastRangeBlockRequest.TaskId, listBlock.ListBlockId)
                             .ConfigureAwait(false);
                     listBlock.Header =
-                        SerializedValueReader.ReadValueAsString(blockData, i => i.ObjectData,
-                            i => i.CompressedObjectData);
+                        SerializedValueReader.ReadValueAsString(blockData.ObjectData, blockData.CompressedObjectData);
 
                     return listBlock;
                 }

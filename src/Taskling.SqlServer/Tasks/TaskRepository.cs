@@ -53,7 +53,7 @@ public class TaskRepository : DbOperationsService, ITaskRepository
 
     public async Task<DateTime> GetLastTaskCleanUpTimeAsync(TaskId taskId)
     {
-        return await RetryHelper.WithRetry(async (transactionScope) =>
+        return await RetryHelper.WithRetry(async () =>
         {
             using (var dbContext = await GetDbContextAsync(taskId))
             {
@@ -71,7 +71,7 @@ public class TaskRepository : DbOperationsService, ITaskRepository
 
     public async Task SetLastCleanedAsync(TaskId taskId)
     {
-        await RetryHelper.WithRetry(async (transactionScope) =>
+        await RetryHelper.WithRetry(async () =>
        {
            using (var dbContext = await GetDbContextAsync(taskId))
            {
@@ -90,7 +90,7 @@ public class TaskRepository : DbOperationsService, ITaskRepository
 
     }
 
-    public static void ClearCache()
+    public void ClearCache()
     {
         CacheSemaphore.Wait();
         try
@@ -196,5 +196,9 @@ public class TaskRepository : DbOperationsService, ITaskRepository
 
             return task;
         }
+    }
+
+    public TaskRepository(IConnectionStore connectionStore) : base(connectionStore)
+    {
     }
 }

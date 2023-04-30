@@ -1,46 +1,51 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
 using Taskling.InfrastructureContracts;
+using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
-using Taskling.SqlServer.Blocks;
-using Taskling.SqlServer.Tasks;
+using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_ObjectBlockRepository;
+
 [Collection(Constants.CollectionName)]
 public class When_ChangeStatus
 {
-    private DateTime _baseDateTime;
-    private long _blockExecutionId;
-    private readonly BlocksHelper _blocksHelper;
-    private readonly ExecutionsHelper _executionHelper;
+    private readonly IBlocksHelper _blocksHelper;
+    private readonly IClientHelper _clientHelper;
+    private readonly IExecutionsHelper _executionsHelper;
+    private readonly ILogger<When_ChangeStatus> _logger;
+    private readonly IObjectBlockRepository _objectBlockRepository;
 
     private readonly int _taskDefinitionId;
+    private DateTime _baseDateTime;
+    private long _blockExecutionId;
     private int _taskExecution1;
 
-    public When_ChangeStatus()
+    public When_ChangeStatus(IBlocksHelper blocksHelper, IObjectBlockRepository objectBlockRepository,
+        IExecutionsHelper executionsHelper, IClientHelper clientHelper, ILogger<When_ChangeStatus> logger,
+        ITaskRepository taskRepository)
     {
-        _blocksHelper = new BlocksHelper();
+        _blocksHelper = blocksHelper;
+        _clientHelper = clientHelper;
+        _objectBlockRepository = objectBlockRepository;
         _blocksHelper.DeleteBlocks(TestConstants.ApplicationName);
-        _executionHelper = new ExecutionsHelper();
-        _executionHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+        _executionsHelper = executionsHelper;
+        _logger = logger;
+        _executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
 
-        _taskDefinitionId = _executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        _executionHelper.InsertUnlimitedExecutionToken(_taskDefinitionId);
+        _taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertUnlimitedExecutionToken(_taskDefinitionId);
 
-        TaskRepository.ClearCache();
-    }
-
-    private ObjectBlockRepository CreateSut()
-    {
-        return new ObjectBlockRepository(new TaskRepository());
+        taskRepository.ClearCache();
     }
 
     private void InsertObjectBlock()
     {
-        _taskExecution1 = _executionHelper.InsertOverrideTaskExecution(_taskDefinitionId);
+        _taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId);
 
         _baseDateTime = new DateTime(2016, 1, 1);
         var block1 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, DateTime.UtcNow, Guid.NewGuid().ToString());
@@ -66,10 +71,10 @@ public class When_ChangeStatus
 
 
         // ACT
-        var sut = CreateSut();
+        var sut = _objectBlockRepository;
         await sut.ChangeStatusAsync(request);
 
-        var itemCount = new BlocksHelper().GetBlockExecutionItemCount(_blockExecutionId);
+        var itemCount = _blocksHelper.GetBlockExecutionItemCount(_blockExecutionId);
 
         // ASSERT
         Assert.Equal(10000, itemCount);

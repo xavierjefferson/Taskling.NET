@@ -23,7 +23,7 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
 
     public TaskExecutionRepository(ITaskRepository taskRepository,
         IExecutionTokenRepository executionTokenRepository,
-        IEventsRepository eventsRepository)
+        IEventsRepository eventsRepository, IConnectionStore connectionStore) : base(connectionStore)
     {
         _taskRepository = taskRepository;
         _executionTokenRepository = executionTokenRepository;
@@ -89,7 +89,7 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
 
     private async Task UpdateTaskExecution(Action<Models.TaskExecution> action, int taskExecutionId, TaskId taskId)
     {
-        await RetryHelper.WithRetry(async (transactionScope) =>
+        await RetryHelper.WithRetry(async () =>
         {
 
             using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
@@ -112,7 +112,7 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
     public async Task<TaskExecutionMetaResponse> GetLastExecutionMetasAsync(
         TaskExecutionMetaRequest taskExecutionMetaRequest)
     {
-        return await RetryHelper.WithRetry(async (transactionScope) =>
+        return await RetryHelper.WithRetry(async () =>
         {
             var response = new TaskExecutionMetaResponse();
             var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(taskExecutionMetaRequest.TaskId)
@@ -293,7 +293,7 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
 
     private async Task<int> CreateKeepAliveTaskExecutionAsync(TaskId taskId, int taskDefinitionId,
         TimeSpan keepAliveInterval, TimeSpan keepAliveDeathThreshold, string referenceValue,
-        short failedTaskRetryLimit, short deadTaskRetryLimit, string tasklingVersion, string executionHeader)
+        int failedTaskRetryLimit, int deadTaskRetryLimit, string tasklingVersion, string executionHeader)
     {
         using (var dbContext = await GetDbContextAsync(taskId))
         {
@@ -320,7 +320,7 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
 
     private async Task<int> CreateOverrideTaskExecutionAsync(TaskId taskId, int taskDefinitionId,
         TimeSpan overrideThreshold, string referenceValue,
-        short failedTaskRetryLimit, short deadTaskRetryLimit, string tasklingVersion, string executionHeader)
+        int failedTaskRetryLimit, int deadTaskRetryLimit, string tasklingVersion, string executionHeader)
     {
         using (var dbContext = await GetDbContextAsync(taskId))
         {

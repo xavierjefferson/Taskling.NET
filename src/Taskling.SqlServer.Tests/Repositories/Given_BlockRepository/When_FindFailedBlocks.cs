@@ -1,35 +1,38 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
 using Taskling.InfrastructureContracts;
+using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
-using Taskling.SqlServer.Blocks;
-using Taskling.SqlServer.Tasks;
+using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
+
 [Collection(Constants.CollectionName)]
 public class When_FindFailedBlocks
 {
-    private readonly BlocksHelper _blocksHelper;
-    private readonly ExecutionsHelper _executionHelper;
+    private readonly IBlockRepository _blockRepository;
+    private readonly IBlocksHelper _blocksHelper;
+    private readonly IClientHelper _clientHelper;
+    private readonly IExecutionsHelper _executionsHelper;
     private readonly int _taskDefinitionId;
 
-    public When_FindFailedBlocks()
+    public When_FindFailedBlocks(IBlocksHelper blocksHelper, IBlockRepository blockRepository,
+        IExecutionsHelper executionsHelper, IClientHelper clientHelper, ILogger<When_FindFailedBlocks> logger,
+        ITaskRepository taskRepository)
     {
-        _executionHelper = new ExecutionsHelper();
-        _executionHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
-        _blocksHelper = new BlocksHelper();
+        _executionsHelper = executionsHelper;
+        _executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+        _blocksHelper = blocksHelper;
+        _clientHelper = clientHelper;
+        _blockRepository = blockRepository;
         _blocksHelper.DeleteBlocks(TestConstants.ApplicationName);
 
-        _taskDefinitionId = _executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        _executionHelper.InsertAvailableExecutionToken(_taskDefinitionId);
-    }
-
-    private BlockRepository CreateSut()
-    {
-        return new BlockRepository(new TaskRepository());
+        _taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertAvailableExecutionToken(_taskDefinitionId);
     }
 
     [Fact]
@@ -40,7 +43,7 @@ public class When_FindFailedBlocks
     {
         // ARRANGE
         var now = DateTime.UtcNow;
-        var taskExecution1 = _executionHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
+        var taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
             now.AddMinutes(-12), now.AddMinutes(-1));
         var block1 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-2), now.AddMinutes(-1));
         var block2 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-12), now.AddMinutes(-11));
@@ -58,7 +61,7 @@ public class When_FindFailedBlocks
             3);
 
         // ACT
-        var sut = CreateSut();
+        var sut = _blockRepository;
         var failedBlocks = await sut.FindFailedRangeBlocksAsync(request);
 
         // ASSERT
@@ -74,7 +77,7 @@ public class When_FindFailedBlocks
     {
         // ARRANGE
         var now = DateTime.UtcNow;
-        var taskExecution1 = _executionHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
+        var taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
             now.AddMinutes(-32), now.AddMinutes(-1));
         var block1 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-2), now.AddMinutes(-1));
         var block2 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-12), now.AddMinutes(-11));
@@ -100,7 +103,7 @@ public class When_FindFailedBlocks
             3);
 
         // ACT
-        var sut = CreateSut();
+        var sut = _blockRepository;
         var failedBlocks = await sut.FindFailedRangeBlocksAsync(request);
 
         // ASSERT
@@ -116,7 +119,7 @@ public class When_FindFailedBlocks
     {
         // ARRANGE
         var now = DateTime.UtcNow;
-        var taskExecution1 = _executionHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
+        var taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
             now.AddMinutes(-212), now.AddMinutes(-200));
         var block1 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-200), now.AddMinutes(-201));
         var block2 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-212), now.AddMinutes(-211));
@@ -134,7 +137,7 @@ public class When_FindFailedBlocks
             3);
 
         // ACT
-        var sut = CreateSut();
+        var sut = _blockRepository;
         var failedBlocks = await sut.FindFailedRangeBlocksAsync(request);
 
         // ASSERT
@@ -149,7 +152,7 @@ public class When_FindFailedBlocks
     {
         // ARRANGE
         var now = DateTime.UtcNow;
-        var taskExecution1 = _executionHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
+        var taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
             now.AddMinutes(-12), now.AddMinutes(-1));
         var block1 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 1, 2, now.AddMinutes(-2));
         var block2 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 3, 4, now.AddMinutes(-12));
@@ -167,7 +170,7 @@ public class When_FindFailedBlocks
             3);
 
         // ACT
-        var sut = CreateSut();
+        var sut = _blockRepository;
         var failedBlocks = await sut.FindFailedRangeBlocksAsync(request);
 
         // ASSERT
@@ -183,7 +186,7 @@ public class When_FindFailedBlocks
     {
         // ARRANGE
         var now = DateTime.UtcNow;
-        var taskExecution1 = _executionHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
+        var taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
             now.AddMinutes(-32), now.AddMinutes(-1));
         var block1 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 1, 2, now.AddMinutes(-2));
         var block2 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 3, 4, now.AddMinutes(-12));
@@ -209,7 +212,7 @@ public class When_FindFailedBlocks
             3);
 
         // ACT
-        var sut = CreateSut();
+        var sut = _blockRepository;
         var failedBlocks = await sut.FindFailedRangeBlocksAsync(request);
 
         // ASSERT
@@ -225,7 +228,7 @@ public class When_FindFailedBlocks
     {
         // ARRANGE
         var now = DateTime.UtcNow;
-        var taskExecution1 = _executionHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
+        var taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
             now.AddMinutes(-212), now.AddMinutes(-200));
         var block1 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 1, 2, now.AddMinutes(-200));
         var block2 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 3, 4, now.AddMinutes(-212));
@@ -243,7 +246,7 @@ public class When_FindFailedBlocks
             3);
 
         // ACT
-        var sut = CreateSut();
+        var sut = _blockRepository;
         var failedBlocks = await sut.FindFailedRangeBlocksAsync(request);
 
         // ASSERT
@@ -257,7 +260,7 @@ public class When_FindFailedBlocks
     {
         // ARRANGE
         var now = DateTime.UtcNow;
-        var taskExecution1 = _executionHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
+        var taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
             now.AddMinutes(-12), now.AddMinutes(-1));
         var block1 = _blocksHelper.InsertListBlock(_taskDefinitionId, now.AddMinutes(-2));
         var block2 = _blocksHelper.InsertListBlock(_taskDefinitionId, now.AddMinutes(-12));
@@ -275,7 +278,7 @@ public class When_FindFailedBlocks
             3);
 
         // ACT
-        var sut = CreateSut();
+        var sut = _blockRepository;
         var failedBlocks = await sut.FindFailedListBlocksAsync(request);
 
         // ASSERT
@@ -291,7 +294,7 @@ public class When_FindFailedBlocks
     {
         // ARRANGE
         var now = DateTime.UtcNow;
-        var taskExecution1 = _executionHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
+        var taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
             now.AddMinutes(-32), now.AddMinutes(-1));
         var block1 = _blocksHelper.InsertListBlock(_taskDefinitionId, now.AddMinutes(-2));
         var block2 = _blocksHelper.InsertListBlock(_taskDefinitionId, now.AddMinutes(-12));
@@ -317,7 +320,7 @@ public class When_FindFailedBlocks
             3);
 
         // ACT
-        var sut = CreateSut();
+        var sut = _blockRepository;
         var failedBlocks = await sut.FindFailedListBlocksAsync(request);
 
         // ASSERT
@@ -333,7 +336,7 @@ public class When_FindFailedBlocks
     {
         // ARRANGE
         var now = DateTime.UtcNow;
-        var taskExecution1 = _executionHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
+        var taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
             now.AddMinutes(-212), now.AddMinutes(-200));
         var block1 = _blocksHelper.InsertListBlock(_taskDefinitionId, now.AddMinutes(-200));
         var block2 = _blocksHelper.InsertListBlock(_taskDefinitionId, now.AddMinutes(-212));
@@ -351,7 +354,7 @@ public class When_FindFailedBlocks
             3);
 
         // ACT
-        var sut = CreateSut();
+        var sut = _blockRepository;
         var failedBlocks = await sut.FindFailedListBlocksAsync(request);
 
         // ASSERT
@@ -367,7 +370,7 @@ public class When_FindFailedBlocks
     {
         // ARRANGE
         var now = DateTime.UtcNow;
-        var taskExecution1 = _executionHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
+        var taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
             now.AddMinutes(-12), now.AddMinutes(-1));
         var block1 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-2), Guid.NewGuid().ToString());
         var block2 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-12), Guid.NewGuid().ToString());
@@ -385,7 +388,7 @@ public class When_FindFailedBlocks
             3);
 
         // ACT
-        var sut = CreateSut();
+        var sut = _blockRepository;
         var failedBlocks = await sut.FindFailedObjectBlocksAsync<string>(request);
 
         // ASSERT
@@ -401,7 +404,7 @@ public class When_FindFailedBlocks
     {
         // ARRANGE
         var now = DateTime.UtcNow;
-        var taskExecution1 = _executionHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
+        var taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
             now.AddMinutes(-32), now.AddMinutes(-1));
         var block1 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-2), Guid.NewGuid().ToString());
         var block2 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-12), Guid.NewGuid().ToString());
@@ -427,7 +430,7 @@ public class When_FindFailedBlocks
             3);
 
         // ACT
-        var sut = CreateSut();
+        var sut = _blockRepository;
         var failedBlocks = await sut.FindFailedObjectBlocksAsync<string>(request);
 
         // ASSERT
@@ -443,7 +446,7 @@ public class When_FindFailedBlocks
     {
         // ARRANGE
         var now = DateTime.UtcNow;
-        var taskExecution1 = _executionHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
+        var taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
             now.AddMinutes(-212), now.AddMinutes(-200));
         var block1 =
             _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-200), Guid.NewGuid().ToString());
@@ -463,7 +466,7 @@ public class When_FindFailedBlocks
             3);
 
         // ACT
-        var sut = CreateSut();
+        var sut = _blockRepository;
         var failedBlocks = await sut.FindFailedObjectBlocksAsync<string>(request);
 
         // ASSERT

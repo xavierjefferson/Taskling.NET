@@ -14,7 +14,7 @@ namespace Taskling.SqlServer;
 public class CustomDependencies
 {
     public ITaskRepository TaskRepository { get; set; }
-    public ITasklingConfiguration Configuration { get; set; }
+    public ITaskConfigurationRepository TaskConfigurationRepository { get; set; }
     public ITaskExecutionRepository TaskExecutionRepository { get; set; }
     public IExecutionTokenRepository ExecutionTokenRepository { get; set; }
     public ICommonTokenRepository CommonTokenRepository { get; set; }

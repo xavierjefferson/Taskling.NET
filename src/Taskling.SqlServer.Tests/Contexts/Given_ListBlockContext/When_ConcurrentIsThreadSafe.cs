@@ -3,26 +3,34 @@ using System.Collections.Async;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Taskling.Blocks.ListBlocks;
+using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_ListBlockContext;
+
 [Collection(Constants.CollectionName)]
 public class When_ConcurrentIsThreadSafe
 {
-    private readonly BlocksHelper _blocksHelper;
-    private readonly ExecutionsHelper _executionHelper;
+    private readonly IBlocksHelper _blocksHelper;
+    private readonly IClientHelper _clientHelper;
+    private readonly ILogger<When_ConcurrentIsThreadSafe> _logger;
+    private readonly IExecutionsHelper _executionsHelper;
 
-    public When_ConcurrentIsThreadSafe()
+    public When_ConcurrentIsThreadSafe(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper,
+        IClientHelper clientHelper, ILogger<When_ConcurrentIsThreadSafe> logger, ITaskRepository taskRepository)
     {
-        _blocksHelper = new BlocksHelper();
+        _blocksHelper = blocksHelper;
+        _clientHelper = clientHelper;
+        _logger = logger;
         _blocksHelper.DeleteBlocks(TestConstants.ApplicationName);
-        _executionHelper = new ExecutionsHelper();
-        _executionHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+        _executionsHelper = executionsHelper;
+        _executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
 
-        var taskDefinitionId = _executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        _executionHelper.InsertUnlimitedExecutionToken(taskDefinitionId);
+        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertUnlimitedExecutionToken(taskDefinitionId);
     }
 
     [Fact]
@@ -31,16 +39,17 @@ public class When_ConcurrentIsThreadSafe
     public async Task
         If_AsListWithSingleUnitCommit_BlocksProcessedSequentially_BlocksListItemsProcessedInParallel_ThenNoConcurrencyIssues()
     {
+        _logger.LogDebug("Starting test");
         // ACT and // ASSERT
         bool startedOk;
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing(10000)))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing(10000)))
         {
             startedOk = await executionContext.TryStartAsync();
             if (startedOk)
             {
                 var values = GetList(100000);
-                short maxBlockSize = 1000;
+                int maxBlockSize = 1000;
                 var listBlocks =
                     await executionContext.GetListBlocksAsync<PersonDto>(x =>
                         x.WithSingleUnitCommit(values, maxBlockSize));
@@ -69,16 +78,17 @@ public class When_ConcurrentIsThreadSafe
     public async Task
         If_AsListWithBatchCommitAtEnd_BlocksProcessedSequentially_BlocksListItemsProcessedInParallel_ThenNoConcurrencyIssues()
     {
+        _logger.LogDebug("Starting test");
         // ACT and // ASSERT
         bool startedOk;
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing(10000)))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing(10000)))
         {
             startedOk = await executionContext.TryStartAsync();
             if (startedOk)
             {
                 var values = GetList(100000);
-                short maxBlockSize = 1000;
+                int maxBlockSize = 1000;
                 var listBlocks =
                     await executionContext.GetListBlocksAsync<PersonDto>(x =>
                         x.WithBatchCommitAtEnd(values, maxBlockSize));
@@ -107,16 +117,17 @@ public class When_ConcurrentIsThreadSafe
     public async Task
         If_AsListWithPeriodicCommit_BlocksProcessedSequentially_BlocksListItemsProcessedInParallel_ThenNoConcurrencyIssues()
     {
+        _logger.LogDebug("Starting test");
         // ACT and // ASSERT
         bool startedOk;
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing(10000)))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing(10000)))
         {
             startedOk = await executionContext.TryStartAsync();
             if (startedOk)
             {
                 var values = GetList(100000);
-                short maxBlockSize = 1000;
+                int maxBlockSize = 1000;
                 var listBlocks = await executionContext.GetListBlocksAsync<PersonDto>(x =>
                     x.WithPeriodicCommit(values, maxBlockSize, BatchSize.Hundred));
                 foreach (var listBlock in listBlocks)
@@ -148,16 +159,17 @@ public class When_ConcurrentIsThreadSafe
     public async Task
         If_AsListWithSingleUnitCommit_BlocksProcessedInParallel_BlocksListItemsProcessedSequentially_ThenNoConcurrencyIssues()
     {
+        _logger.LogDebug("Starting test");
         // ACT and // ASSERT
         bool startedOk;
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing(10000)))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing(10000)))
         {
             startedOk = await executionContext.TryStartAsync();
             if (startedOk)
             {
                 var values = GetList(100000);
-                short maxBlockSize = 1000;
+                int maxBlockSize = 1000;
                 var listBlocks =
                     await executionContext.GetListBlocksAsync<PersonDto>(x =>
                         x.WithSingleUnitCommit(values, maxBlockSize));
@@ -181,6 +193,7 @@ public class When_ConcurrentIsThreadSafe
 
     private List<PersonDto> GetList(int count)
     {
+        _logger.LogDebug("In GetList");
         var list = new List<PersonDto>();
 
         for (var i = 0; i < count; i++)

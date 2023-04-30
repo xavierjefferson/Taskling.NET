@@ -2,21 +2,31 @@
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_TaskExecutionContext;
+
 [Collection(Constants.CollectionName)]
 public class When_Start
 {
+    private readonly ILogger<When_Start> _logger;
+    private readonly IExecutionsHelper _executionsHelper;
+    private readonly IClientHelper _clientHelper;
     private readonly int _taskDefinitionId;
 
-    public When_Start()
+    public When_Start(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper, IClientHelper clientHelper,
+        ILogger<When_Start> logger, ITaskRepository taskRepository)
     {
-        var executionHelper = new ExecutionsHelper();
-        executionHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+        _logger = logger;
+        _executionsHelper = executionsHelper;
+        _clientHelper = clientHelper;
 
-        _taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+
+        _taskDefinitionId = executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
     }
 
     [Fact]
@@ -25,13 +35,13 @@ public class When_Start
     public async Task If_TryStart_ThenLogCorrectTasklingVersion()
     {
         // ARRANGE
-        var executionHelper = new ExecutionsHelper();
+        var executionsHelper = _executionsHelper;
 
         // ACT
         bool startedOk;
 
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             startedOk = await executionContext.TryStartAsync();
             var sqlServerImplAssembly =
@@ -41,7 +51,7 @@ public class When_Start
                                 && !x.FullName.Contains("Tests"));
             var fileVersionInfo = FileVersionInfo.GetVersionInfo(sqlServerImplAssembly.Location);
             var versionOfTaskling = fileVersionInfo.ProductVersion;
-            var executionVersion = executionHelper.GetLastExecutionVersion(_taskDefinitionId);
+            var executionVersion = executionsHelper.GetLastExecutionVersion(_taskDefinitionId);
             Assert.Equal(versionOfTaskling.Trim(), executionVersion.Trim());
         }
 
@@ -54,7 +64,7 @@ public class When_Start
     public async Task If_TryStartWithHeader_ThenGetHeaderReturnsTheHeader()
     {
         // ARRANGE
-        var executionHelper = new ExecutionsHelper();
+        var executionsHelper = _executionsHelper;
         var myHeader = new MyHeader
         {
             Name = "Jack",
@@ -64,8 +74,8 @@ public class When_Start
         // ACT
         bool startedOk;
 
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             startedOk = await executionContext.TryStartAsync(myHeader);
 
@@ -83,7 +93,7 @@ public class When_Start
     public async Task If_TryStartWithHeader_ThenHeaderWrittenToDatabase()
     {
         // ARRANGE
-        var executionHelper = new ExecutionsHelper();
+        var executionsHelper = _executionsHelper;
         var myHeader = new MyHeader
         {
             Name = "Jack",
@@ -93,15 +103,15 @@ public class When_Start
         // ACT
         bool startedOk;
 
-        using (var executionContext = ClientHelper.GetExecutionContext(TestConstants.TaskName,
-                   ClientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             startedOk = await executionContext.TryStartAsync(myHeader);
 
             var myHeaderBack = executionContext.GetHeader<MyHeader>();
         }
 
-        var dbHelper = new ExecutionsHelper();
+        var dbHelper = executionsHelper;
         var executionHeader = dbHelper.GetLastExecutionHeader(_taskDefinitionId);
         var expectedHeader = "{\"Name\":\"Jack\",\"Id\":367}";
 

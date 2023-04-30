@@ -12,53 +12,51 @@ namespace Taskling.SqlServer.Blocks;
 
 public partial class BlockRepository
 {
-    private static List<RangeBlock> GetRangeBlocks<T>(IBlockRequest request, List<T> items)
+    private static List<RangeBlock> GetRangeBlocks<T>(IBlockRequest request, List<T> blockQueryItems)
         where T : IBlockQueryItem
     {
         var results = new List<RangeBlock>();
-        foreach (var item in items)
+        foreach (var blockQueryItem in blockQueryItems)
         {
-            var blockType = (BlockType)item.BlockType;
+            var blockType = (BlockType)blockQueryItem.BlockType;
             if (blockType != request.BlockType)
                 throw GetBlockTypeException(request, blockType);
 
-            var rangeBlockId = item.BlockId;
-            var attempt = item.Attempt;
             long rangeBegin;
             long rangeEnd;
             if (request.BlockType == BlockType.DateRange)
             {
-                rangeBegin = item.FromDate.Value.Ticks; //reader.GetDateTime("FromDate").Ticks;
-                rangeEnd = item.ToDate.Value.Ticks; //reader.GetDateTime("ToDate").Ticks;
+                rangeBegin = blockQueryItem.FromDate.Value.Ticks; //reader.GetDateTime("FromDate").Ticks;
+                rangeEnd = blockQueryItem.ToDate.Value.Ticks; //reader.GetDateTime("ToDate").Ticks;
             }
             else
             {
-                rangeBegin = item.FromNumber.Value;
-                rangeEnd = item.ToNumber.Value;
+                rangeBegin = blockQueryItem.FromNumber.Value;
+                rangeEnd = blockQueryItem.ToNumber.Value;
             }
 
-            results.Add(new RangeBlock(rangeBlockId, attempt, rangeBegin, rangeEnd,
+            results.Add(new RangeBlock(blockQueryItem.BlockId, blockQueryItem.Attempt, rangeBegin, rangeEnd,
                 request.BlockType));
         }
 
         return results;
     }
 
-    private static List<ObjectBlock<T>> GetObjectBlocks<T, U>(IBlockRequest request, List<U> items)
+    private static List<ObjectBlock<T>> GetObjectBlocks<T, U>(IBlockRequest request, List<U> blockQueryItems)
         where U : IBlockQueryItem
     {
         var results = new List<ObjectBlock<T>>();
-        foreach (var item in items)
+        foreach (var blockQueryItem in blockQueryItems)
         {
-            var blockType = (BlockType)item.BlockType;
+            var blockType = (BlockType)blockQueryItem.BlockType;
             if (blockType != request.BlockType)
                 throw GetBlockTypeException(request, blockType);
 
             var objectBlock = new ObjectBlock<T>();
-            objectBlock.ObjectBlockId = item.BlockId;
-            objectBlock.Attempt = item.Attempt;
+            objectBlock.ObjectBlockId = blockQueryItem.BlockId;
+            objectBlock.Attempt = blockQueryItem.Attempt;
             objectBlock.Object =
-                SerializedValueReader.ReadValue<T>(item.ObjectData, item.CompressedObjectData);
+                SerializedValueReader.ReadValue<T>(blockQueryItem.ObjectData, blockQueryItem.CompressedObjectData);
 
             results.Add(objectBlock);
         }
@@ -66,23 +64,22 @@ public partial class BlockRepository
         return results;
     }
 
-    private static List<ProtoListBlock> GetListBlocks<T>(IBlockRequest blocksOfTaskRequest, List<T> items)
+    private static List<ProtoListBlock> GetListBlocks<T>(IBlockRequest blocksOfTaskRequest, List<T> blockQueryItems)
         where T : IBlockQueryItem
     {
         var results = new List<ProtoListBlock>();
-        foreach (var reader in items)
+        foreach (var blockQueryItem in blockQueryItems)
         {
-            var blockType = (BlockType)reader.BlockType;
+            var blockType = (BlockType)blockQueryItem.BlockType;
             if (blockType != blocksOfTaskRequest.BlockType)
                 throw GetBlockTypeException(blocksOfTaskRequest, blockType);
 
 
             var listBlock = new ProtoListBlock();
-            listBlock.ListBlockId = reader.BlockId;
-            listBlock.Attempt = reader.Attempt;
+            listBlock.ListBlockId = blockQueryItem.BlockId;
+            listBlock.Attempt = blockQueryItem.Attempt;
             listBlock.Header =
-                SerializedValueReader.ReadValueAsString(reader, i => i.ObjectData,
-                    i => i.CompressedObjectData);
+                SerializedValueReader.ReadValueAsString(blockQueryItem.ObjectData, blockQueryItem.CompressedObjectData);
 
             results.Add(listBlock);
         }

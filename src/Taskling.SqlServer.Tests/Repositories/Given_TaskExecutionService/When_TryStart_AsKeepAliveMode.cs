@@ -3,34 +3,36 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.SqlServer.Events;
-using Taskling.SqlServer.TaskExecution;
-using Taskling.SqlServer.Tasks;
-using Taskling.SqlServer.Tests.Contexts.Given_ObjectBlockContext;
 using Taskling.SqlServer.Tests.Helpers;
-using Taskling.SqlServer.Tokens;
 using Taskling.SqlServer.Tokens.Executions;
 using Taskling.Tasks;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_TaskExecutionService;
+
 [Collection(Constants.CollectionName)]
 public class When_TryStart_AsKeepAliveMode
 {
-    public When_TryStart_AsKeepAliveMode()
-    {
-        var executionHelper = new ExecutionsHelper();
-        executionHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+    private readonly IClientHelper _clientHelper;
+    private readonly IExecutionsHelper _executionsHelper;
+    private readonly ILogger<When_TryStart_AsKeepAliveMode> _logger;
+    private readonly ITaskExecutionRepository _taskExecutionRepository;
 
-        TaskRepository.ClearCache();
-    }
-
-    private TaskExecutionRepository CreateSut()
+    public When_TryStart_AsKeepAliveMode(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper,
+        IClientHelper clientHelper, ILogger<When_TryStart_AsKeepAliveMode> logger, ITaskRepository taskRepository,
+        ITaskExecutionRepository taskExecutionRepository)
     {
-        return new TaskExecutionRepository(new TaskRepository(),
-            new ExecutionTokenRepository(new CommonTokenRepository()), new EventsRepository());
+        _executionsHelper = executionsHelper;
+        _clientHelper = clientHelper;
+        _logger = logger;
+        _taskExecutionRepository = taskExecutionRepository;
+
+        _executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+
+        taskRepository.ClearCache();
     }
 
     private TaskExecutionStartRequest CreateKeepAliveStartRequest(int concurrencyLimit = 1)
@@ -61,14 +63,14 @@ public class When_TryStart_AsKeepAliveMode
     public async Task If_KeepAliveMode_ThenReturnsValidDataValues()
     {
         // ARRANGE
-        var executionHelper = new ExecutionsHelper();
-        var taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        executionHelper.InsertAvailableExecutionToken(taskDefinitionId);
+
+        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
         var startRequest = CreateKeepAliveStartRequest();
 
         // ACT
-        var sut = CreateSut();
+        var sut = _taskExecutionRepository;
         var response = await sut.StartAsync(startRequest);
 
         // ASSERT
@@ -82,15 +84,14 @@ public class When_TryStart_AsKeepAliveMode
     public async Task If_KeepAliveMode_OneTaskAndOneTokenAndIsAvailable_ThenIsGranted()
     {
         // ARRANGE
-        var executionHelper = new ExecutionsHelper();
-        var taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        executionHelper.InsertAvailableExecutionToken(taskDefinitionId);
+
+        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
         var startRequest = CreateKeepAliveStartRequest();
 
         // ACT
-        var sut = CreateSut();
-        var response = await sut.StartAsync(startRequest);
+        var response = await _taskExecutionRepository.StartAsync(startRequest);
 
         // ASSERT
         Assert.Equal(GrantStatus.Granted, response.GrantStatus);
@@ -103,19 +104,18 @@ public class When_TryStart_AsKeepAliveMode
     public async Task If_KeepAliveMode_TwoConcurrentTasksAndOneTokenAndIsAvailable_ThenIsGrantFirstTaskAndDenyTheOther()
     {
         // ARRANGE
-        var executionHelper = new ExecutionsHelper();
-        var taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        executionHelper.InsertAvailableExecutionToken(taskDefinitionId);
+
+        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
         var firstStartRequest = CreateKeepAliveStartRequest();
         var secondStartRequest = CreateKeepAliveStartRequest();
 
         // ACT
-        var sut = CreateSut();
-        var firstResponse = await sut.StartAsync(firstStartRequest);
-        await sut.SendKeepAliveAsync(CreateKeepAliveRequest(TestConstants.ApplicationName, TestConstants.TaskName,
+        var firstResponse = await _taskExecutionRepository.StartAsync(firstStartRequest);
+        await _taskExecutionRepository.SendKeepAliveAsync(CreateKeepAliveRequest(TestConstants.ApplicationName, TestConstants.TaskName,
             firstResponse.TaskExecutionId, firstResponse.ExecutionTokenId));
-        var secondResponse = await sut.StartAsync(secondStartRequest);
+        var secondResponse = await _taskExecutionRepository.StartAsync(secondStartRequest);
 
         // ASSERT
         Assert.Equal(GrantStatus.Granted, firstResponse.GrantStatus);
@@ -129,22 +129,21 @@ public class When_TryStart_AsKeepAliveMode
         If_KeepAliveMode_TwoSequentialTasksAndOneTokenAndIsAvailable_ThenIsGrantFirstTaskAndThenGrantTheOther()
     {
         // ARRANGE
-        var executionHelper = new ExecutionsHelper();
-        var taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        executionHelper.InsertAvailableExecutionToken(taskDefinitionId);
+
+        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
         var firstStartRequest = CreateKeepAliveStartRequest();
         var secondStartRequest = CreateKeepAliveStartRequest();
 
         // ACT
-        var sut = CreateSut();
-        var firstStartResponse = await sut.StartAsync(firstStartRequest);
+        var firstStartResponse = await _taskExecutionRepository.StartAsync(firstStartRequest);
         var firstCompleteRequest = new TaskExecutionCompleteRequest(
             new TaskId(TestConstants.ApplicationName, TestConstants.TaskName), firstStartResponse.TaskExecutionId,
             firstStartResponse.ExecutionTokenId);
-        var firstCompleteResponse = await sut.CompleteAsync(firstCompleteRequest);
+        var firstCompleteResponse = await _taskExecutionRepository.CompleteAsync(firstCompleteRequest);
 
-        var secondStartResponse = await sut.StartAsync(secondStartRequest);
+        var secondStartResponse = await _taskExecutionRepository.StartAsync(secondStartRequest);
 
         // ASSERT
         Assert.Equal(GrantStatus.Granted, firstStartResponse.GrantStatus);
@@ -159,9 +158,9 @@ public class When_TryStart_AsKeepAliveMode
     {
         // ARRANGE
         var concurrencyLimit = 4;
-        var executionHelper = new ExecutionsHelper();
-        var taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        executionHelper.InsertAvailableExecutionToken(taskDefinitionId, concurrencyLimit);
+
+        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId, concurrencyLimit);
 
         var firstStartRequest = CreateKeepAliveStartRequest(concurrencyLimit);
         var secondStartRequest = CreateKeepAliveStartRequest(concurrencyLimit);
@@ -170,16 +169,15 @@ public class When_TryStart_AsKeepAliveMode
         var fifthStartRequest = CreateKeepAliveStartRequest(concurrencyLimit);
 
         // ACT
-        var sut = CreateSut();
-        var firstResponse = await sut.StartAsync(firstStartRequest);
-        executionHelper.SetKeepAlive(firstResponse.TaskExecutionId);
-        var secondResponse = await sut.StartAsync(secondStartRequest);
-        executionHelper.SetKeepAlive(secondResponse.TaskExecutionId);
-        var thirdResponse = await sut.StartAsync(thirdStartRequest);
-        executionHelper.SetKeepAlive(thirdResponse.TaskExecutionId);
-        var fourthResponse = await sut.StartAsync(fourthStartRequest);
-        executionHelper.SetKeepAlive(fourthResponse.TaskExecutionId);
-        var fifthResponse = await sut.StartAsync(fifthStartRequest);
+        var firstResponse = await _taskExecutionRepository.StartAsync(firstStartRequest);
+        _executionsHelper.SetKeepAlive(firstResponse.TaskExecutionId);
+        var secondResponse = await _taskExecutionRepository.StartAsync(secondStartRequest);
+        _executionsHelper.SetKeepAlive(secondResponse.TaskExecutionId);
+        var thirdResponse = await _taskExecutionRepository.StartAsync(thirdStartRequest);
+        _executionsHelper.SetKeepAlive(thirdResponse.TaskExecutionId);
+        var fourthResponse = await _taskExecutionRepository.StartAsync(fourthStartRequest);
+        _executionsHelper.SetKeepAlive(fourthResponse.TaskExecutionId);
+        var fifthResponse = await _taskExecutionRepository.StartAsync(fifthStartRequest);
 
         // ASSERT
         Assert.Equal(GrantStatus.Granted, firstResponse.GrantStatus);
@@ -195,54 +193,54 @@ public class When_TryStart_AsKeepAliveMode
     public void If_KeepAliveMode_OneToken_MultipleTaskThreads_ThenNoDeadLocksOccur()
     {
         // ARRANGE
-        var executionHelper = new ExecutionsHelper();
-        var taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        executionHelper.InsertAvailableExecutionToken(taskDefinitionId);
+
+        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
         // ACT
-        var sut = CreateSut();
-        var tuple = new Tuple<int, TaskExecutionRepository>(taskDefinitionId, sut);
+        var sut = _taskExecutionRepository;
+        
 
         var tasks = new List<Task>();
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync(tuple)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync(tuple)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync(tuple)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync(tuple)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync(tuple)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync(tuple)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync(tuple)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync(tuple)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync(tuple)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync(tuple)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync(tuple)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync(tuple)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync(tuple)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync(tuple)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync(tuple)));
+        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync()));
+        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync()));
+        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync()));
+        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync()));
+        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync()));
+        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync()));
+        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync()));
+        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync()));
+        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync()));
+        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync()));
+        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync()));
+        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync()));
+        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync()));
+        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync()));
+        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync()));
 
         Task.WaitAll(tasks.ToArray());
 
         // ASSERT
     }
 
-    private async Task RequestAndReturnTokenWithKeepAliveModeAsync(Tuple<int, TaskExecutionRepository> tuple)
+  
+    private async Task RequestAndReturnTokenWithKeepAliveModeAsync()
     {
-        var sut = tuple.Item2;
         for (var i = 0; i < 100; i++)
         {
             var firstStartRequest = CreateKeepAliveStartRequest();
 
-            var firstStartResponse = await sut.StartAsync(firstStartRequest);
+            var firstStartResponse = await _taskExecutionRepository.StartAsync(firstStartRequest);
 
-            var executionHelper = new ExecutionsHelper();
-            executionHelper.SetKeepAlive(firstStartResponse.TaskExecutionId);
+
+            _executionsHelper.SetKeepAlive(firstStartResponse.TaskExecutionId);
 
             if (firstStartResponse.GrantStatus == GrantStatus.Granted)
             {
                 var firstCompleteRequest = new TaskExecutionCompleteRequest(
                     new TaskId(TestConstants.ApplicationName, TestConstants.TaskName),
                     firstStartResponse.TaskExecutionId, firstStartResponse.ExecutionTokenId);
-                var firstCompleteResponse = await sut.CompleteAsync(firstCompleteRequest);
+                var firstCompleteResponse = await _taskExecutionRepository.CompleteAsync(firstCompleteRequest);
             }
         }
     }
@@ -254,9 +252,9 @@ public class When_TryStart_AsKeepAliveMode
         If_KeepAliveMode_OneTaskAndOneTokenAndIsUnavailableAndKeepAliveHasPassedElapsedTime_ThenIsGranted()
     {
         // ARRANGE
-        var executionHelper = new ExecutionsHelper();
-        var taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        executionHelper.InsertAvailableExecutionToken(taskDefinitionId);
+
+        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
         var startRequest = CreateKeepAliveStartRequest();
         startRequest.KeepAliveDeathThreshold = new TimeSpan(0, 0, 4);
@@ -265,9 +263,9 @@ public class When_TryStart_AsKeepAliveMode
         secondRequest.KeepAliveDeathThreshold = new TimeSpan(0, 0, 4);
 
         // ACT
-        var sut = CreateSut();
+        var sut = _taskExecutionRepository;
         var firstResponse = await sut.StartAsync(startRequest);
-        executionHelper.SetKeepAlive(firstResponse.TaskExecutionId);
+        _executionsHelper.SetKeepAlive(firstResponse.TaskExecutionId);
 
         Thread.Sleep(6000);
 
@@ -285,9 +283,9 @@ public class When_TryStart_AsKeepAliveMode
         If_KeepAliveMode_OneTaskAndOneTokenAndIsUnavailableAndKeepAliveHasNotPassedElapsedTime_ThenIsDenied()
     {
         // ARRANGE
-        var executionHelper = new ExecutionsHelper();
-        var taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        executionHelper.InsertAvailableExecutionToken(taskDefinitionId);
+
+        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
         var startRequest = CreateKeepAliveStartRequest();
         startRequest.KeepAliveDeathThreshold = new TimeSpan(1, 0, 0);
@@ -296,9 +294,9 @@ public class When_TryStart_AsKeepAliveMode
         secondRequest.KeepAliveDeathThreshold = new TimeSpan(1, 0, 0);
 
         // ACT
-        var sut = CreateSut();
+        var sut = _taskExecutionRepository;
         var firstResponse = await sut.StartAsync(startRequest);
-        executionHelper.SetKeepAlive(firstResponse.TaskExecutionId);
+        _executionsHelper.SetKeepAlive(firstResponse.TaskExecutionId);
 
         Thread.Sleep(5000);
 
@@ -317,18 +315,18 @@ public class When_TryStart_AsKeepAliveMode
     public async Task If_KeepAliveMode_OneTokenExistsAndConcurrencyLimitIsFour_ThenCreateThreeNewTokens()
     {
         // ARRANGE
-        var executionHelper = new ExecutionsHelper();
-        var taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        executionHelper.InsertAvailableExecutionToken(taskDefinitionId);
+
+        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
         var startRequest = CreateKeepAliveStartRequest(4);
 
         // ACT
-        var sut = CreateSut();
+        var sut = _taskExecutionRepository;
         await sut.StartAsync(startRequest);
 
         // ASSERT
-        var tokensList = executionHelper.GetExecutionTokens(TestConstants.ApplicationName, TestConstants.TaskName);
+        var tokensList = _executionsHelper.GetExecutionTokens(TestConstants.ApplicationName, TestConstants.TaskName);
         Assert.Equal(1, tokensList.Tokens.Count(x => x.Status == ExecutionTokenStatus.Unavailable));
         Assert.Equal(3, tokensList.Tokens.Count(x => x.Status == ExecutionTokenStatus.Available));
     }
@@ -340,18 +338,18 @@ public class When_TryStart_AsKeepAliveMode
         If_KeepAliveMode_OneTokenExistsAndConcurrencyLimitIsUnlimited_ThenRemoveAvailableTokenAndCreateOneNewUnlimitedToken()
     {
         // ARRANGE
-        var executionHelper = new ExecutionsHelper();
-        var taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        executionHelper.InsertAvailableExecutionToken(taskDefinitionId);
+
+        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
         var startRequest = CreateKeepAliveStartRequest(-1);
 
         // ACT
-        var sut = CreateSut();
+        var sut = _taskExecutionRepository;
         await sut.StartAsync(startRequest);
 
         // ASSERT
-        var tokensList = executionHelper.GetExecutionTokens(TestConstants.ApplicationName, TestConstants.TaskName);
+        var tokensList = _executionsHelper.GetExecutionTokens(TestConstants.ApplicationName, TestConstants.TaskName);
         Assert.Equal(1, tokensList.Tokens.Count(x => x.Status == ExecutionTokenStatus.Unlimited));
     }
 
@@ -362,9 +360,9 @@ public class When_TryStart_AsKeepAliveMode
         If_KeepAliveMode_OneAvailableTokenAndOneUnavailableTokensExistsAndConcurrencyLimitIsOne_ThenRemoveAvailableToken_AndSoDenyStart()
     {
         // ARRANGE
-        var executionHelper = new ExecutionsHelper();
-        var taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        executionHelper.InsertExecutionToken(taskDefinitionId, new List<Execinfo>
+
+        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertExecutionToken(taskDefinitionId, new List<Execinfo>
         {
             new(ExecutionTokenStatus.Unavailable, 0),
             new(ExecutionTokenStatus.Available, 1)
@@ -373,11 +371,11 @@ public class When_TryStart_AsKeepAliveMode
         var startRequest = CreateKeepAliveStartRequest();
 
         // ACT
-        var sut = CreateSut();
+        var sut = _taskExecutionRepository;
         var result = await sut.StartAsync(startRequest);
 
         // ASSERT
-        var tokensList = executionHelper.GetExecutionTokens(TestConstants.ApplicationName, TestConstants.TaskName);
+        var tokensList = _executionsHelper.GetExecutionTokens(TestConstants.ApplicationName, TestConstants.TaskName);
         Assert.Equal(GrantStatus.Denied, result.GrantStatus);
         Assert.Equal(1, tokensList.Tokens.Count(x => x.Status == ExecutionTokenStatus.Unavailable));
     }
@@ -389,9 +387,9 @@ public class When_TryStart_AsKeepAliveMode
         If_KeepAliveMode_TwoUnavailableTokensExistsAndConcurrencyLimitIsOne_ThenRemoveOneUnavailableToken()
     {
         // ARRANGE
-        var executionHelper = new ExecutionsHelper();
-        var taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        executionHelper.InsertExecutionToken(taskDefinitionId, new List<Execinfo>
+
+        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertExecutionToken(taskDefinitionId, new List<Execinfo>
         {
             new(ExecutionTokenStatus.Unavailable, 0),
             new(ExecutionTokenStatus.Unavailable, 1)
@@ -400,11 +398,11 @@ public class When_TryStart_AsKeepAliveMode
         var startRequest = CreateKeepAliveStartRequest();
 
         // ACT
-        var sut = CreateSut();
+        var sut = _taskExecutionRepository;
         await sut.StartAsync(startRequest);
 
         // ASSERT
-        var tokensList = executionHelper.GetExecutionTokens(TestConstants.ApplicationName, TestConstants.TaskName);
+        var tokensList = _executionsHelper.GetExecutionTokens(TestConstants.ApplicationName, TestConstants.TaskName);
         Assert.Equal(1, tokensList.Tokens.Count(x => x.Status == ExecutionTokenStatus.Unavailable));
     }
 }

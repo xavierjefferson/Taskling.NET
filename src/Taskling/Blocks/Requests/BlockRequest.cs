@@ -14,11 +14,11 @@ public class BlockRequest
 
     public bool ReprocessFailedTasks { get; set; }
     public TimeSpan FailedTaskDetectionRange { get; set; }
-    public short FailedTaskRetryLimit { get; set; }
+    public int FailedTaskRetryLimit { get; set; }
 
     public TaskDeathMode TaskDeathMode { get; set; }
     public bool ReprocessDeadTasks { get; set; }
-    public short DeadTaskRetryLimit { get; set; }
+    public int DeadTaskRetryLimit { get; set; }
     public TimeSpan OverrideDeathThreshold { get; set; }
     public TimeSpan DeadTaskDetectionRange { get; set; }
     public TimeSpan KeepAliveDeathThreshold { get; set; }

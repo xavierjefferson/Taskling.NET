@@ -15,7 +15,7 @@ public class ObjectBlockRepository : DbOperationsService, IObjectBlockRepository
 {
     private readonly ITaskRepository _taskRepository;
 
-    public ObjectBlockRepository(ITaskRepository taskRepository)
+    public ObjectBlockRepository(ITaskRepository taskRepository, IConnectionStore connectionStore) : base(connectionStore)
     {
         _taskRepository = taskRepository;
     }
@@ -28,7 +28,7 @@ public class ObjectBlockRepository : DbOperationsService, IObjectBlockRepository
     public async Task<ObjectBlock<T>?> GetLastObjectBlockAsync<T>(LastBlockRequest lastRangeBlockRequest)
     {
 
-        return await RetryHelper.WithRetry(async (transactionScope) =>
+        return await RetryHelper.WithRetry(async () =>
         {
             var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(lastRangeBlockRequest.TaskId)
                 .ConfigureAwait(false);
@@ -61,7 +61,7 @@ public class ObjectBlockRepository : DbOperationsService, IObjectBlockRepository
 
     private async Task ChangeStatusOfExecutionAsync(BlockExecutionChangeStatusRequest changeStatusRequest)
     {
-        await RetryHelper.WithRetry(async (transactionScope) =>
+        await RetryHelper.WithRetry(async () =>
         {
             using (var dbContext = await GetDbContextAsync(changeStatusRequest.TaskId))
             {

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Taskling.Blocks.Factories;
 using Taskling.Contexts;
 using Taskling.Exceptions;
 using Taskling.ExecutionContext;
@@ -14,6 +15,7 @@ public class CriticalSectionContext : ICriticalSectionContext
 {
     private readonly ICriticalSectionRepository _criticalSectionRepository;
     private readonly CriticalSectionType _criticalSectionType;
+    private readonly TasklingOptions _tasklingOptions;
     private readonly TaskExecutionInstance _taskExecutionInstance;
     private readonly TaskExecutionOptions _taskExecutionOptions;
     private bool _completeCalled;
@@ -25,12 +27,13 @@ public class CriticalSectionContext : ICriticalSectionContext
     public CriticalSectionContext(ICriticalSectionRepository criticalSectionRepository,
         TaskExecutionInstance taskExecutionInstance,
         TaskExecutionOptions taskExecutionOptions,
-        CriticalSectionType criticalSectionType)
+        CriticalSectionType criticalSectionType, TasklingOptions tasklingOptions)
     {
         _criticalSectionRepository = criticalSectionRepository;
         _taskExecutionInstance = taskExecutionInstance;
         _taskExecutionOptions = taskExecutionOptions;
         _criticalSectionType = criticalSectionType;
+        _tasklingOptions = tasklingOptions;
 
         ValidateOptions();
     }
@@ -42,7 +45,7 @@ public class CriticalSectionContext : ICriticalSectionContext
 
     public async Task<bool> TryStartAsync()
     {
-        return await TryStartAsync(new TimeSpan(0, 0, 30), 3).ConfigureAwait(false);
+        return await TryStartAsync(_tasklingOptions.CriticalSectionRetry, _tasklingOptions.CriticalSectionAttemptCount).ConfigureAwait(false);
     }
 
     public async Task<bool> TryStartAsync(TimeSpan retryInterval, int numberOfAttempts)

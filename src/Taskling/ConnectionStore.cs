@@ -4,9 +4,18 @@ using Taskling.Tasks;
 
 namespace Taskling;
 
-public class ConnectionStore
+public class ConnectionStore : IConnectionStore
 {
+    //#region .: Singleton code :.
+
+    //private static volatile ConnectionStore _instance;
+    private static readonly object sync = new();
     private readonly Dictionary<TaskId, ClientConnectionSettings> _connections;
+
+    public ConnectionStore()
+    {
+        _connections = new Dictionary<TaskId, ClientConnectionSettings>();
+    }
 
     public void SetConnection(TaskId taskId, ClientConnectionSettings connectionSettings)
     {
@@ -29,29 +38,19 @@ public class ConnectionStore
         }
     }
 
-    #region .: Singleton code :.
+    //public static ConnectionStore Instance
+    //{
+    //    get
+    //    {
+    //        if (_instance == null)
+    //            lock (sync)
+    //            {
+    //                if (_instance == null) _instance = new ConnectionStore();
+    //            }
 
-    private static volatile ConnectionStore _instance;
-    private static readonly object sync = new();
+    //        return _instance;
+    //    }
+    //}
 
-    private ConnectionStore()
-    {
-        _connections = new Dictionary<TaskId, ClientConnectionSettings>();
-    }
-
-    public static ConnectionStore Instance
-    {
-        get
-        {
-            if (_instance == null)
-                lock (sync)
-                {
-                    if (_instance == null) _instance = new ConnectionStore();
-                }
-
-            return _instance;
-        }
-    }
-
-    #endregion .: Singleton code :.
+    //#endregion .: Singleton code :.
 }

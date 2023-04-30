@@ -31,14 +31,14 @@ public class FluentBlockSettingsDescriptor : IFluentBlockSettingsDescriptor, IOv
         BlockType = BlockType.NumericRange;
     }
 
-    public FluentBlockSettingsDescriptor(List<string> values, short maxBlockSize)
+    public FluentBlockSettingsDescriptor(List<string> values, int maxBlockSize)
     {
         Values = values;
         MaxBlockSize = maxBlockSize;
         BlockType = BlockType.List;
     }
 
-    public FluentBlockSettingsDescriptor(List<string> values, string header, short maxBlockSize)
+    public FluentBlockSettingsDescriptor(List<string> values, string header, int maxBlockSize)
     {
         Values = values;
         Header = header;
@@ -50,11 +50,11 @@ public class FluentBlockSettingsDescriptor : IFluentBlockSettingsDescriptor, IOv
 
     public bool? MustReprocessFailedTasks { get; set; }
     public TimeSpan? FailedTaskDetectionRange { get; set; }
-    public short? FailedTaskRetryLimit { get; set; }
+    public int? FailedTaskRetryLimit { get; set; }
 
     public bool? MustReprocessDeadTasks { get; set; }
     public TimeSpan? DeadTaskDetectionRange { get; set; }
-    public short? DeadTaskRetryLimit { get; set; }
+    public int? DeadTaskRetryLimit { get; set; }
 
     public int? MaximumNumberOfBlocksLimit { get; set; }
     public BlockType BlockType { get; set; }
@@ -72,7 +72,7 @@ public class FluentBlockSettingsDescriptor : IFluentBlockSettingsDescriptor, IOv
     // ListBlocks
     public List<string> Values { get; set; }
     public string Header { get; set; }
-    public short MaxBlockSize { get; set; }
+    public int MaxBlockSize { get; set; }
     public ListUpdateMode ListUpdateMode { get; set; }
     public int UncommittedItemsThreshold { get; set; }
 
@@ -80,7 +80,7 @@ public class FluentBlockSettingsDescriptor : IFluentBlockSettingsDescriptor, IOv
     public ReprocessOption ReprocessOption { get; set; }
     public string ReferenceValueToReprocess { get; set; }
 
-    public IFluentBlockSettingsDescriptor ReprocessFailedTasks(TimeSpan detectionRange, short retryLimit)
+    public IFluentBlockSettingsDescriptor ReprocessFailedTasks(TimeSpan detectionRange, int retryLimit)
     {
         MustReprocessFailedTasks = true;
         FailedTaskDetectionRange = detectionRange;
@@ -88,7 +88,7 @@ public class FluentBlockSettingsDescriptor : IFluentBlockSettingsDescriptor, IOv
         return this;
     }
 
-    public IFluentBlockSettingsDescriptor ReprocessDeadTasks(TimeSpan detectionRange, short retryLimit)
+    public IFluentBlockSettingsDescriptor ReprocessDeadTasks(TimeSpan detectionRange, int retryLimit)
     {
         MustReprocessDeadTasks = true;
         DeadTaskDetectionRange = detectionRange;

@@ -10,7 +10,7 @@ public class CleanUpRepository : DbOperationsService, ICleanUpRepository
 {
     private readonly ITaskRepository _taskRepository;
 
-    public CleanUpRepository(ITaskRepository taskRepository)
+    public CleanUpRepository(ITaskRepository taskRepository, IConnectionStore connectionStore) : base(connectionStore)
     {
         _taskRepository = taskRepository;
     }
@@ -38,7 +38,7 @@ public class CleanUpRepository : DbOperationsService, ICleanUpRepository
 
     private async Task CleanListItemsAsync(TaskId taskId, int taskDefinitionId, DateTime listItemDateThreshold)
     {
-        await RetryHelper.WithRetry(async (transactionScope) =>
+        await RetryHelper.WithRetry(async () =>
         {
             using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
             {
@@ -52,7 +52,7 @@ public class CleanUpRepository : DbOperationsService, ICleanUpRepository
 
     private async Task CleanOldDataAsync(TaskId taskId, int taskDefinitionId, DateTime generalDateThreshold)
     {
-        await RetryHelper.WithRetry(async (transactionScope) =>
+        await RetryHelper.WithRetry(async () =>
         {
             using (var dbContext = await GetDbContextAsync(taskId))
             {

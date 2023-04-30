@@ -2,31 +2,36 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.SqlServer.Events;
-using Taskling.SqlServer.TaskExecution;
-using Taskling.SqlServer.Tasks;
 using Taskling.SqlServer.Tests.Helpers;
-using Taskling.SqlServer.Tokens;
-using Taskling.SqlServer.Tokens.Executions;
 using Taskling.Tasks;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_TaskExecutionService;
+
 [Collection(Constants.CollectionName)]
 public class When_TryStart_AsOverrideAfterElaspedTimeMode
 {
-    public When_TryStart_AsOverrideAfterElaspedTimeMode()
+    private readonly IExecutionsHelper _executionsHelper;
+    private readonly ILogger<When_TryStart_AsOverrideAfterElaspedTimeMode> _logger;
+    private readonly ITaskExecutionRepository _taskExecutionRepository;
+
+    public When_TryStart_AsOverrideAfterElaspedTimeMode(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper,
+        IClientHelper clientHelper, ILogger<When_TryStart_AsOverrideAfterElaspedTimeMode> logger,
+        ITaskRepository taskRepository, ITaskExecutionRepository taskExecutionRepository)
     {
-        var executionHelper = new ExecutionsHelper();
-        executionHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+        _executionsHelper = executionsHelper;
+        _logger = logger;
+        _taskExecutionRepository = taskExecutionRepository;
+
+        _executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
     }
 
-    private TaskExecutionRepository CreateSut()
+    private ITaskExecutionRepository CreateSut()
     {
-        return new TaskExecutionRepository(new TaskRepository(),
-            new ExecutionTokenRepository(new CommonTokenRepository()), new EventsRepository());
+        return _taskExecutionRepository;
     }
 
     private TaskExecutionStartRequest CreateOverrideStartRequest(int concurrencyLimit = 1)
@@ -45,9 +50,9 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode
     public async Task If_TimeOverrideMode_ThenReturnsValidDataValues()
     {
         // ARRANGE
-        var executionHelper = new ExecutionsHelper();
-        var taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        executionHelper.InsertAvailableExecutionToken(taskDefinitionId);
+
+        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
         var startRequest = CreateOverrideStartRequest();
 
@@ -66,9 +71,9 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode
     public async Task If_TimeOverrideMode_OneTaskAndOneTokenAndIsAvailable_ThenIsGranted()
     {
         // ARRANGE
-        var executionHelper = new ExecutionsHelper();
-        var taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        executionHelper.InsertAvailableExecutionToken(taskDefinitionId);
+
+        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
         var startRequest = CreateOverrideStartRequest();
 
@@ -88,9 +93,9 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode
         If_TimeOverrideMode_TwoConcurrentTasksAndOneTokenAndIsAvailable_ThenIsGrantFirstTaskAndDenyTheOther()
     {
         // ARRANGE
-        var executionHelper = new ExecutionsHelper();
-        var taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        executionHelper.InsertAvailableExecutionToken(taskDefinitionId);
+
+        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
         var firstStartRequest = CreateOverrideStartRequest();
         var secondStartRequest = CreateOverrideStartRequest();
@@ -112,9 +117,9 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode
         If_TimeOverrideMode_TwoSequentialTasksAndOneTokenAndIsAvailable_ThenIsGrantFirstTaskAndThenGrantTheOther()
     {
         // ARRANGE
-        var executionHelper = new ExecutionsHelper();
-        var taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        executionHelper.InsertAvailableExecutionToken(taskDefinitionId);
+
+        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
         var firstStartRequest = CreateOverrideStartRequest();
         var secondStartRequest = CreateOverrideStartRequest();
@@ -142,9 +147,9 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode
     {
         // ARRANGE
         var concurrencyLimit = 4;
-        var executionHelper = new ExecutionsHelper();
-        var taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        executionHelper.InsertAvailableExecutionToken(taskDefinitionId, concurrencyLimit);
+
+        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId, concurrencyLimit);
 
         var firstStartRequest = CreateOverrideStartRequest(concurrencyLimit);
         var secondStartRequest = CreateOverrideStartRequest(concurrencyLimit);
@@ -174,9 +179,9 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode
     public void If_TimeOverrideMode_OneToken_MultipleTaskThreads_ThenNoDeadLocksOccur()
     {
         // ARRANGE
-        var executionHelper = new ExecutionsHelper();
-        var taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        executionHelper.InsertAvailableExecutionToken(taskDefinitionId);
+
+        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
         // ACT
         var sut = CreateSut();
@@ -202,7 +207,7 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode
         // ASSERT
     }
 
-    private async Task RequestAndReturnTokenWithTimeOverrideModeAsync(TaskExecutionRepository sut)
+    private async Task RequestAndReturnTokenWithTimeOverrideModeAsync(ITaskExecutionRepository sut)
     {
         for (var i = 0; i < 100; i++)
         {
@@ -227,9 +232,9 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode
         If_TimeOverrideMode_OneTaskAndOneTokenAndIsUnavailableAndGrantedDateHasPassedElapsedTime_ThenIsGranted()
     {
         // ARRANGE
-        var executionHelper = new ExecutionsHelper();
-        var taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        executionHelper.InsertAvailableExecutionToken(taskDefinitionId);
+
+        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
         var startRequest = CreateOverrideStartRequest();
         startRequest.OverrideThreshold = new TimeSpan(0, 0, 5);
@@ -257,9 +262,9 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode
         If_TimeOverrideMode_OneTaskAndOneTokenAndIsUnavailableAndKeepAliveHasNotPassedElapsedTime_ThenIsDenied()
     {
         // ARRANGE
-        var executionHelper = new ExecutionsHelper();
-        var taskDefinitionId = executionHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        executionHelper.InsertAvailableExecutionToken(taskDefinitionId);
+
+        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
         var startRequest = CreateOverrideStartRequest();
         var secondRequest = CreateOverrideStartRequest();
