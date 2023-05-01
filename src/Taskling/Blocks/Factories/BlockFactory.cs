@@ -21,11 +21,6 @@ using Taskling.Serialization;
 
 namespace Taskling.Blocks.Factories;
 
-public class TasklingOptions
-{
-    public TimeSpan CriticalSectionRetry { get; set; } = TimeSpan.FromMinutes(10);
-    public int CriticalSectionAttemptCount { get; set; } = 100;
-}
 public class BlockFactory : IBlockFactory
 {
     private readonly IBlockRepository _blockRepository;
@@ -211,7 +206,7 @@ public class BlockFactory : IBlockFactory
 
         return Convert<TItem, THeader>(lastProtoListBlock, true);
     }
-
+   
     public async Task<List<RangeBlockContext>> GenerateRangeBlocksAsync<T>(T blockRequest, Func<T, bool> testadd,
         Func<T, int, Task<List<RangeBlockContext>>> newBlockFunc) where T : BlockRequest
     {
@@ -238,55 +233,55 @@ public class BlockFactory : IBlockFactory
                     _logger.LogDebug("No more blocks need to be fetched");
                     break;
                 }
-                else
-                    switch (iteration)
-                    {
-                        case 0:
-                            if (blockRequest.ReprocessDeadTasks)
-                            {
-                                _logger.LogDebug("loading dead blocks");
-                                var rangeBlockContexts =
-                                    await GetDeadBlocksAsync(blockRequest, remaining).ConfigureAwait(false);
-                                _logger.LogDebug($"{rangeBlockContexts.Count} dead blocks were fetched");
-                                blocks.AddRange(rangeBlockContexts);
-                            }
-                            else
-                            {
-                                _logger.LogDebug("Skipping dead blocks");
-                            }
 
-                            break;
-                        case 1:
-                            if (blockRequest.ReprocessFailedTasks)
-                            {
-                                _logger.LogDebug("loading failed blocks");
-                                var rangeBlockContexts = await GetFailedBlocksAsync(blockRequest, remaining)
-                                    .ConfigureAwait(false);
-                                _logger.LogDebug($"{rangeBlockContexts.Count} failed blocks were fetched");
-                                blocks.AddRange(rangeBlockContexts);
-                            }
-                            else
-                            {
-                                _logger.LogDebug("Skipping failed blocks");
-                            }
+                switch (iteration)
+                {
+                    case 0:
+                        if (blockRequest.ReprocessDeadTasks)
+                        {
+                            _logger.LogDebug("loading dead blocks");
+                            var rangeBlockContexts =
+                                await GetDeadBlocksAsync(blockRequest, remaining).ConfigureAwait(false);
+                            _logger.LogDebug($"{rangeBlockContexts.Count} dead blocks were fetched");
+                            blocks.AddRange(rangeBlockContexts);
+                        }
+                        else
+                        {
+                            _logger.LogDebug("Skipping dead blocks");
+                        }
 
-                            break;
-                        case 2:
-                            var willAddNewBlocks = testadd(blockRequest);
-                            if (willAddNewBlocks)
-                            {
-                                _logger.LogDebug($"Generating new range");
-                                blocks.AddRange(await newBlockFunc(blockRequest, remaining).ConfigureAwait(false));
-                            }
-                            else
-                            {
-                                _logger.LogDebug($"skipping new range generation");
-                            }
+                        break;
+                    case 1:
+                        if (blockRequest.ReprocessFailedTasks)
+                        {
+                            _logger.LogDebug("loading failed blocks");
+                            var rangeBlockContexts = await GetFailedBlocksAsync(blockRequest, remaining)
+                                .ConfigureAwait(false);
+                            _logger.LogDebug($"{rangeBlockContexts.Count} failed blocks were fetched");
+                            blocks.AddRange(rangeBlockContexts);
+                        }
+                        else
+                        {
+                            _logger.LogDebug("Skipping failed blocks");
+                        }
 
-                            break;
-                        default:
-                            throw new NotImplementedException();
-                    }
+                        break;
+                    case 2:
+                        var willAddNewBlocks = testadd(blockRequest);
+                        if (willAddNewBlocks)
+                        {
+                            _logger.LogDebug("Generating new range");
+                            blocks.AddRange(await newBlockFunc(blockRequest, remaining).ConfigureAwait(false));
+                        }
+                        else
+                        {
+                            _logger.LogDebug("skipping new range generation");
+                        }
+
+                        break;
+                    default:
+                        throw new NotImplementedException();
+                }
             }
         }
 
@@ -336,7 +331,7 @@ public class BlockFactory : IBlockFactory
         await _taskExecutionRepository.CheckpointAsync(checkPointRequest).ConfigureAwait(false);
     }
 
-    private int GetBlocksRemaining(BlockRequest blockRequest, List<RangeBlockContext> blocks)
+    private int GetBlocksRemaining<T>(BlockRequest blockRequest, List<T> blocks)
     {
         return blockRequest.MaxBlocks - blocks.Count;
     }
@@ -975,10 +970,10 @@ public class BlockFactory : IBlockFactory
         return objectBlock;
     }
 
-    private int GetBlocksRemaining<T>(BlockRequest blockRequest, List<IObjectBlockContext<T>> blocks)
-    {
-        return blockRequest.MaxBlocks - blocks.Count;
-    }
+    //private int GetBlocksRemaining<T>(BlockRequest blockRequest, List<IObjectBlockContext<T>> blocks)
+    //{
+    //    return blockRequest.MaxBlocks - blocks.Count;
+    //}
 
     #endregion .: Object Blocks :.
 }

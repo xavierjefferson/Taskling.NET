@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.SqlClient;
-using Taskling.SqlServer.Models;
 using Taskling.SqlServer.Tokens.Executions;
 
 namespace Taskling.SqlServer.Tests.Helpers;
@@ -44,5 +42,4 @@ public interface IExecutionsHelper
     int GetQueueCount(int taskExecutionId);
     void InsertIntoCriticalSectionQueue(int taskDefinitionId, int queueIndex, int taskExecutionId);
     int GetCriticalSectionTokenStatus(string applicationName, string taskName);
-   
 }

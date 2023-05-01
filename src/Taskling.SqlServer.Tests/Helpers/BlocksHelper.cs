@@ -5,8 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
 using Taskling.Serialization;
-using Taskling.SqlServer.Blocks;
 using Taskling.SqlServer.Models;
+using TransactionScopeRetryHelper;
 
 namespace Taskling.SqlServer.Tests.Helpers;
 
@@ -200,7 +200,8 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
                         context.Blocks.Add(block);
                         //have to save changes to get a block id
                         context.SaveChanges();
-                        if (block.BlockId <= 0) throw new InvalidOperationException($"{nameof(block.BlockId)} is invalid");
+                        if (block.BlockId <= 0)
+                            throw new InvalidOperationException($"{nameof(block.BlockId)} is invalid");
                         var listBlockItem = new ListBlockItem
                         {
                             BlockId = block.BlockId,
@@ -258,7 +259,8 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
                 OnTaskDefinitionFound(dbContext, applicationName, taskName,
                     (taskDefinitionId, context) =>
                     {
-                        AddObjectBlock(context, taskDefinitionId, DateTime.UtcNow, JsonGenericSerializer.Serialize("My phantom block"),
+                        AddObjectBlock(context, taskDefinitionId, DateTime.UtcNow,
+                            JsonGenericSerializer.Serialize("My phantom block"),
                             true);
                     });
             }
@@ -302,7 +304,6 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
 
     #endregion .: Get Block Counts :.
 
-    private delegate void TaskDefinitionDelegate(int taskDefinitionId, TasklingDbContext dbContext);
     private void OnTaskDefinitionFound(TasklingDbContext dbContext, string applicationName, string taskName,
         TaskDefinitionDelegate action)
     {
@@ -311,6 +312,8 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
             .Select(i => i.TaskDefinitionId).FirstOrDefault();
         if (taskDefinitionId != default) action(taskDefinitionId, dbContext);
     }
+
+    private delegate void TaskDefinitionDelegate(int taskDefinitionId, TasklingDbContext dbContext);
 
     #region .: Queries :.
 
@@ -735,36 +738,36 @@ INSERT INTO [Taskling].[Block]
                     dbContext.SaveChanges();
                 }
             }
-        //            using (var connection = GetConnection())
-        //            {
-        //                var command = connection.CreateCommand();
-        //                command.CommandText = @"
-        //DELETE BE FROM [Taskling].[BlockExecution] BE
-        //inner JOIN [Taskling].[TaskExecution] TE ON BE.TaskExecutionId = TE.TaskExecutionId
-        //inner JOIN [Taskling].[TaskDefinition] T ON TE.TaskDefinitionId = T.TaskDefinitionId
-        //WHERE (T.ApplicationName = @ApplicationName);
+            //            using (var connection = GetConnection())
+            //            {
+            //                var command = connection.CreateCommand();
+            //                command.CommandText = @"
+            //DELETE BE FROM [Taskling].[BlockExecution] BE
+            //inner JOIN [Taskling].[TaskExecution] TE ON BE.TaskExecutionId = TE.TaskExecutionId
+            //inner JOIN [Taskling].[TaskDefinition] T ON TE.TaskDefinitionId = T.TaskDefinitionId
+            //WHERE (T.ApplicationName = @ApplicationName);
 
-        //DELETE Q FROM [Taskling].[ListBlockItem] Q inner join [Taskling].[Block] B on q.BLockid = b.blockid
-        //inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
-        //WHERE (T.ApplicationName = @ApplicationName);
+            //DELETE Q FROM [Taskling].[ListBlockItem] Q inner join [Taskling].[Block] B on q.BLockid = b.blockid
+            //inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
+            //WHERE (T.ApplicationName = @ApplicationName);
 
-        //DELETE Q FROM [Taskling].[ForceBlockQueue] Q inner join [Taskling].[Block] B on q.BLockid = b.blockid
-        //inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
-        //WHERE (T.ApplicationName = @ApplicationName);
+            //DELETE Q FROM [Taskling].[ForceBlockQueue] Q inner join [Taskling].[Block] B on q.BLockid = b.blockid
+            //inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
+            //WHERE (T.ApplicationName = @ApplicationName);
 
-        //DELETE B FROM [Taskling].[Block] B
-        //inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
-        //WHERE (T.ApplicationName = @ApplicationName);
+            //DELETE B FROM [Taskling].[Block] B
+            //inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
+            //WHERE (T.ApplicationName = @ApplicationName);
 
-        //DELETE LBI FROM [Taskling].[ListBlockItem] LBI
-        //inner JOIN [Taskling].[Block] B ON LBI.BlockId = B.BlockId 
-        //inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
-        //WHERE (T.ApplicationName = @ApplicationName);
-        //";
-        //                command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
-        //                command.ExecuteNonQuery();
-        //            }
-        //        }
+            //DELETE LBI FROM [Taskling].[ListBlockItem] LBI
+            //inner JOIN [Taskling].[Block] B ON LBI.BlockId = B.BlockId 
+            //inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
+            //WHERE (T.ApplicationName = @ApplicationName);
+            //";
+            //                command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
+            //                command.ExecuteNonQuery();
+            //            }
+            //        }
         );
     }
 

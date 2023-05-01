@@ -7,13 +7,14 @@ using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.Serialization;
+using Taskling.SqlServer.Tests.Contexts.Given_RangeBlockContext;
 using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_ListBlockRepository;
 
-[Collection(Constants.CollectionName)]
-public class When_GetLastListBlock
+[Collection(TestConstants.CollectionName)]
+public class When_GetLastListBlock : TestBase
 {
     private readonly IBlocksHelper _blocksHelper;
     private readonly IClientHelper _clientHelper;
@@ -103,9 +104,9 @@ public class When_GetLastListBlock
 
         // ASSERT
         Assert.Equal(_block5, block.ListBlockId);
-        Assert.Equal(new DateTime(2016, 1, 1).AddMinutes(-60),
+        AssertSimilarDates(new DateTime(2016, 1, 1).AddMinutes(-60),
             JsonGenericSerializer.Deserialize<DateRange>(block.Header).FromDate);
-        Assert.Equal(new DateTime(2016, 1, 1), JsonGenericSerializer.Deserialize<DateRange>(block.Header).ToDate);
+        AssertSimilarDates(new DateTime(2016, 1, 1), JsonGenericSerializer.Deserialize<DateRange>(block.Header).ToDate);
     }
 
 

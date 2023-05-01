@@ -6,10 +6,9 @@ using Microsoft.EntityFrameworkCore;
 using Taskling.Events;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.SqlServer.Blocks;
-using Taskling.SqlServer.Tasks;
 using Taskling.SqlServer.Tokens.Executions;
 using Taskling.Tasks;
+using TransactionScopeRetryHelper;
 using TaskDefinition = Taskling.SqlServer.Models.TaskDefinition;
 
 namespace Taskling.SqlServer.Tests.Helpers;
@@ -20,7 +19,7 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
     {
         taskRepository.ClearCache();
         connectionStore.SetConnection(new TaskId(TestConstants.ApplicationName, TestConstants.TaskName),
-            new ClientConnectionSettings(TestConstants.TestConnectionString, TestConstants.QueryTimeout));
+            new ClientConnectionSettings(TestConstants.GetTestConnectionString(), TestConstants.QueryTimeout));
     }
 
 

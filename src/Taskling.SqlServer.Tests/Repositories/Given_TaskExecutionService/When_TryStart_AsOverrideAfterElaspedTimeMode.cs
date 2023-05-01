@@ -11,7 +11,7 @@ using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_TaskExecutionService;
 
-[Collection(Constants.CollectionName)]
+[Collection(TestConstants.CollectionName)]
 public class When_TryStart_AsOverrideAfterElaspedTimeMode
 {
     private readonly IExecutionsHelper _executionsHelper;

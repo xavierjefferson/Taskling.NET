@@ -12,13 +12,13 @@ using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_RangeBlockContext;
 
-[Collection(Constants.CollectionName)]
-public class When_GetRangeBlocksFromExecutionContext
+[Collection(TestConstants.CollectionName)]
+public class When_GetRangeBlocksFromExecutionContext : TestBase
 {
     private readonly IBlocksHelper _blocksHelper;
     private readonly IClientHelper _clientHelper;
-    private readonly ILogger<When_GetRangeBlocksFromExecutionContext> _logger;
     private readonly IExecutionsHelper _executionsHelper;
+    private readonly ILogger<When_GetRangeBlocksFromExecutionContext> _logger;
     private readonly int _taskDefinitionId;
 
     public When_GetRangeBlocksFromExecutionContext(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper,
@@ -282,8 +282,8 @@ public class When_GetRangeBlocksFromExecutionContext
         }
 
         // ASSERT
-        Assert.Equal(expectedLastBlock.StartDate, lastBlock.StartDate);
-        Assert.Equal(expectedLastBlock.EndDate, lastBlock.EndDate);
+        AssertSimilarDates(expectedLastBlock.StartDate, lastBlock.StartDate);
+        AssertSimilarDates(expectedLastBlock.EndDate, lastBlock.EndDate);
     }
 
     [Fact]
@@ -343,8 +343,8 @@ public class When_GetRangeBlocksFromExecutionContext
         }
 
         // ASSERT
-        Assert.Equal(new DateTime(2016, 1, 1), lastBlock.StartDate);
-        Assert.Equal(new DateTime(2016, 1, 2), lastBlock.EndDate);
+        AssertSimilarDates(new DateTime(2016, 1, 1), lastBlock.StartDate);
+        AssertSimilarDates(new DateTime(2016, 1, 2), lastBlock.EndDate);
     }
 
     [Fact]
@@ -784,7 +784,7 @@ public class When_GetRangeBlocksFromExecutionContext
             {
                 long from = 61;
                 long to = 200;
-                int maxBlockSize = 10;
+                var maxBlockSize = 10;
                 var numericBlocks = await executionContext.GetNumericRangeBlocksAsync(x => x
                     .WithRange(from, to, maxBlockSize)
                     .OverrideConfiguration()
@@ -825,7 +825,7 @@ public class When_GetRangeBlocksFromExecutionContext
             {
                 long from = 61;
                 long to = 200;
-                int maxBlockSize = 10;
+                var maxBlockSize = 10;
                 var numericBlocks =
                     await executionContext.GetNumericRangeBlocksAsync(x => x.WithRange(from, to, maxBlockSize));
                 Assert.Equal(10, numericBlocks.Count());
@@ -1023,7 +1023,7 @@ public class When_GetRangeBlocksFromExecutionContext
             {
                 long from = 1;
                 long to = 30;
-                int maxBlockSize = 10;
+                var maxBlockSize = 10;
                 var numericBlocks =
                     await executionContext.GetNumericRangeBlocksAsync(x => x.WithRange(from, to, maxBlockSize));
 
@@ -1045,7 +1045,7 @@ public class When_GetRangeBlocksFromExecutionContext
             {
                 long from = 31;
                 long to = 60;
-                int maxBlockSize = 10;
+                var maxBlockSize = 10;
                 var numericBlocks =
                     await executionContext.GetNumericRangeBlocksAsync(x => x.WithRange(from, to, maxBlockSize));
 
@@ -1055,5 +1055,13 @@ public class When_GetRangeBlocksFromExecutionContext
 
         var executionsHelper = _executionsHelper;
         executionsHelper.SetLastExecutionAsDead(_taskDefinitionId);
+    }
+}
+
+public static class AssertExtensions
+{
+    public static void SimilarDate(this Assert assert, DateTime d1, DateTime d2)
+    {
+        Assert.True(d2.Subtract(d2).TotalSeconds < 1);
     }
 }

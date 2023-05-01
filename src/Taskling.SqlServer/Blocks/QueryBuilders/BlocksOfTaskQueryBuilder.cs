@@ -9,10 +9,12 @@ namespace Taskling.SqlServer.Blocks.QueryBuilders;
 
 public class BlocksOfTaskQueryBuilder
 {
-    public static readonly int[] Statuses013 = { 
+    public static readonly int[] Statuses013 =
+    {
         (int)BlockExecutionStatus.NotStarted,
-        (int)BlockExecutionStatus.NotDefined,  
-        (int)BlockExecutionStatus.Completed, };
+        (int)BlockExecutionStatus.NotDefined,
+        (int)BlockExecutionStatus.Completed
+    };
 
     public static Func<BlocksOfTaskQueryParams, Expression<Func<BlockQueryItem, bool>>>
         GetFindDateRangeBlocksOfTaskQuery(ReprocessOption reprocessOption)
@@ -46,7 +48,7 @@ public class BlocksOfTaskQueryBuilder
     {
         return GetFindNumericRangeBlocksOfTaskQuery(reprocessOption);
     }
-    
+
     public static Func<BlocksOfTaskQueryParams, Expression<Func<BlockQueryItem, bool>>>
         GetFindObjectBlocksOfTaskQuery(ReprocessOption reprocessOption)
     {

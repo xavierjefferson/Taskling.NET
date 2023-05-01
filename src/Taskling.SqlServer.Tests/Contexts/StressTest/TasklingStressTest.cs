@@ -9,8 +9,8 @@ namespace Taskling.SqlServer.Tests.Contexts.StressTest;
 
 public class TasklingStressTest
 {
-    private readonly IExecutionsHelper _executionsHelper;
     private readonly IClientHelper _clientHelper;
+    private readonly IExecutionsHelper _executionsHelper;
 
     private readonly List<string> _processes = new()
     {

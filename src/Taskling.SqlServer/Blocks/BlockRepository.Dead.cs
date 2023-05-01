@@ -1,14 +1,12 @@
 ﻿using Microsoft.Extensions.Logging;
-using System.Data.SqlClient;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ObjectBlocks;
 using Taskling.Blocks.RangeBlocks;
-using Taskling.Exceptions;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.Blocks.ListBlocks;
-using Taskling.SqlServer.AncilliaryServices;
 using Taskling.SqlServer.Blocks.QueryBuilders;
 using Taskling.Tasks;
+using TransactionScopeRetryHelper;
 
 namespace Taskling.SqlServer.Blocks;
 
@@ -32,7 +30,8 @@ public partial class BlockRepository
         return await FindSearchableObjectBlocksAsync<T>(deadBlocksRequest, funcRunner).ConfigureAwait(false);
     }
 
-    private static BlockItemDelegateRunner GetFailedBlockFuncRunner(FindFailedBlocksRequest failedBlocksRequest, BlockType blockType)
+    private static BlockItemDelegateRunner GetFailedBlockFuncRunner(FindFailedBlocksRequest failedBlocksRequest,
+        BlockType blockType)
     {
         BlockItemDelegateRunner query;
         ;
@@ -45,7 +44,8 @@ public partial class BlockRepository
         return query;
     }
 
-    private static BlockItemDelegateRunner GetDeadBlockFuncRunner(FindDeadBlocksRequest deadBlocksRequest, BlockType blockType)
+    private static BlockItemDelegateRunner GetDeadBlockFuncRunner(FindDeadBlocksRequest deadBlocksRequest,
+        BlockType blockType)
     {
         BlockItemDelegateRunner query;
         ;
@@ -69,8 +69,7 @@ public partial class BlockRepository
     private async Task<List<RangeBlock>> FindSearchableDateRangeBlocksAsync(ISearchableBlockRequest request,
         BlockItemDelegateRunner blockItemDelegateRunner)
     {
-
-        return await RetryHelper.WithRetry(async () =>
+        return await RetryHelper.WithRetryAsync(async () =>
         {
             var taskDefinition =
                 await _taskRepository.EnsureTaskDefinitionAsync(request.TaskId).ConfigureAwait(false);
@@ -83,25 +82,23 @@ public partial class BlockRepository
                 return GetRangeBlocks(request, items);
             }
         });
-
     }
 
     private async Task<IList<ProtoListBlock>> FindSearchableListBlocksAsync(ISearchableBlockRequest deadBlocksRequest,
         BlockItemDelegateRunner blockItemDelegateRunner)
     {
-        return await RetryHelper.WithRetry(async () =>
+        return await RetryHelper.WithRetryAsync(async () =>
         {
-       
             var taskDefinition =
                 await _taskRepository.EnsureTaskDefinitionAsync(deadBlocksRequest.TaskId).ConfigureAwait(false);
             using (var dbContext = await GetDbContextAsync(deadBlocksRequest.TaskId).ConfigureAwait(false))
             {
-                var items = await GetBlockQueryItems(deadBlocksRequest, blockItemDelegateRunner, taskDefinition, dbContext);
+                var items = await GetBlockQueryItems(deadBlocksRequest, blockItemDelegateRunner, taskDefinition,
+                    dbContext);
                 var results = GetListBlocks(deadBlocksRequest, items);
                 _logger.LogDebug($"{nameof(FindSearchableListBlocksAsync)} is returning {results.Count} rows");
                 return results;
             }
-
         });
     }
 }

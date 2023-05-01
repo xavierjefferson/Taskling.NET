@@ -8,11 +8,11 @@ using TaskExecutionStatus = Taskling.Tasks.TaskExecutionStatus;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_TaskExecutionContext;
 
-[Collection(Constants.CollectionName)]
+[Collection(TestConstants.CollectionName)]
 public class When_GetLastExecutionMeta
 {
-    private readonly IExecutionsHelper _executionsHelper;
     private readonly IClientHelper _clientHelper;
+    private readonly IExecutionsHelper _executionsHelper;
     private readonly int _taskDefinitionId;
 
     public When_GetLastExecutionMeta(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper,

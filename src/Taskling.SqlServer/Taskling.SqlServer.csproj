@@ -26,11 +26,14 @@
     <PackageReference Include="microsoft.extensions.dependencyinjection.abstractions" Version="6.0.0" />
     <PackageReference Include="microsoft.extensions.logging.abstractions" Version="6.0.0" />
     <PackageReference Include="newtonsoft.json" Version="9.0.1" />
-    <PackageReference Include="system.data.sqlclient" Version="4.8.5" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Taskling\Taskling.csproj" />
+    <ProjectReference Include="..\TransactionScopeRetryHelper.MicrosoftDataSqlClient\TransactionScopeRetryHelper.MicrosoftDataSqlClient.csproj" />
+    <ProjectReference Include="..\TransactionScopeRetryHelper.MySqlData\TransactionScopeRetryHelper.MySqlClient.csproj" />
+    <ProjectReference Include="..\TransactionScopeRetryHelper.SystemDataSqlClient\TransactionScopeRetryHelper.SystemDataSqlClient.csproj" />
+    <ProjectReference Include="..\TransactionScopeRetryHelper\TransactionScopeRetryHelper.csproj" />
   </ItemGroup>
 
 </Project>

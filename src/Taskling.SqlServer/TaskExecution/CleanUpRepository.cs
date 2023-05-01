@@ -2,7 +2,7 @@
 using Taskling.InfrastructureContracts.CleanUp;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.AncilliaryServices;
-using Taskling.SqlServer.Blocks;
+using TransactionScopeRetryHelper;
 
 namespace Taskling.SqlServer.TaskExecution;
 
@@ -10,7 +10,8 @@ public class CleanUpRepository : DbOperationsService, ICleanUpRepository
 {
     private readonly ITaskRepository _taskRepository;
 
-    public CleanUpRepository(ITaskRepository taskRepository, IConnectionStore connectionStore) : base(connectionStore)
+    public CleanUpRepository(ITaskRepository taskRepository, IConnectionStore connectionStore,
+        IDbContextFactoryEx dbContextFactoryEx) : base(connectionStore, dbContextFactoryEx)
     {
         _taskRepository = taskRepository;
     }
@@ -38,7 +39,7 @@ public class CleanUpRepository : DbOperationsService, ICleanUpRepository
 
     private async Task CleanListItemsAsync(TaskId taskId, int taskDefinitionId, DateTime listItemDateThreshold)
     {
-        await RetryHelper.WithRetry(async () =>
+        await RetryHelper.WithRetryAsync(async () =>
         {
             using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
             {
@@ -47,12 +48,11 @@ public class CleanUpRepository : DbOperationsService, ICleanUpRepository
                 await dbContext.SaveChangesAsync().ConfigureAwait(false);
             }
         });
-
     }
 
     private async Task CleanOldDataAsync(TaskId taskId, int taskDefinitionId, DateTime generalDateThreshold)
     {
-        await RetryHelper.WithRetry(async () =>
+        await RetryHelper.WithRetryAsync(async () =>
         {
             using (var dbContext = await GetDbContextAsync(taskId))
             {
@@ -72,6 +72,5 @@ public class CleanUpRepository : DbOperationsService, ICleanUpRepository
                 await dbContext.SaveChangesAsync().ConfigureAwait(false);
             }
         });
-
     }
 }

@@ -6,11 +6,11 @@ using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_TaskExecutionContext;
 
-[Collection(Constants.CollectionName)]
+[Collection(TestConstants.CollectionName)]
 public class When_Blocked
 {
-    private readonly IExecutionsHelper _executionsHelper;
     private readonly IClientHelper _clientHelper;
+    private readonly IExecutionsHelper _executionsHelper;
     private readonly int _taskDefinitionId;
 
     public When_Blocked(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper, IClientHelper clientHelper,

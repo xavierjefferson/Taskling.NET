@@ -6,13 +6,9 @@ namespace Taskling.InfrastructureContracts.Blocks.CommonRequests;
 
 public class FindDeadBlocksRequest : StatusSpecificBlockRequestBase, ISearchableBlockRequest
 {
-    private static readonly int[] Statuses = new[] { (int)BlockExecutionStatus.NotStarted, (int)BlockExecutionStatus.Started };
+    private static readonly int[] Statuses =
+        { (int)BlockExecutionStatus.NotStarted, (int)BlockExecutionStatus.Started };
 
-    public override int[] GetMatchingStatuses()
-    {
-        return Statuses;
-
-    }
     public FindDeadBlocksRequest(TaskId taskId,
         int taskExecutionId,
         BlockType blockType,
@@ -31,7 +27,10 @@ public class FindDeadBlocksRequest : StatusSpecificBlockRequestBase, ISearchable
     }
 
 
-   
     public TaskDeathMode TaskDeathMode { get; set; }
-   
+
+    public override int[] GetMatchingStatuses()
+    {
+        return Statuses;
+    }
 }

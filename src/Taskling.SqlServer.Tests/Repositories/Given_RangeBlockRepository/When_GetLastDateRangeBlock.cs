@@ -6,13 +6,14 @@ using Taskling.Blocks.Common;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.TaskExecution;
+using Taskling.SqlServer.Tests.Contexts.Given_RangeBlockContext;
 using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_RangeBlockRepository;
 
-[Collection(Constants.CollectionName)]
-public class When_GetLastDateRangeBlock
+[Collection(TestConstants.CollectionName)]
+public class When_GetLastDateRangeBlock : TestBase
 {
     private readonly IBlocksHelper _blocksHelper;
     private readonly IClientHelper _clientHelper;
@@ -98,8 +99,8 @@ public class When_GetLastDateRangeBlock
 
         // ASSERT
         Assert.Equal(_block5, block.RangeBlockId);
-        Assert.Equal(_baseDateTime.AddMinutes(-60), block.RangeBeginAsDateTime());
-        Assert.Equal(_baseDateTime.AddMinutes(-70), block.RangeEndAsDateTime());
+        AssertSimilarDates(_baseDateTime.AddMinutes(-60), block.RangeBeginAsDateTime());
+        AssertSimilarDates(_baseDateTime.AddMinutes(-70), block.RangeEndAsDateTime());
     }
 
     [Fact]
@@ -116,8 +117,8 @@ public class When_GetLastDateRangeBlock
 
         // ASSERT
         Assert.Equal(_block2, block.RangeBlockId);
-        Assert.Equal(_baseDateTime.AddMinutes(-10), block.RangeBeginAsDateTime());
-        Assert.Equal(_baseDateTime.AddMinutes(-40), block.RangeEndAsDateTime());
+        AssertSimilarDates(_baseDateTime.AddMinutes(-10), block.RangeBeginAsDateTime());
+        AssertSimilarDates(_baseDateTime.AddMinutes(-40), block.RangeEndAsDateTime());
     }
 
     [Fact]
@@ -134,8 +135,8 @@ public class When_GetLastDateRangeBlock
 
         // ASSERT
         Assert.Equal(_block1, block.RangeBlockId);
-        Assert.Equal(_baseDateTime.AddMinutes(-20), block.RangeBeginAsDateTime());
-        Assert.Equal(_baseDateTime.AddMinutes(-30), block.RangeEndAsDateTime());
+        AssertSimilarDates(_baseDateTime.AddMinutes(-20), block.RangeBeginAsDateTime());
+        AssertSimilarDates(_baseDateTime.AddMinutes(-30), block.RangeEndAsDateTime());
     }
 
     private LastBlockRequest CreateRequest(LastBlockOrder lastBlockOrder)

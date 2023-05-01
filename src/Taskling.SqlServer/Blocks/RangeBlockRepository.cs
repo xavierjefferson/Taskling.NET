@@ -1,13 +1,11 @@
-﻿using System.Data;
-using System.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.RangeBlocks;
-using Taskling.Exceptions;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.AncilliaryServices;
+using TransactionScopeRetryHelper;
 
 namespace Taskling.SqlServer.Blocks;
 
@@ -15,7 +13,8 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
 {
     private readonly ITaskRepository _taskRepository;
 
-    public RangeBlockRepository(ITaskRepository taskRepository, IConnectionStore connectionStore) : base(connectionStore)
+    public RangeBlockRepository(ITaskRepository taskRepository, IConnectionStore connectionStore,
+        IDbContextFactoryEx dbContextFactoryEx) : base(connectionStore, dbContextFactoryEx)
     {
         _taskRepository = taskRepository;
     }
@@ -37,7 +36,7 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
 
     public async Task<RangeBlock?> GetLastRangeBlockAsync(LastBlockRequest lastRangeBlockRequest)
     {
-        return await RetryHelper.WithRetry(async () =>
+        return await RetryHelper.WithRetryAsync(async () =>
         {
             var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(lastRangeBlockRequest.TaskId)
                 .ConfigureAwait(false);
@@ -109,12 +108,7 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
             }
 
             return null;
-
         });
-
-
-
-
     }
 
 
@@ -154,9 +148,8 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
 
     private async Task ChangeStatusOfNumericRangeExecutionAsync(BlockExecutionChangeStatusRequest changeStatusRequest)
     {
-        await RetryHelper.WithRetry(async () =>
+        await RetryHelper.WithRetryAsync(async () =>
         {
-
             using (var dbContext = await GetDbContextAsync(changeStatusRequest.TaskId).ConfigureAwait(false))
             {
                 var blockExecution = await dbContext.BlockExecutions.FirstOrDefaultAsync(i =>
@@ -181,6 +174,5 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
                 }
             }
         });
-
     }
 }

@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.AncilliaryServices;
-using Taskling.SqlServer.Blocks;
+using TransactionScopeRetryHelper;
 
 namespace Taskling.SqlServer.Tasks;
 
@@ -12,6 +12,11 @@ public class TaskRepository : DbOperationsService, ITaskRepository
     private static readonly SemaphoreSlim CacheSemaphore = new(1, 1);
     private static readonly SemaphoreSlim GetTaskSemaphore = new(1, 1);
     private static readonly Dictionary<string, CachedTaskDefinition> CachedTaskDefinitions = new();
+
+    public TaskRepository(IConnectionStore connectionStore, IDbContextFactoryEx dbContextFactoryEx) : base(
+        connectionStore, dbContextFactoryEx)
+    {
+    }
 
     public async Task<TaskDefinition> EnsureTaskDefinitionAsync(TaskId taskId)
     {
@@ -53,7 +58,7 @@ public class TaskRepository : DbOperationsService, ITaskRepository
 
     public async Task<DateTime> GetLastTaskCleanUpTimeAsync(TaskId taskId)
     {
-        return await RetryHelper.WithRetry(async () =>
+        return await RetryHelper.WithRetryAsync(async () =>
         {
             using (var dbContext = await GetDbContextAsync(taskId))
             {
@@ -66,28 +71,27 @@ public class TaskRepository : DbOperationsService, ITaskRepository
 
             return DateTime.MinValue;
         });
-
     }
 
     public async Task SetLastCleanedAsync(TaskId taskId)
     {
-        await RetryHelper.WithRetry(async () =>
-       {
-           using (var dbContext = await GetDbContextAsync(taskId))
-           {
-               var taskDefinitions = await dbContext.TaskDefinitions
-                    .Where(i => i.TaskName == taskId.TaskName && i.ApplicationName == taskId.ApplicationName).ToListAsync()
+        await RetryHelper.WithRetryAsync(async () =>
+        {
+            using (var dbContext = await GetDbContextAsync(taskId))
+            {
+                var taskDefinitions = await dbContext.TaskDefinitions
+                    .Where(i => i.TaskName == taskId.TaskName && i.ApplicationName == taskId.ApplicationName)
+                    .ToListAsync()
                     .ConfigureAwait(false);
-               foreach (var taskDefinition in taskDefinitions)
-               {
-                   taskDefinition.LastCleaned = DateTime.UtcNow;
-                   dbContext.TaskDefinitions.Update(taskDefinition);
-               }
+                foreach (var taskDefinition in taskDefinitions)
+                {
+                    taskDefinition.LastCleaned = DateTime.UtcNow;
+                    dbContext.TaskDefinitions.Update(taskDefinition);
+                }
 
-               await dbContext.SaveChangesAsync();
-           }
-       });
-
+                await dbContext.SaveChangesAsync();
+            }
+        });
     }
 
     public void ClearCache()
@@ -174,7 +178,7 @@ public class TaskRepository : DbOperationsService, ITaskRepository
         using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
         {
             var taskDefinition = new Models.TaskDefinition
-            { ApplicationName = taskId.ApplicationName, TaskName = taskId.TaskName };
+                { ApplicationName = taskId.ApplicationName, TaskName = taskId.TaskName };
             await dbContext.TaskDefinitions.AddAsync(taskDefinition);
             await dbContext.SaveChangesAsync();
 
@@ -196,9 +200,5 @@ public class TaskRepository : DbOperationsService, ITaskRepository
 
             return task;
         }
-    }
-
-    public TaskRepository(IConnectionStore connectionStore) : base(connectionStore)
-    {
     }
 }

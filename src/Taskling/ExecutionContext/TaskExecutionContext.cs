@@ -48,9 +48,9 @@ public class TaskExecutionContext : ITaskExecutionContext
     private readonly ICriticalSectionRepository _criticalSectionRepository;
     private readonly IBlockFactory _blockFactory;
     private readonly ICleanUpService _cleanUpService;
-   
+
     private readonly ILogger<TaskExecutionContext> _logger;
-    private  ITaskConfigurationRepository _taskConfigurationRepository;
+    private ITaskConfigurationRepository _taskConfigurationRepository;
 
     private TaskExecutionInstance _taskExecutionInstance;
     private TaskExecutionOptions _taskExecutionOptions;
@@ -72,7 +72,7 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     #endregion .: Fields and services :.
 
-    
+
     #region .: Constructors and disposal :.
 
     public void SetOptions(string applicationName,
@@ -96,7 +96,7 @@ public class TaskExecutionContext : ITaskExecutionContext
         IRangeBlockRepository rangeBlockRepository,
         IListBlockRepository listBlockRepository,
         IObjectBlockRepository objectBlockRepository, TasklingOptions tasklingOptions,
-        ICleanUpService cleanUpService, ILogger<TaskExecutionContext> logger )
+        ICleanUpService cleanUpService, ILogger<TaskExecutionContext> logger)
     {
         _taskExecutionRepository =
             taskExecutionRepository ?? throw new ArgumentNullException(nameof(taskExecutionRepository));
@@ -115,7 +115,7 @@ public class TaskExecutionContext : ITaskExecutionContext
         _tasklingOptions = tasklingOptions;
         ;
         _cleanUpService = cleanUpService ?? throw new ArgumentNullException(nameof(cleanUpService));
- 
+
         _logger = logger;
 
         //_taskExecutionInstance = new TaskExecutionInstance();
@@ -310,8 +310,8 @@ public class TaskExecutionContext : ITaskExecutionContext
     public async Task<IList<IDateRangeBlockContext>> GetDateRangeBlocksAsync(
         Func<IFluentDateRangeBlockDescriptor, object> fluentBlockRequest)
     {
-
-        return await GetBlocksAsync<IDateRangeBlockContext, FluentRangeBlockDescriptor, DateRangeBlockRequest, IBlockSettings>(
+        return await GetBlocksAsync<IDateRangeBlockContext, FluentRangeBlockDescriptor, DateRangeBlockRequest,
+            IBlockSettings>(
             fluentBlockRequest, ConvertToDateRangeBlockRequest, _blockFactory.GenerateDateRangeBlocksAsync);
 
         //if (!IsExecutionContextActive)
@@ -358,11 +358,12 @@ public class TaskExecutionContext : ITaskExecutionContext
             var request = createRequestFunc(settings);
             if (ShouldProtect(request))
             {
-                _logger.LogDebug($"Request is protected - creating critical section");
+                _logger.LogDebug("Request is protected - creating critical section");
                 var csContext = CreateClientCriticalSection();
                 try
                 {
-                    var csStarted = await csContext.TryStartAsync(_tasklingOptions.CriticalSectionRetry, _tasklingOptions.CriticalSectionAttemptCount).ConfigureAwait(false);
+                    var csStarted = await csContext.TryStartAsync(_tasklingOptions.CriticalSectionRetry,
+                        _tasklingOptions.CriticalSectionAttemptCount).ConfigureAwait(false);
                     if (csStarted)
                         return await generateFunc(request).ConfigureAwait(false);
 
@@ -374,7 +375,7 @@ public class TaskExecutionContext : ITaskExecutionContext
                 }
             }
 
-            _logger.LogDebug($"Request is unprotected");
+            _logger.LogDebug("Request is unprotected");
             return await generateFunc(request).ConfigureAwait(false);
         }
         finally
@@ -386,7 +387,8 @@ public class TaskExecutionContext : ITaskExecutionContext
     public async Task<IList<INumericRangeBlockContext>> GetNumericRangeBlocksAsync(
         Func<IFluentNumericRangeBlockDescriptor, object> fluentBlockRequest)
     {
-        return await GetBlocksAsync<INumericRangeBlockContext, FluentRangeBlockDescriptor, NumericRangeBlockRequest, IBlockSettings>(
+        return await GetBlocksAsync<INumericRangeBlockContext, FluentRangeBlockDescriptor, NumericRangeBlockRequest,
+            IBlockSettings>(
             fluentBlockRequest, ConvertToNumericRangeBlockRequest, _blockFactory.GenerateNumericRangeBlocksAsync);
 
         //if (!IsExecutionContextActive)
@@ -419,8 +421,8 @@ public class TaskExecutionContext : ITaskExecutionContext
     public async Task<IList<IListBlockContext<T>>> GetListBlocksAsync<T>(
         Func<IFluentListBlockDescriptorBase<T>, object> fluentBlockRequest)
     {
-
-        return await GetBlocksAsync<IListBlockContext<T>, FluentListBlockDescriptorBase<T>, ListBlockRequest, IBlockSettings>(
+        return await GetBlocksAsync<IListBlockContext<T>, FluentListBlockDescriptorBase<T>, ListBlockRequest,
+            IBlockSettings>(
             fluentBlockRequest, ConvertToListBlockRequest, _blockFactory.GenerateListBlocksAsync<T>);
 
         //if (!IsExecutionContextActive)
@@ -457,7 +459,8 @@ public class TaskExecutionContext : ITaskExecutionContext
     public async Task<IList<IListBlockContext<TItem, THeader>>> GetListBlocksAsync<TItem, THeader>(
         Func<IFluentListBlockDescriptorBase<TItem, THeader>, object> fluentBlockRequest)
     {
-        return await GetBlocksAsync<IListBlockContext<TItem, THeader>, FluentListBlockDescriptorBase<TItem, THeader>, ListBlockRequest, IBlockSettings>(
+        return await GetBlocksAsync<IListBlockContext<TItem, THeader>, FluentListBlockDescriptorBase<TItem, THeader>,
+            ListBlockRequest, IBlockSettings>(
             fluentBlockRequest, ConvertToListBlockRequest, _blockFactory.GenerateListBlocksAsync<TItem, THeader>);
         //if (!IsExecutionContextActive)
         //    throw new ExecutionException(NotActiveMessage);
@@ -494,8 +497,9 @@ public class TaskExecutionContext : ITaskExecutionContext
     public async Task<IList<IObjectBlockContext<T>>> GetObjectBlocksAsync<T>(
         Func<IFluentObjectBlockDescriptorBase<T>, object> fluentBlockRequest)
     {
-        return await GetBlocksAsync<IObjectBlockContext<T>, FluentObjectBlockDescriptorBase<T>, ObjectBlockRequest<T>, IObjectBlockSettings<T>>(
-            fluentBlockRequest, ConvertToObjectBlockRequest, _blockFactory.GenerateObjectBlocksAsync<T>);
+        return await GetBlocksAsync<IObjectBlockContext<T>, FluentObjectBlockDescriptorBase<T>, ObjectBlockRequest<T>,
+            IObjectBlockSettings<T>>(
+            fluentBlockRequest, ConvertToObjectBlockRequest, _blockFactory.GenerateObjectBlocksAsync);
         //if (!IsExecutionContextActive)
         //    throw new ExecutionException(NotActiveMessage);
 

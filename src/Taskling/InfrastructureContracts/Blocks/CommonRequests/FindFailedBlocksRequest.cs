@@ -3,14 +3,10 @@ using Taskling.Blocks.Common;
 
 namespace Taskling.InfrastructureContracts.Blocks.CommonRequests;
 
-public class FindFailedBlocksRequest : StatusSpecificBlockRequestBase , ISearchableBlockRequest
+public class FindFailedBlocksRequest : StatusSpecificBlockRequestBase, ISearchableBlockRequest
 {
-    private static readonly int[] Statuses = new[] { (int)BlockExecutionStatus.Failed };
-    public override int[] GetMatchingStatuses()
-    {
-        return Statuses;
+    private static readonly int[] Statuses = { (int)BlockExecutionStatus.Failed };
 
-    }
     public FindFailedBlocksRequest(TaskId taskId,
         int taskExecutionId,
         BlockType blockType,
@@ -26,5 +22,8 @@ public class FindFailedBlocksRequest : StatusSpecificBlockRequestBase , ISearcha
         RetryLimit = retryLimit;
     }
 
-   
+    public override int[] GetMatchingStatuses()
+    {
+        return Statuses;
+    }
 }

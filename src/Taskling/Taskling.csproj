@@ -31,4 +31,7 @@
     <Folder Include="Extensions\" />
     <Folder Include="Properties\" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TransactionScopeRetryHelper\TransactionScopeRetryHelper.csproj" />
+  </ItemGroup>
 </Project>

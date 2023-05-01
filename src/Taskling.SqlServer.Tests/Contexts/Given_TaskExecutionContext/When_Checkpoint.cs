@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_TaskExecutionContext;
 
-[Collection(Constants.CollectionName)]
+[Collection(TestConstants.CollectionName)]
 public class When_Checkpoint
 {
     private readonly IClientHelper _clientHelper;

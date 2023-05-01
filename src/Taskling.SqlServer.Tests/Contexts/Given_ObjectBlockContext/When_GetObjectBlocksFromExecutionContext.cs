@@ -8,18 +8,19 @@ using Taskling.Blocks.ObjectBlocks;
 using Taskling.Contexts;
 using Taskling.Events;
 using Taskling.InfrastructureContracts.TaskExecution;
+using Taskling.SqlServer.Tests.Contexts.Given_RangeBlockContext;
 using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_ObjectBlockContext;
 
-[Collection(Constants.CollectionName)]
-public class When_GetObjectBlocksFromExecutionContext
+[Collection(TestConstants.CollectionName)]
+public class When_GetObjectBlocksFromExecutionContext : TestBase
 {
     private readonly IBlocksHelper _blocksHelper;
     private readonly IClientHelper _clientHelper;
-    private readonly ILogger<When_GetObjectBlocksFromExecutionContext> _logger;
     private readonly IExecutionsHelper _executionsHelper;
+    private readonly ILogger<When_GetObjectBlocksFromExecutionContext> _logger;
     private readonly int _taskDefinitionId;
 
     public When_GetObjectBlocksFromExecutionContext(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper,
@@ -142,7 +143,7 @@ public class When_GetObjectBlocksFromExecutionContext
                     .First();
                 Assert.Equal(myObject.Id, block.Block.Object.Id);
                 Assert.Equal(myObject.Name, block.Block.Object.Name);
-                Assert.Equal(myObject.DateOfBirth, block.Block.Object.DateOfBirth);
+                AssertSimilarDates(myObject.DateOfBirth, block.Block.Object.DateOfBirth);
                 Assert.Equal(myObject.SomeOtherData.Value, block.Block.Object.SomeOtherData.Value);
                 Assert.Equal(myObject.SomeOtherData.Notes[0], block.Block.Object.SomeOtherData.Notes[0]);
                 Assert.Equal(myObject.SomeOtherData.Notes[1], block.Block.Object.SomeOtherData.Notes[1]);
@@ -183,7 +184,7 @@ public class When_GetObjectBlocksFromExecutionContext
                     .First();
                 Assert.Equal(myObject.Id, block.Block.Object.Id);
                 Assert.Equal(myObject.Name, block.Block.Object.Name);
-                Assert.Equal(myObject.DateOfBirth, block.Block.Object.DateOfBirth);
+                AssertSimilarDates(myObject.DateOfBirth, block.Block.Object.DateOfBirth);
                 Assert.Equal(myObject.SomeOtherData.Value, block.Block.Object.SomeOtherData.Value);
                 Assert.Equal(myObject.SomeOtherData.Notes.Count, block.Block.Object.SomeOtherData.Notes.Count);
 

@@ -12,12 +12,12 @@ namespace Taskling.Blocks.RangeBlocks;
 public class RangeBlockContext : IDateRangeBlockContext, INumericRangeBlockContext
 {
     private readonly string _applicationName;
+
+    private readonly RangeBlock _block;
     private readonly IRangeBlockRepository _rangeBlockRepository;
     private readonly int _taskExecutionId;
     private readonly ITaskExecutionRepository _taskExecutionRepository;
     private readonly string _taskName;
-
-    private readonly RangeBlock _block;
 
     public RangeBlockContext(IRangeBlockRepository rangeBlockRepository,
         ITaskExecutionRepository taskExecutionRepository,

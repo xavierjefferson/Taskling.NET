@@ -1,17 +1,13 @@
-﻿using System.Data;
-using System.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Taskling.Events;
 using Taskling.Exceptions;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.AncilliaryServices;
-using Taskling.SqlServer.Blocks;
 using Taskling.SqlServer.Events;
-using Taskling.SqlServer.Models;
-using Taskling.SqlServer.TaskExecution.QueryBuilders;
 using Taskling.SqlServer.Tokens.Executions;
 using Taskling.Tasks;
+using TransactionScopeRetryHelper;
 
 namespace Taskling.SqlServer.TaskExecution;
 
@@ -23,7 +19,8 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
 
     public TaskExecutionRepository(ITaskRepository taskRepository,
         IExecutionTokenRepository executionTokenRepository,
-        IEventsRepository eventsRepository, IConnectionStore connectionStore) : base(connectionStore)
+        IEventsRepository eventsRepository, IConnectionStore connectionStore, IDbContextFactoryEx dbContextFactoryEx) :
+        base(connectionStore, dbContextFactoryEx)
     {
         _taskRepository = taskRepository;
         _executionTokenRepository = executionTokenRepository;
@@ -73,46 +70,14 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
 
     public async Task SendKeepAliveAsync(SendKeepAliveRequest sendKeepAliveRequest)
     {
-        Action<Models.TaskExecution> action = i =>
-        {
-            i.LastKeepAlive = DateTime.UtcNow;
-        };
+        Action<Models.TaskExecution> action = i => { i.LastKeepAlive = DateTime.UtcNow; };
         await UpdateTaskExecution(sendKeepAliveRequest, action);
-    }
-
-    private async Task UpdateTaskExecution(RequestBase keepAliveRequest, Action<Models.TaskExecution> action)
-    {
-        var taskId = keepAliveRequest.TaskId;
-        var taskExecutionId = keepAliveRequest.TaskExecutionId;
-        await UpdateTaskExecution(action, taskExecutionId, taskId);
-    }
-
-    private async Task UpdateTaskExecution(Action<Models.TaskExecution> action, int taskExecutionId, TaskId taskId)
-    {
-        await RetryHelper.WithRetry(async () =>
-        {
-
-            using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
-            {
-                var taskExecutions = await dbContext.TaskExecutions
-                    .Where(i => i.TaskExecutionId == taskExecutionId)
-                    .ToListAsync().ConfigureAwait(false);
-                foreach (var taskExecution in taskExecutions)
-                {
-                    action(taskExecution);
-                    dbContext.TaskExecutions.Update(taskExecution);
-                }
-
-                await dbContext.SaveChangesAsync().ConfigureAwait(false);
-            }
-        });
-
     }
 
     public async Task<TaskExecutionMetaResponse> GetLastExecutionMetasAsync(
         TaskExecutionMetaRequest taskExecutionMetaRequest)
     {
-        return await RetryHelper.WithRetry(async () =>
+        return await RetryHelper.WithRetryAsync(async () =>
         {
             var response = new TaskExecutionMetaResponse();
             var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(taskExecutionMetaRequest.TaskId)
@@ -120,8 +85,10 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
             using (var dbContext = await GetDbContextAsync(taskExecutionMetaRequest.TaskId))
 
             {
-                var items = await dbContext.TaskExecutions.Where(i => i.TaskDefinitionId == taskDefinition.TaskDefinitionId)
-                    .Take(taskExecutionMetaRequest.ExecutionsToRetrieve).OrderByDescending(i => i.TaskExecutionId).ToListAsync()
+                var items = await dbContext.TaskExecutions
+                    .Where(i => i.TaskDefinitionId == taskDefinition.TaskDefinitionId)
+                    .Take(taskExecutionMetaRequest.ExecutionsToRetrieve).OrderByDescending(i => i.TaskExecutionId)
+                    .ToListAsync()
                     .ConfigureAwait(false);
 
 
@@ -174,7 +141,33 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
 
             return response;
         });
+    }
 
+    private async Task UpdateTaskExecution(RequestBase keepAliveRequest, Action<Models.TaskExecution> action)
+    {
+        var taskId = keepAliveRequest.TaskId;
+        var taskExecutionId = keepAliveRequest.TaskExecutionId;
+        await UpdateTaskExecution(action, taskExecutionId, taskId);
+    }
+
+    private async Task UpdateTaskExecution(Action<Models.TaskExecution> action, int taskExecutionId, TaskId taskId)
+    {
+        await RetryHelper.WithRetryAsync(async () =>
+        {
+            using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
+            {
+                var taskExecutions = await dbContext.TaskExecutions
+                    .Where(i => i.TaskExecutionId == taskExecutionId)
+                    .ToListAsync().ConfigureAwait(false);
+                foreach (var taskExecution in taskExecutions)
+                {
+                    action(taskExecution);
+                    dbContext.TaskExecutions.Update(taskExecution);
+                }
+
+                await dbContext.SaveChangesAsync().ConfigureAwait(false);
+            }
+        });
     }
 
 

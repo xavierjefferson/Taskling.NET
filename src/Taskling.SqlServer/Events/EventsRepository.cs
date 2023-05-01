@@ -1,16 +1,21 @@
 ﻿using Taskling.Events;
 using Taskling.InfrastructureContracts;
 using Taskling.SqlServer.AncilliaryServices;
-using Taskling.SqlServer.Blocks;
 using Taskling.SqlServer.Models;
+using TransactionScopeRetryHelper;
 
 namespace Taskling.SqlServer.Events;
 
 public class EventsRepository : DbOperationsService, IEventsRepository
 {
+    public EventsRepository(IConnectionStore connectionStore, IDbContextFactoryEx dbContextFactoryEx) : base(
+        connectionStore, dbContextFactoryEx)
+    {
+    }
+
     public async Task LogEventAsync(TaskId taskId, int taskExecutionId, EventType eventType, string message)
     {
-        await RetryHelper.WithRetry(async () =>
+        await RetryHelper.WithRetryAsync(async () =>
         {
             using (var context = await GetDbContextAsync(taskId).ConfigureAwait(false))
             {
@@ -25,10 +30,5 @@ public class EventsRepository : DbOperationsService, IEventsRepository
                 await context.SaveChangesAsync();
             }
         });
-
-    }
-
-    public EventsRepository(IConnectionStore connectionStore) : base(connectionStore)
-    {
     }
 }

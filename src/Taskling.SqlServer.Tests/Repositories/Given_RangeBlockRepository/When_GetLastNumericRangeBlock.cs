@@ -11,7 +11,7 @@ using Xunit.Abstractions;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_RangeBlockRepository;
 
-[Collection(Constants.CollectionName)]
+[Collection(TestConstants.CollectionName)]
 public class When_GetLastNumericRangeBlock
 {
     private readonly IBlocksHelper _blocksHelper;

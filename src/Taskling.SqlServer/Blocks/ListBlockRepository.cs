@@ -1,9 +1,6 @@
-﻿using System.Data;
-using System.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
-using Taskling.Exceptions;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
@@ -11,14 +8,7 @@ using Taskling.InfrastructureContracts.Blocks.ListBlocks;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.AncilliaryServices;
 using Taskling.SqlServer.Blocks.Serialization;
-using System;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Collections.Generic;
-using System.Transactions;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
-using Taskling.SqlServer.Models;
-using Taskling.InfrastructureContracts.CriticalSections;
+using TransactionScopeRetryHelper;
 
 namespace Taskling.SqlServer.Blocks;
 
@@ -26,24 +16,22 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
 {
     private readonly ITaskRepository _taskRepository;
 
-    public ListBlockRepository(ITaskRepository taskRepository, IConnectionStore connectionStore) : base(connectionStore)
+    public ListBlockRepository(ITaskRepository taskRepository, IConnectionStore connectionStore,
+        IDbContextFactoryEx dbContextFactoryEx) : base(connectionStore, dbContextFactoryEx)
     {
         _taskRepository = taskRepository;
     }
 
     public async Task ChangeStatusAsync(BlockExecutionChangeStatusRequest changeStatusRequest)
     {
-        await RetryHelper.WithRetry(async () =>
+        await RetryHelper.WithRetryAsync(async () =>
         {
-
             using (var dbContext = await GetDbContextAsync(changeStatusRequest.TaskId))
             {
                 var blockExecution = await dbContext.BlockExecutions.FirstOrDefaultAsync(i =>
                     i.BlockExecutionId == changeStatusRequest.BlockExecutionId).ConfigureAwait(false);
                 if (blockExecution != null)
                 {
-
-
                     blockExecution.BlockExecutionStatus = (int)changeStatusRequest.BlockExecutionStatus;
                     switch (changeStatusRequest.BlockExecutionStatus)
                     {
@@ -58,17 +46,14 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
 
                     dbContext.BlockExecutions.Update(blockExecution);
                     await dbContext.SaveChangesAsync().ConfigureAwait(false);
-
                 }
             }
-
         });
-
     }
 
     public async Task<IList<ProtoListBlockItem>> GetListBlockItemsAsync(TaskId taskId, long listBlockId)
     {
-        return await RetryHelper.WithRetry(async () =>
+        return await RetryHelper.WithRetryAsync(async () =>
         {
             var results = new List<ProtoListBlockItem>();
             using (var dbContext = await GetDbContextAsync(taskId))
@@ -96,10 +81,6 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
 
             return results;
         });
-
-
-
-
     }
 
     //private async Task UpdateListBlockItemAsync(List<SingleUpdateRequest> singeUpdateRequest)
@@ -133,19 +114,17 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
     //}
     public async Task UpdateListBlockItemAsync(SingleUpdateRequest singeUpdateRequest)
     {
-        await BatchUpdateListBlockItemsAsync(new BatchUpdateRequest()
+        await BatchUpdateListBlockItemsAsync(new BatchUpdateRequest
         {
             ListBlockId = singeUpdateRequest.ListBlockId,
-            ListBlockItems = new List<ProtoListBlockItem>() { singeUpdateRequest.ListBlockItem },
+            ListBlockItems = new List<ProtoListBlockItem> { singeUpdateRequest.ListBlockItem },
             TaskId = singeUpdateRequest.TaskId
         });
-
-
     }
 
     public async Task BatchUpdateListBlockItemsAsync(BatchUpdateRequest batchUpdateRequest)
     {
-        await RetryHelper.WithRetry(async () =>
+        await RetryHelper.WithRetryAsync(async () =>
         {
             using (var dbContext = await GetDbContextAsync(batchUpdateRequest.TaskId))
             {
@@ -165,7 +144,6 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
                 //        //taskDefinition.UserCsStatus = 1;
 
 
-
                 //    //dbContext.TaskDefinitions.Update(taskDefinition);
                 //    //await dbContext.SaveChangesAsync().ConfigureAwait(false);
                 //    //exampleEntity.Entity.HoldLockTaskExecutionId = taskExecutionId;
@@ -180,7 +158,8 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
                 // }
 
                 var listBlockItemIds = batchUpdateRequest.ListBlockItems.Select(i => i.ListBlockItemId).ToList();
-                var listBlockItems = await dbContext.ListBlockItems.Where(i => i.BlockId == batchUpdateRequest.ListBlockId)
+                var listBlockItems = await dbContext.ListBlockItems
+                    .Where(i => i.BlockId == batchUpdateRequest.ListBlockId)
                     .Where(i => listBlockItemIds.Contains(i.ListBlockItemId)).ToListAsync().ConfigureAwait(false);
                 if (listBlockItems.Any())
                 {
@@ -202,16 +181,14 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
                 }
             }
         });
-
-
     }
 
     public async Task<ProtoListBlock?> GetLastListBlockAsync(LastBlockRequest lastRangeBlockRequest)
     {
-        return await RetryHelper.WithRetry(async () =>
+        return await RetryHelper.WithRetryAsync(async () =>
         {
             var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(lastRangeBlockRequest.TaskId)
-            .ConfigureAwait(false);
+                .ConfigureAwait(false);
 
             using (var dbContext = await GetDbContextAsync(lastRangeBlockRequest.TaskId))
             {
@@ -235,14 +212,5 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
                 return null;
             }
         });
-
-
     }
-
-
-
-
-
-
-
 }

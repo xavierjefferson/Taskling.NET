@@ -69,21 +69,24 @@ ORDER BY B.CreatedDate ASC";
     {
         var items = await GetBlocksInner(requestWrapper);
         //AND TE.StartedAt <= DATEADD(SECOND, -1 * DATEDIFF(SECOND, '00:00:00', OverrideThreshold), GETUTCDATE())
-        return items.Where(i => i.StartedAt < DateTime.UtcNow.Subtract(i.OverrideThreshold.Value)).Take(requestWrapper.Limit).ToList();
+        return items.Where(i => i.StartedAt < DateTime.UtcNow.Subtract(i.OverrideThreshold.Value))
+            .Take(requestWrapper.Limit).ToList();
     }
 
-    public static async Task<List<BlockQueryItem>> GetFindDeadBlocksWithKeepAliveQuery(BlockItemRequestWrapper requestWrapper)
+    public static async Task<List<BlockQueryItem>> GetFindDeadBlocksWithKeepAliveQuery(
+        BlockItemRequestWrapper requestWrapper)
     {
         var items = await GetBlocksInner(requestWrapper);
         //AND DATEDIFF(SECOND, TE.LastKeepAlive, GETUTCDATE()) > DATEDIFF(SECOND, '00:00:00', TE.KeepAliveDeathThreshold)
-        return items.Where(i => DateTime.UtcNow.Subtract(i.LastKeepAlive) > i.KeepAliveDeathThreshold).Take(requestWrapper.Limit).ToList();
+        return items.Where(i => DateTime.UtcNow.Subtract(i.LastKeepAlive) > i.KeepAliveDeathThreshold)
+            .Take(requestWrapper.Limit).ToList();
     }
 
     public static async Task<List<BlockQueryItem>> GetBlocksInner(BlockItemRequestWrapper requestWrapper)
     {
         var tasklingDbContext = requestWrapper.DbContext;
         var request = requestWrapper.Body;
-        
+
         var b0 = tasklingDbContext.BlockExecutions.Include(i => i.TaskExecution).Where(i =>
                 i.TaskExecution.StartedAt >= request.SearchPeriodBegin
                 && i.TaskExecution.StartedAt <= request.SearchPeriodEnd &&

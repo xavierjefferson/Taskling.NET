@@ -13,7 +13,15 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Taskling.SqlServer.Tests", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Taskling.SqlServer", "Taskling.SqlServer\Taskling.SqlServer.csproj", "{F33A066F-6EB7-40F4-9450-1F5E9FF58AAB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp1", "ConsoleApp1\ConsoleApp1.csproj", "{D23D7DC9-A43F-46F2-AE6F-65443DFFB344}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsoleApp1", "ConsoleApp1\ConsoleApp1.csproj", "{D23D7DC9-A43F-46F2-AE6F-65443DFFB344}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransactionScopeRetryHelper", "TransactionScopeRetryHelper\TransactionScopeRetryHelper.csproj", "{998FB500-A709-4D39-AE26-F408DBF01FFF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransactionScopeRetryHelper.SystemDataSqlClient", "TransactionScopeRetryHelper.SystemDataSqlClient\TransactionScopeRetryHelper.SystemDataSqlClient.csproj", "{4FB874F5-C307-4932-93A2-7C2E3BF295D2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransactionScopeRetryHelper.MicrosoftDataSqlClient", "TransactionScopeRetryHelper.MicrosoftDataSqlClient\TransactionScopeRetryHelper.MicrosoftDataSqlClient.csproj", "{B8FF0446-7530-429E-8838-A4034651F349}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransactionScopeRetryHelper.MySqlClient", "TransactionScopeRetryHelper.MySqlData\TransactionScopeRetryHelper.MySqlClient.csproj", "{A3598B83-AAD3-4FA3-976B-A34063E2BB53}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -43,6 +51,22 @@ Global
 		{D23D7DC9-A43F-46F2-AE6F-65443DFFB344}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D23D7DC9-A43F-46F2-AE6F-65443DFFB344}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D23D7DC9-A43F-46F2-AE6F-65443DFFB344}.Release|Any CPU.Build.0 = Release|Any CPU
+		{998FB500-A709-4D39-AE26-F408DBF01FFF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{998FB500-A709-4D39-AE26-F408DBF01FFF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{998FB500-A709-4D39-AE26-F408DBF01FFF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{998FB500-A709-4D39-AE26-F408DBF01FFF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4FB874F5-C307-4932-93A2-7C2E3BF295D2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4FB874F5-C307-4932-93A2-7C2E3BF295D2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4FB874F5-C307-4932-93A2-7C2E3BF295D2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4FB874F5-C307-4932-93A2-7C2E3BF295D2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B8FF0446-7530-429E-8838-A4034651F349}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8FF0446-7530-429E-8838-A4034651F349}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8FF0446-7530-429E-8838-A4034651F349}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8FF0446-7530-429E-8838-A4034651F349}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A3598B83-AAD3-4FA3-976B-A34063E2BB53}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A3598B83-AAD3-4FA3-976B-A34063E2BB53}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A3598B83-AAD3-4FA3-976B-A34063E2BB53}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A3598B83-AAD3-4FA3-976B-A34063E2BB53}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -52,6 +76,10 @@ Global
 		{E8DE3978-18F2-4678-A2D4-1E11B0495C9F} = {8BCF138F-576D-4AE3-9DFE-34EFEEEF01C5}
 		{F33A066F-6EB7-40F4-9450-1F5E9FF58AAB} = {8BCF138F-576D-4AE3-9DFE-34EFEEEF01C5}
 		{D23D7DC9-A43F-46F2-AE6F-65443DFFB344} = {8BCF138F-576D-4AE3-9DFE-34EFEEEF01C5}
+		{998FB500-A709-4D39-AE26-F408DBF01FFF} = {8BCF138F-576D-4AE3-9DFE-34EFEEEF01C5}
+		{4FB874F5-C307-4932-93A2-7C2E3BF295D2} = {8BCF138F-576D-4AE3-9DFE-34EFEEEF01C5}
+		{B8FF0446-7530-429E-8838-A4034651F349} = {8BCF138F-576D-4AE3-9DFE-34EFEEEF01C5}
+		{A3598B83-AAD3-4FA3-976B-A34063E2BB53} = {8BCF138F-576D-4AE3-9DFE-34EFEEEF01C5}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A134CCF8-B571-492A-AA0C-543DD930B94B}

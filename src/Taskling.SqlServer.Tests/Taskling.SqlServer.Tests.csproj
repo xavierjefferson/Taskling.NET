@@ -8,11 +8,12 @@
 
   <ItemGroup>
     <PackageReference Include="AsyncEnumerator" Version="2.2.2" />
-    <PackageReference Include="microsoft.extensions.dependencyinjection" Version="6.0.0" />
+    <PackageReference Include="microsoft.extensions.dependencyinjection" Version="6.0.1" />
     <PackageReference Include="Microsoft.Extensions.logging" Version="6.0.0" />
     <PackageReference Include="microsoft.extensions.logging.console" Version="6.0.0" />
     <PackageReference Include="microsoft.extensions.logging.debug" Version="6.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.0.1" />
+    <PackageReference Include="mysql.entityframeworkcore" Version="6.0.13" />
     <PackageReference Include="xunit" Version="2.4.2" />
     <PackageReference Include="Xunit.DependencyInjection" Version="8.7.1" />
     <PackageReference Include="Xunit.DependencyInjection.logging" Version="8.0.1" />
@@ -23,12 +24,20 @@
   <ItemGroup>
     <ProjectReference Include="..\Taskling.SqlServer\Taskling.SqlServer.csproj" />
     <ProjectReference Include="..\Taskling\Taskling.csproj" />
+    <ProjectReference Include="..\TransactionScopeRetryHelper.MicrosoftDataSqlClient\TransactionScopeRetryHelper.MicrosoftDataSqlClient.csproj" />
+    <ProjectReference Include="..\TransactionScopeRetryHelper.MySqlData\TransactionScopeRetryHelper.MySqlClient.csproj" />
+    <ProjectReference Include="..\TransactionScopeRetryHelper.SystemDataSqlClient\TransactionScopeRetryHelper.SystemDataSqlClient.csproj" />
+    <ProjectReference Include="..\TransactionScopeRetryHelper\TransactionScopeRetryHelper.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <None Update="xunit.runner.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Enums\" />
   </ItemGroup>
 
 </Project>

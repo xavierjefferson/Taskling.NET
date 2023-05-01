@@ -11,7 +11,7 @@ using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_ObjectBlockRepository;
 
-[Collection(Constants.CollectionName)]
+[Collection(TestConstants.CollectionName)]
 public class When_ChangeStatus
 {
     private readonly IBlocksHelper _blocksHelper;

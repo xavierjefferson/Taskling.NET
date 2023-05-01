@@ -28,7 +28,6 @@ public class SerializedValueReader
 
         if (compressedBytes != null)
         {
-             
             var uncompressedText = LargeValueCompressor.Unzip(compressedBytes);
             return uncompressedText;
         }

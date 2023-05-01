@@ -15,9 +15,9 @@ public class CriticalSectionContext : ICriticalSectionContext
 {
     private readonly ICriticalSectionRepository _criticalSectionRepository;
     private readonly CriticalSectionType _criticalSectionType;
-    private readonly TasklingOptions _tasklingOptions;
     private readonly TaskExecutionInstance _taskExecutionInstance;
     private readonly TaskExecutionOptions _taskExecutionOptions;
+    private readonly TasklingOptions _tasklingOptions;
     private bool _completeCalled;
 
     private bool _started;
@@ -45,7 +45,8 @@ public class CriticalSectionContext : ICriticalSectionContext
 
     public async Task<bool> TryStartAsync()
     {
-        return await TryStartAsync(_tasklingOptions.CriticalSectionRetry, _tasklingOptions.CriticalSectionAttemptCount).ConfigureAwait(false);
+        return await TryStartAsync(_tasklingOptions.CriticalSectionRetry, _tasklingOptions.CriticalSectionAttemptCount)
+            .ConfigureAwait(false);
     }
 
     public async Task<bool> TryStartAsync(TimeSpan retryInterval, int numberOfAttempts)

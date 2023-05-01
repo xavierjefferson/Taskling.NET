@@ -11,13 +11,13 @@ using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_ListBlockContext;
 
-[Collection(Constants.CollectionName)]
+[Collection(TestConstants.CollectionName)]
 public class When_ConcurrentIsThreadSafe
 {
     private readonly IBlocksHelper _blocksHelper;
     private readonly IClientHelper _clientHelper;
-    private readonly ILogger<When_ConcurrentIsThreadSafe> _logger;
     private readonly IExecutionsHelper _executionsHelper;
+    private readonly ILogger<When_ConcurrentIsThreadSafe> _logger;
 
     public When_ConcurrentIsThreadSafe(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper,
         IClientHelper clientHelper, ILogger<When_ConcurrentIsThreadSafe> logger, ITaskRepository taskRepository)
@@ -49,7 +49,7 @@ public class When_ConcurrentIsThreadSafe
             if (startedOk)
             {
                 var values = GetList(100000);
-                int maxBlockSize = 1000;
+                var maxBlockSize = 1000;
                 var listBlocks =
                     await executionContext.GetListBlocksAsync<PersonDto>(x =>
                         x.WithSingleUnitCommit(values, maxBlockSize));
@@ -57,6 +57,7 @@ public class When_ConcurrentIsThreadSafe
                 {
                     await listBlock.StartAsync();
                     var items = await listBlock.GetItemsAsync(ItemStatus.Failed, ItemStatus.Pending);
+                    
                     await items.ParallelForEachAsync(async currentItem =>
                     {
                         await listBlock.ItemCompleteAsync(currentItem);
@@ -88,7 +89,7 @@ public class When_ConcurrentIsThreadSafe
             if (startedOk)
             {
                 var values = GetList(100000);
-                int maxBlockSize = 1000;
+                var maxBlockSize = 1000;
                 var listBlocks =
                     await executionContext.GetListBlocksAsync<PersonDto>(x =>
                         x.WithBatchCommitAtEnd(values, maxBlockSize));
@@ -127,7 +128,7 @@ public class When_ConcurrentIsThreadSafe
             if (startedOk)
             {
                 var values = GetList(100000);
-                int maxBlockSize = 1000;
+                var maxBlockSize = 1000;
                 var listBlocks = await executionContext.GetListBlocksAsync<PersonDto>(x =>
                     x.WithPeriodicCommit(values, maxBlockSize, BatchSize.Hundred));
                 foreach (var listBlock in listBlocks)
@@ -169,7 +170,7 @@ public class When_ConcurrentIsThreadSafe
             if (startedOk)
             {
                 var values = GetList(100000);
-                int maxBlockSize = 1000;
+                var maxBlockSize = 1000;
                 var listBlocks =
                     await executionContext.GetListBlocksAsync<PersonDto>(x =>
                         x.WithSingleUnitCommit(values, maxBlockSize));

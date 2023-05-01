@@ -14,10 +14,12 @@ namespace Taskling.Contexts;
 
 public interface ITaskExecutionContext : IDisposable
 {
+    bool IsStarted { get; }
+
     void SetOptions(string applicationName,
         string taskName,
         TaskExecutionOptions taskExecutionOptions, ITaskConfigurationRepository taskConfigurationRepository);
-    bool IsStarted { get; }
+
     Task<bool> TryStartAsync();
     Task<bool> TryStartAsync(string referenceValue);
     Task<bool> TryStartAsync<TExecutionHeader>(TExecutionHeader executionHeader);

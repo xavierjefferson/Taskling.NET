@@ -1,11 +1,9 @@
 ﻿using Taskling.Blocks.Common;
 using Taskling.Blocks.ObjectBlocks;
 using Taskling.Blocks.RangeBlocks;
-using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.Blocks.ListBlocks;
 using Taskling.SqlServer.Blocks.Models;
-using Taskling.SqlServer.Blocks.QueryBuilders;
 using Taskling.SqlServer.Blocks.Serialization;
 
 namespace Taskling.SqlServer.Blocks;

@@ -8,8 +8,8 @@ public class FailedBlocksQueryBuilder
     {
         var items = await DeadBlocksQueryBuilder.GetBlocksInner(requestWrapper);
         //AND TE.StartedAt <= DATEADD(SECOND, -1 * DATEDIFF(SECOND, '00:00:00', OverrideThreshold), GETUTCDATE())
-        return items.Take(requestWrapper.Limit).ToList(); //.Where(i => i.StartedAt < DateTime.UtcNow.Subtract(i.OverrideThreshold.Value)).Take(limit).ToList();
+        return
+            items.Take(requestWrapper.Limit)
+                .ToList(); //.Where(i => i.StartedAt < DateTime.UtcNow.Subtract(i.OverrideThreshold.Value)).Take(limit).ToList();
     }
-
-
 }

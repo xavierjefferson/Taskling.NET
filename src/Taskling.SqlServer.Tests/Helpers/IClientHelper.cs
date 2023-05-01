@@ -2,7 +2,7 @@
 
 namespace Taskling.SqlServer.Tests.Helpers;
 
-public interface IClientHelper  
+public interface IClientHelper
 {
     ConfigurationOptions GetDefaultTaskConfigurationWithTimePeriodOverrideAndNoReprocessing(
         int maxBlocksToGenerate = 2000);

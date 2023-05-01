@@ -1,6 +1,7 @@
-﻿using System.Data.SqlClient;
+﻿using System;
 using Microsoft.EntityFrameworkCore;
 using Taskling.SqlServer.Models;
+using Taskling.SqlServer.Tests.Enums;
 
 namespace Taskling.SqlServer.Tests.Helpers;
 
@@ -15,7 +16,17 @@ public abstract class RepositoryBase
         {
             var builder = new DbContextOptionsBuilder<TasklingDbContext>();
 
-            builder.UseSqlServer(TestConstants.TestConnectionString);
+            //builder.UseSqlServer(TestConstants.TestConnectionString);
+            switch (TestConstants.ConnectionType)
+            {
+                case ConnectionTypeEnum.MySql:
+                    builder.UseMySQL(TestConstants.GetTestConnectionString());
+                    break;
+                case ConnectionTypeEnum.SqlServer:
+                    builder.UseSqlServer(TestConstants.GetTestConnectionString());
+                    break;
+                default: throw new NotImplementedException();
+            }
 
 
             var tasklingDbContext = new TasklingDbContext(builder.Options);

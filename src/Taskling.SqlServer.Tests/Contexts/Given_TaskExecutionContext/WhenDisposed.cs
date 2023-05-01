@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_TaskExecutionContext;
 
-[Collection(Constants.CollectionName)]
+[Collection(TestConstants.CollectionName)]
 public class WhenDisposed
 {
     private readonly IClientHelper _clientHelper;
@@ -31,7 +31,7 @@ public class WhenDisposed
         var taskDefinitionId = executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
 
         // ACT
-      
+
         bool startedOk;
         ExecutionTokenStatus tokenStatusAfterStart;
         ExecutionTokenStatus tokenStatusAfterUsingBlock;
@@ -65,7 +65,7 @@ public class WhenDisposed
         executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
         // ACT
-        
+
         bool startedOk;
         ExecutionTokenStatus tokenStatusAfterStart;
         ExecutionTokenStatus tokenStatusAfterUsingBlock;

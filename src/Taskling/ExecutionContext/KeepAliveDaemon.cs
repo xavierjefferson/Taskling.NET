@@ -6,9 +6,9 @@ namespace Taskling.ExecutionContext;
 
 internal class KeepAliveDaemon
 {
+    private readonly WeakReference _owner;
     private readonly ITaskExecutionRepository _taskExecutionRepository;
     private bool _completeCalled;
-    private readonly WeakReference _owner;
 
     public KeepAliveDaemon(ITaskExecutionRepository taskExecutionRepository, WeakReference owner)
     {

@@ -3,36 +3,28 @@ using Taskling.Blocks.Factories;
 using Taskling.CleanUp;
 using Taskling.Configuration;
 using Taskling.Contexts;
-using Taskling.ExecutionContext;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
-using Taskling.InfrastructureContracts.CleanUp;
 using Taskling.InfrastructureContracts.CriticalSections;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.SqlServer.Blocks;
-using Taskling.SqlServer.Events;
-using Taskling.SqlServer.TaskExecution;
-using Taskling.SqlServer.Tasks;
-using Taskling.SqlServer.Tokens;
-using Taskling.SqlServer.Tokens.CriticalSections;
-using Taskling.SqlServer.Tokens.Executions;
 using Taskling.Tasks;
 
 namespace Taskling.SqlServer;
 
 public class TasklingClient : ITasklingClient
 {
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ITaskConfigurationRepository _taskConfigurationRepository;
     private readonly IBlockFactory _blockFactory;
     private readonly ICleanUpService _cleanUpService;
+
+    private readonly IConnectionStore _connectionStore;
     private readonly ICriticalSectionRepository _criticalSectionRepository;
     private readonly IListBlockRepository _listBlockRepository;
     private readonly IObjectBlockRepository _objectBlockRepository;
     private readonly IRangeBlockRepository _rangeBlockRepository;
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ITaskConfigurationRepository _taskConfigurationRepository;
+
     private readonly ITaskExecutionRepository _taskExecutionRepository;
-  
-    private readonly IConnectionStore _connectionStore;
     // public TasklingClient(IConfigurationReader configurationReader,
     //    ITaskRepository taskRepository = null,
     //    ITasklingConfiguration configuration = null,
@@ -52,7 +44,6 @@ public class TasklingClient : ITasklingClient
     //    _tasklingConfigurationFactory = tasklingConfigurationFactory;
     //    if (taskRepository == null)
     //        taskRepository = new TaskRepository();
-
 
 
     //    if (commonTokenRepository == null)
@@ -120,14 +111,20 @@ public class TasklingClient : ITasklingClient
     {
         _serviceProvider = serviceProvider;
         _taskConfigurationRepository = taskConfigurationRepository;
-        _connectionStore = serviceProvider.GetRequiredService<IConnectionStore>() ??  throw new NullReferenceException(nameof(IConnectionStore));
-        
+        _connectionStore = serviceProvider.GetRequiredService<IConnectionStore>() ??
+                           throw new NullReferenceException(nameof(IConnectionStore));
+
         _taskExecutionRepository = serviceProvider.GetRequiredService<ITaskExecutionRepository>();
-        _criticalSectionRepository = serviceProvider.GetRequiredService<ICriticalSectionRepository>() ??  throw new NullReferenceException(nameof(ICriticalSectionRepository));
-        _rangeBlockRepository = serviceProvider.GetRequiredService<IRangeBlockRepository>() ??  throw new NullReferenceException(nameof(IRangeBlockRepository));
-        _listBlockRepository = serviceProvider.GetRequiredService<IListBlockRepository>() ??  throw new NullReferenceException(nameof(IListBlockRepository));
-        _objectBlockRepository = serviceProvider.GetRequiredService<IObjectBlockRepository>() ??  throw new NullReferenceException(nameof(IObjectBlockRepository));
-        _blockFactory = serviceProvider.GetRequiredService<IBlockFactory>() ??  throw new NullReferenceException(nameof(IBlockRepository));
+        _criticalSectionRepository = serviceProvider.GetRequiredService<ICriticalSectionRepository>() ??
+                                     throw new NullReferenceException(nameof(ICriticalSectionRepository));
+        _rangeBlockRepository = serviceProvider.GetRequiredService<IRangeBlockRepository>() ??
+                                throw new NullReferenceException(nameof(IRangeBlockRepository));
+        _listBlockRepository = serviceProvider.GetRequiredService<IListBlockRepository>() ??
+                               throw new NullReferenceException(nameof(IListBlockRepository));
+        _objectBlockRepository = serviceProvider.GetRequiredService<IObjectBlockRepository>() ??
+                                 throw new NullReferenceException(nameof(IObjectBlockRepository));
+        _blockFactory = serviceProvider.GetRequiredService<IBlockFactory>() ??
+                        throw new NullReferenceException(nameof(IBlockRepository));
         _cleanUpService = serviceProvider.GetRequiredService<ICleanUpService>() ??
                           throw new NullReferenceException(nameof(ICleanUpService));
     }

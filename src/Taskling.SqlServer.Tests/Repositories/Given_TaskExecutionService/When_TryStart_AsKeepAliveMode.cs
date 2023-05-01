@@ -13,7 +13,7 @@ using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_TaskExecutionService;
 
-[Collection(Constants.CollectionName)]
+[Collection(TestConstants.CollectionName)]
 public class When_TryStart_AsKeepAliveMode
 {
     private readonly IClientHelper _clientHelper;
@@ -113,7 +113,8 @@ public class When_TryStart_AsKeepAliveMode
 
         // ACT
         var firstResponse = await _taskExecutionRepository.StartAsync(firstStartRequest);
-        await _taskExecutionRepository.SendKeepAliveAsync(CreateKeepAliveRequest(TestConstants.ApplicationName, TestConstants.TaskName,
+        await _taskExecutionRepository.SendKeepAliveAsync(CreateKeepAliveRequest(TestConstants.ApplicationName,
+            TestConstants.TaskName,
             firstResponse.TaskExecutionId, firstResponse.ExecutionTokenId));
         var secondResponse = await _taskExecutionRepository.StartAsync(secondStartRequest);
 
@@ -199,7 +200,7 @@ public class When_TryStart_AsKeepAliveMode
 
         // ACT
         var sut = _taskExecutionRepository;
-        
+
 
         var tasks = new List<Task>();
         tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync()));
@@ -223,7 +224,7 @@ public class When_TryStart_AsKeepAliveMode
         // ASSERT
     }
 
-  
+
     private async Task RequestAndReturnTokenWithKeepAliveModeAsync()
     {
         for (var i = 0; i < 100; i++)

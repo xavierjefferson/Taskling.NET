@@ -1,12 +1,10 @@
-﻿using System.Data;
-using System.Data.SqlClient;
-using System.Text;
+﻿using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.AncilliaryServices;
-using Taskling.SqlServer.Blocks;
 using Taskling.SqlServer.Configuration;
 using Taskling.SqlServer.Models;
+using TransactionScopeRetryHelper;
 
 namespace Taskling.SqlServer.Tokens.Executions;
 
@@ -14,23 +12,21 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
 {
     private readonly ICommonTokenRepository _commonTokenRepository;
 
-    public ExecutionTokenRepository(ICommonTokenRepository commonTokenRepository, IConnectionStore connectionStore) : base(connectionStore)
+    public ExecutionTokenRepository(ICommonTokenRepository commonTokenRepository, IConnectionStore connectionStore,
+        IDbContextFactoryEx dbContextFactoryEx) : base(connectionStore, dbContextFactoryEx)
     {
         _commonTokenRepository = commonTokenRepository;
     }
 
     public async Task<TokenResponse> TryAcquireExecutionTokenAsync(TokenRequest tokenRequest)
     {
-        return await RetryHelper.WithRetry(async () =>
+        return await RetryHelper.WithRetryAsync(async () =>
         {
             var response = new TokenResponse();
             response.StartedAt = DateTime.UtcNow;
 
             using (var dbContext = await GetDbContextAsync(tokenRequest.TaskId))
             {
-                
-
-
                 await AcquireRowLockAsync(tokenRequest.TaskDefinitionId, tokenRequest.TaskExecutionId,
                         dbContext)
                     .ConfigureAwait(false);
@@ -54,33 +50,27 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
                 if (adjusted)
                     await PersistTokensAsync(tokenRequest.TaskDefinitionId, tokens, dbContext).ConfigureAwait(false);
 
-                
-                return response;
 
+                return response;
             }
         });
-
     }
 
     public async Task ReturnExecutionTokenAsync(TokenRequest tokenRequest, Guid executionTokenId)
     {
-        await RetryHelper.WithRetry(async () =>
-       {
-           using (var dbContext = await GetDbContextAsync(tokenRequest.TaskId).ConfigureAwait(false))
-           {
-              
-                   
-                       await AcquireRowLockAsync(tokenRequest.TaskDefinitionId, tokenRequest.TaskExecutionId,
-                                dbContext)
-                            .ConfigureAwait(false);
-                       var tokens = await GetTokensAsync(tokenRequest.TaskDefinitionId, dbContext)
-                            .ConfigureAwait(false);
-                       SetTokenAsAvailable(tokens, executionTokenId);
-                       await PersistTokensAsync(tokenRequest.TaskDefinitionId, tokens, dbContext).ConfigureAwait(false);
-                      
-           }
-       }, 10, 60000, 1000);
-
+        await RetryHelper.WithRetryAsync(async () =>
+        {
+            using (var dbContext = await GetDbContextAsync(tokenRequest.TaskId).ConfigureAwait(false))
+            {
+                await AcquireRowLockAsync(tokenRequest.TaskDefinitionId, tokenRequest.TaskExecutionId,
+                        dbContext)
+                    .ConfigureAwait(false);
+                var tokens = await GetTokensAsync(tokenRequest.TaskDefinitionId, dbContext)
+                    .ConfigureAwait(false);
+                SetTokenAsAvailable(tokens, executionTokenId);
+                await PersistTokensAsync(tokenRequest.TaskDefinitionId, tokens, dbContext).ConfigureAwait(false);
+            }
+        }, 10, 60000);
     }
 
 

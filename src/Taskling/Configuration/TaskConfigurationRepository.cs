@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 using Taskling.Exceptions;
 
 namespace Taskling.Configuration;
@@ -64,9 +63,11 @@ public class TaskConfigurationRepository : ITaskConfigurationRepository
         return taskConfiguration;
     }
 
-    private TaskConfiguration ParseConfig(ConfigurationOptions configurationOptions, string applicationName, string taskName)
+    private TaskConfiguration ParseConfig(ConfigurationOptions configurationOptions, string applicationName,
+        string taskName)
     {
-        var databaseConnString = configurationOptions.DB ?? throw new ArgumentNullException(nameof(ConfigurationOptions.DB));
+        var databaseConnString =
+            configurationOptions.DB ?? throw new ArgumentNullException(nameof(ConfigurationOptions.DB));
 
 
         var taskConfiguration = new TaskConfiguration();
@@ -98,8 +99,6 @@ public class TaskConfigurationRepository : ITaskConfigurationRepository
 
         return taskConfiguration;
     }
-
-
 
 
     private ConfigurationOptions FindKey(string applicationName, string taskName)

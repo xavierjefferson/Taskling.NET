@@ -1,24 +1,16 @@
 ﻿using System;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Taskling.Blocks.Factories;
-using Taskling.CleanUp;
 using Taskling.Configuration;
 using Taskling.Contexts;
-using Taskling.InfrastructureContracts.Blocks;
-using Taskling.InfrastructureContracts.CleanUp;
-using Taskling.InfrastructureContracts.CriticalSections;
-using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.SqlServer.Events;
-using Taskling.SqlServer.Tokens;
-using Taskling.SqlServer.Tokens.Executions;
 
 namespace Taskling.SqlServer.Tests.Helpers;
 
 public class ClientHelper : IClientHelper
 {
-    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ClientHelper> _logger;
+    private readonly IServiceProvider _serviceProvider;
+
+    private readonly object _mutex = new();
 
     public ClientHelper(IServiceProvider serviceProvider, ILogger<ClientHelper> logger)
     {
@@ -67,7 +59,7 @@ public class ClientHelper : IClientHelper
     {
         return new ConfigurationOptions
         {
-            DB = "Server=(local);Database=TasklingDb;Application Name=Entity;Trusted_Connection=True;",
+            DB = TestConstants.GetTestConnectionString(),
             TO = 120,
             E = true,
             CON = v0,
@@ -88,14 +80,12 @@ public class ClientHelper : IClientHelper
         };
     }
 
-    private object mutex = new object();
     private TasklingClient CreateClient(ConfigurationOptions configurationOptions)
     {
-        lock (mutex)
+        lock (_mutex)
         {
-            
-
-            return new TasklingClient(_serviceProvider, new TaskConfigurationRepository(new TestConfigurationReader(configurationOptions)));
+            return new TasklingClient(_serviceProvider,
+                new TaskConfigurationRepository(new TestConfigurationReader(configurationOptions)));
         }
     }
 }

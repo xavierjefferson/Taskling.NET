@@ -12,7 +12,7 @@ using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 
-[Collection(Constants.CollectionName)]
+[Collection(TestConstants.CollectionName)]
 public class When_FindDeadBlocks
 {
     private readonly IBlockRepository _blockRepository;

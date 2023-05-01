@@ -11,7 +11,7 @@ using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_CriticalSectionService;
 
-[Collection(Constants.CollectionName)]
+[Collection(TestConstants.CollectionName)]
 public class When_TryStart_AsKeepAliveMode
 {
     private readonly ICriticalSectionRepository _criticalSectionRepository;

@@ -7,32 +7,30 @@ using Taskling.InfrastructureContracts.TaskExecution;
 
 namespace Taskling.CleanUp;
 
- 
-
- 
 public class CleanUpService : ICleanUpService
 {
     private readonly ICleanUpRepository _cleanUpRepository;
     private readonly ITaskExecutionRepository _taskExecutionRepository;
 
 
-    public CleanUpService (ICleanUpRepository cleanUpRepository,
+    public CleanUpService(ICleanUpRepository cleanUpRepository,
         ITaskExecutionRepository taskExecutionRepository)
     {
         _cleanUpRepository = cleanUpRepository;
-        
+
         _taskExecutionRepository = taskExecutionRepository;
     }
 
     public void CleanOldData(string applicationName, string taskName, int taskExecutionId,
         ITaskConfigurationRepository taskConfigurationRepository)
     {
-
         Task.Run(async () =>
-            await StartCleanOldDataAsync(applicationName, taskName, taskExecutionId, taskConfigurationRepository).ConfigureAwait(false));
+            await StartCleanOldDataAsync(applicationName, taskName, taskExecutionId, taskConfigurationRepository)
+                .ConfigureAwait(false));
     }
 
-    private async Task StartCleanOldDataAsync(string applicationName, string taskName, int taskExecutionId, ITaskConfigurationRepository taskConfigurationRepository)
+    private async Task StartCleanOldDataAsync(string applicationName, string taskName, int taskExecutionId,
+        ITaskConfigurationRepository taskConfigurationRepository)
     {
         var checkpoint = new TaskExecutionCheckpointRequest
         {

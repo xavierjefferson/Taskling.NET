@@ -1,13 +1,12 @@
-﻿using System.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ObjectBlocks;
-using Taskling.Exceptions;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.AncilliaryServices;
 using Taskling.SqlServer.Blocks.Serialization;
+using TransactionScopeRetryHelper;
 
 namespace Taskling.SqlServer.Blocks;
 
@@ -15,7 +14,8 @@ public class ObjectBlockRepository : DbOperationsService, IObjectBlockRepository
 {
     private readonly ITaskRepository _taskRepository;
 
-    public ObjectBlockRepository(ITaskRepository taskRepository, IConnectionStore connectionStore) : base(connectionStore)
+    public ObjectBlockRepository(ITaskRepository taskRepository, IConnectionStore connectionStore,
+        IDbContextFactoryEx dbContextFactoryEx) : base(connectionStore, dbContextFactoryEx)
     {
         _taskRepository = taskRepository;
     }
@@ -27,14 +27,14 @@ public class ObjectBlockRepository : DbOperationsService, IObjectBlockRepository
 
     public async Task<ObjectBlock<T>?> GetLastObjectBlockAsync<T>(LastBlockRequest lastRangeBlockRequest)
     {
-
-        return await RetryHelper.WithRetry(async () =>
+        return await RetryHelper.WithRetryAsync(async () =>
         {
             var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(lastRangeBlockRequest.TaskId)
                 .ConfigureAwait(false);
             using (var dbContext = await GetDbContextAsync(lastRangeBlockRequest.TaskId).ConfigureAwait(false))
             {
-                var blockData = await dbContext.Blocks.Where(i => i.TaskDefinitionId == taskDefinition.TaskDefinitionId && i.IsPhantom == false)
+                var blockData = await dbContext.Blocks.Where(i =>
+                        i.TaskDefinitionId == taskDefinition.TaskDefinitionId && i.IsPhantom == false)
                     .OrderByDescending(i => i.BlockId)
                     .Select(i => new { i.ObjectData, i.BlockId, i.CompressedObjectData }).FirstOrDefaultAsync()
                     .ConfigureAwait(false);
@@ -53,15 +53,12 @@ public class ObjectBlockRepository : DbOperationsService, IObjectBlockRepository
 
             return null;
         });
-
-
-
     }
 
 
     private async Task ChangeStatusOfExecutionAsync(BlockExecutionChangeStatusRequest changeStatusRequest)
     {
-        await RetryHelper.WithRetry(async () =>
+        await RetryHelper.WithRetryAsync(async () =>
         {
             using (var dbContext = await GetDbContextAsync(changeStatusRequest.TaskId))
             {
@@ -85,8 +82,6 @@ public class ObjectBlockRepository : DbOperationsService, IObjectBlockRepository
                     await dbContext.SaveChangesAsync().ConfigureAwait(false);
                 }
             }
-
         });
-
     }
 }

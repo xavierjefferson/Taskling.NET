@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.SqlClient;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
-using Taskling.SqlServer.Models;
 
 namespace Taskling.SqlServer.Tests.Helpers;
 
@@ -33,5 +31,4 @@ public interface IBlocksHelper
         BlockExecutionStatus blockExecutionStatus);
 
     int GetBlockExecutionItemCount(long blockExecutionId);
-  
 }

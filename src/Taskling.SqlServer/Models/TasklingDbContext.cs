@@ -34,7 +34,7 @@ public partial class TasklingDbContext : DbContext
     {
         modelBuilder.Entity<Block>(entity =>
         {
-            entity.ToTable("Block", "Taskling");
+            entity.ToTable("Block");
 
             entity.HasIndex(e => e.TaskDefinitionId, "IX_Block_TaskDefinitionId");
 
@@ -53,7 +53,7 @@ public partial class TasklingDbContext : DbContext
 
         modelBuilder.Entity<BlockExecution>(entity =>
         {
-            entity.ToTable("BlockExecution", "Taskling");
+            entity.ToTable("BlockExecution");
 
             entity.HasIndex(e => e.BlockId, "IX_BlockExecution_BlockId");
 
@@ -80,7 +80,7 @@ public partial class TasklingDbContext : DbContext
 
         modelBuilder.Entity<ForceBlockQueue>(entity =>
         {
-            entity.ToTable("ForceBlockQueue", "Taskling");
+            entity.ToTable("ForceBlockQueue");
 
             entity.Property(e => e.ForcedBy)
                 .IsRequired()
@@ -100,7 +100,7 @@ public partial class TasklingDbContext : DbContext
 
         modelBuilder.Entity<ListBlockItem>(entity =>
         {
-            entity.ToTable("ListBlockItem", "Taskling");
+            entity.ToTable("ListBlockItem");
 
             entity.Property(e => e.LastUpdated);
 
@@ -115,7 +115,7 @@ public partial class TasklingDbContext : DbContext
 
         modelBuilder.Entity<TaskDefinition>(entity =>
         {
-            entity.ToTable("TaskDefinition", "Taskling");
+            entity.ToTable("TaskDefinition");
 
             entity.HasIndex(e => new { e.ApplicationName, e.TaskName }, "IX_TaskDefinition_Unique")
                 .IsUnique();
@@ -139,7 +139,7 @@ public partial class TasklingDbContext : DbContext
 
         modelBuilder.Entity<TaskExecution>(entity =>
         {
-            entity.ToTable("TaskExecution", "Taskling");
+            entity.ToTable("TaskExecution");
 
             entity.HasIndex(e => e.TaskDefinitionId, "IX_TaskExecution_TaskDefinitionId");
 
@@ -171,7 +171,7 @@ public partial class TasklingDbContext : DbContext
 
         modelBuilder.Entity<TaskExecutionEvent>(entity =>
         {
-            entity.ToTable("TaskExecutionEvent", "Taskling");
+            entity.ToTable("TaskExecutionEvent");
 
             entity.Property(e => e.EventDateTime);
 

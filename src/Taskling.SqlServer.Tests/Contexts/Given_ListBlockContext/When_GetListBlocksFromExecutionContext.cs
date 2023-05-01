@@ -9,18 +9,19 @@ using Taskling.Blocks.ListBlocks;
 using Taskling.Contexts;
 using Taskling.Events;
 using Taskling.InfrastructureContracts.TaskExecution;
+using Taskling.SqlServer.Tests.Contexts.Given_RangeBlockContext;
 using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_ListBlockContext;
 
-[Collection(Constants.CollectionName)]
-public class When_GetListBlocksFromExecutionContext
+[Collection(TestConstants.CollectionName)]
+public class When_GetListBlocksFromExecutionContext : TestBase
 {
     private readonly IBlocksHelper _blocksHelper;
     private readonly IClientHelper _clientHelper;
-    private readonly ILogger<When_GetListBlocksFromExecutionContext> _logger;
     private readonly IExecutionsHelper _executionsHelper;
+    private readonly ILogger<When_GetListBlocksFromExecutionContext> _logger;
     private readonly int _taskDefinitionId;
 
     public When_GetListBlocksFromExecutionContext(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper,
@@ -54,7 +55,7 @@ public class When_GetListBlocksFromExecutionContext
             if (startedOk)
             {
                 var values = GetPersonList(9);
-                int maxBlockSize = 4;
+                var maxBlockSize = 4;
                 var listBlocks =
                     await executionContext.GetListBlocksAsync<PersonDto>(x =>
                         x.WithSingleUnitCommit(values, maxBlockSize));
@@ -134,7 +135,7 @@ public class When_GetListBlocksFromExecutionContext
             if (startedOk)
             {
                 var values = GetPersonList(9);
-                int maxBlockSize = 4;
+                var maxBlockSize = 4;
                 var listBlock =
                     (await executionContext.GetListBlocksAsync<PersonDto>(x =>
                         x.WithSingleUnitCommit(values, maxBlockSize))).First();
@@ -173,7 +174,7 @@ public class When_GetListBlocksFromExecutionContext
             startedOk = await executionContext.TryStartAsync();
             if (startedOk)
             {
-                int maxBlockSize = 4;
+                var maxBlockSize = 4;
                 var listBlock =
                     (await executionContext.GetListBlocksAsync<PersonDto>(x =>
                         x.WithSingleUnitCommit(values, maxBlockSize))).First();
@@ -193,7 +194,7 @@ public class When_GetListBlocksFromExecutionContext
             if (startedOk)
             {
                 var emptyPersonList = new List<PersonDto>();
-                int maxBlockSize = 4;
+                var maxBlockSize = 4;
                 var listBlock =
                     (await executionContext.GetListBlocksAsync<PersonDto>(x =>
                         x.WithSingleUnitCommit(emptyPersonList, maxBlockSize))).First();
@@ -203,7 +204,7 @@ public class When_GetListBlocksFromExecutionContext
                 var itemsToProcess = (await listBlock.GetItemsAsync(ItemStatus.Pending, ItemStatus.Failed)).ToList();
                 for (var i = 0; i < itemsToProcess.Count; i++)
                 {
-                    Assert.Equal(values[i].DateOfBirth, itemsToProcess[i].Value.DateOfBirth);
+                    AssertSimilarDates(values[i].DateOfBirth, itemsToProcess[i].Value.DateOfBirth);
                     Assert.Equal(values[i].Id, itemsToProcess[i].Value.Id);
                     Assert.Equal(values[i].Name, itemsToProcess[i].Value.Name);
                 }
@@ -229,7 +230,7 @@ public class When_GetListBlocksFromExecutionContext
             if (startedOk)
             {
                 var values = new List<PersonDto>();
-                int maxBlockSize = 4;
+                var maxBlockSize = 4;
                 var listBlock =
                     await executionContext.GetListBlocksAsync<PersonDto>(x =>
                         x.WithSingleUnitCommit(values, maxBlockSize));
@@ -258,7 +259,7 @@ public class When_GetListBlocksFromExecutionContext
             if (startedOk)
             {
                 var values = GetPersonList(9);
-                int maxBlockSize = 4;
+                var maxBlockSize = 4;
                 var listBlock =
                     (await executionContext.GetListBlocksAsync<PersonDto>(x =>
                         x.WithSingleUnitCommit(values, maxBlockSize))).First();
@@ -298,7 +299,7 @@ public class When_GetListBlocksFromExecutionContext
             if (startedOk)
             {
                 var values = GetPersonList(9);
-                int maxBlockSize = 4;
+                var maxBlockSize = 4;
                 var listBlocks =
                     await executionContext.GetListBlocksAsync<PersonDto>(x =>
                         x.WithBatchCommitAtEnd(values, maxBlockSize));
@@ -380,7 +381,7 @@ public class When_GetListBlocksFromExecutionContext
             if (startedOk)
             {
                 var values = GetPersonList(26);
-                int maxBlockSize = 15;
+                var maxBlockSize = 15;
                 var listBlocks = await executionContext.GetListBlocksAsync<PersonDto>(x =>
                     x.WithPeriodicCommit(values, maxBlockSize, BatchSize.Ten));
                 // There should be 2 blocks - 15, 11
@@ -477,7 +478,7 @@ public class When_GetListBlocksFromExecutionContext
             if (startedOk)
             {
                 var values = GetPersonList(14);
-                int maxBlockSize = 20;
+                var maxBlockSize = 20;
                 var listBlock =
                     (await executionContext.GetListBlocksAsync<PersonDto>(x =>
                         x.WithPeriodicCommit(values, maxBlockSize, BatchSize.Ten))).First();
@@ -516,7 +517,7 @@ public class When_GetListBlocksFromExecutionContext
             if (startedOk)
             {
                 var values = GetPersonList(14);
-                int maxBlockSize = 20;
+                var maxBlockSize = 20;
                 var listBlock =
                     (await executionContext.GetListBlocksAsync<PersonDto>(x =>
                         x.WithPeriodicCommit(values, maxBlockSize, BatchSize.Ten))).First();
@@ -553,7 +554,7 @@ public class When_GetListBlocksFromExecutionContext
             if (startedOk)
             {
                 var values = GetPersonList(26);
-                int maxBlockSize = 15;
+                var maxBlockSize = 15;
                 var listBlocks = await executionContext.GetListBlocksAsync<PersonDto>(x =>
                     x.WithPeriodicCommit(values, maxBlockSize, BatchSize.Ten));
 
@@ -632,7 +633,7 @@ public class When_GetListBlocksFromExecutionContext
             if (startedOk)
             {
                 var values = GetPersonList(3);
-                int maxBlockSize = 15;
+                var maxBlockSize = 15;
                 var listBlocks = await executionContext.GetListBlocksAsync<PersonDto>(x =>
                     x.WithPeriodicCommit(values, maxBlockSize, BatchSize.Ten));
 
@@ -680,7 +681,7 @@ public class When_GetListBlocksFromExecutionContext
             if (startedOk)
             {
                 var values = GetPersonList(9);
-                int maxBlockSize = 4;
+                var maxBlockSize = 4;
                 var listBlock =
                     (await executionContext.GetListBlocksAsync<PersonDto>(x =>
                         x.WithSingleUnitCommit(values, maxBlockSize))).First();
@@ -724,7 +725,7 @@ public class When_GetListBlocksFromExecutionContext
             if (startedOk)
             {
                 var values = GetPersonList(9);
-                int maxBlockSize = 3;
+                var maxBlockSize = 3;
                 var listBlocks =
                     (await executionContext.GetListBlocksAsync<PersonDto>(x =>
                         x.WithPeriodicCommit(values, maxBlockSize, BatchSize.Fifty))).ToList();
@@ -809,7 +810,7 @@ public class When_GetListBlocksFromExecutionContext
             if (startedOk)
             {
                 var values = GetPersonList(8);
-                int maxBlockSize = 4;
+                var maxBlockSize = 4;
                 var listBlocks = await executionContext.GetListBlocksAsync<PersonDto>(x => x
                     .WithSingleUnitCommit(values, maxBlockSize)
                     .OverrideConfiguration()
@@ -850,7 +851,7 @@ public class When_GetListBlocksFromExecutionContext
             if (startedOk)
             {
                 var values = GetPersonList(8);
-                int maxBlockSize = 4;
+                var maxBlockSize = 4;
                 var listBlocks =
                     await executionContext.GetListBlocksAsync<PersonDto>(x =>
                         x.WithSingleUnitCommit(values, maxBlockSize));
@@ -880,7 +881,7 @@ public class When_GetListBlocksFromExecutionContext
             if (startedOk)
             {
                 var values = GetPersonList(10);
-                int maxBlockSize = 1;
+                var maxBlockSize = 1;
                 var listBlocks =
                     await executionContext.GetListBlocksAsync<PersonDto>(x =>
                         x.WithSingleUnitCommit(values, maxBlockSize));
@@ -914,7 +915,7 @@ public class When_GetListBlocksFromExecutionContext
             if (startedOk)
             {
                 var values = GetPersonList(3);
-                int maxBlockSize = 15;
+                var maxBlockSize = 15;
                 var listBlocks = await executionContext.GetListBlocksAsync<PersonDto>(x =>
                     x.WithPeriodicCommit(values, maxBlockSize, BatchSize.Ten));
 
@@ -991,7 +992,7 @@ public class When_GetListBlocksFromExecutionContext
             if (startedOk)
             {
                 var values = GetPersonList(10);
-                int maxBlockSize = 1;
+                var maxBlockSize = 1;
                 var listBlocks =
                     await executionContext.GetListBlocksAsync<PersonDto>(x =>
                         x.WithSingleUnitCommit(values, maxBlockSize));
@@ -1018,7 +1019,7 @@ public class When_GetListBlocksFromExecutionContext
             if (startedOk)
             {
                 var values = GetPersonList(6);
-                int maxBlockSize = 3;
+                var maxBlockSize = 3;
                 var listBlocks = await executionContext.GetListBlocksAsync<PersonDto>(x =>
                     x.WithPeriodicCommit(values, maxBlockSize, BatchSize.Ten));
 
@@ -1042,7 +1043,7 @@ public class When_GetListBlocksFromExecutionContext
             if (startedOk)
             {
                 var values = GetPersonList(6);
-                int maxBlockSize = 3;
+                var maxBlockSize = 3;
                 var listBlocks = await executionContext.GetListBlocksAsync<PersonDto>(x =>
                     x.WithPeriodicCommit(values, maxBlockSize, BatchSize.Ten));
 

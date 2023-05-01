@@ -21,6 +21,7 @@ using Taskling.SqlServer.Blocks.QueryBuilders;
 using Taskling.SqlServer.Blocks.Serialization;
 using Taskling.SqlServer.Models;
 using Taskling.Tasks;
+using TransactionScopeRetryHelper;
 using TaskDefinition = Taskling.InfrastructureContracts.TaskExecution.TaskDefinition;
 
 namespace Taskling.SqlServer.Blocks;
@@ -29,7 +30,8 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
 {
     #region .: Constructor :.
 
-    public BlockRepository(ITaskRepository taskRepository, IConnectionStore connectionStore, ILogger<BlockRepository> logger):base(connectionStore)
+    public BlockRepository(ITaskRepository taskRepository, IConnectionStore connectionStore,
+        ILogger<BlockRepository> logger, IDbContextFactoryEx dbx) : base(connectionStore, dbx)
     {
         _taskRepository = taskRepository;
         _logger = logger;
@@ -109,7 +111,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
 
     public async Task<RangeBlockCreateResponse> AddRangeBlockAsync(RangeBlockCreateRequest rangeBlockCreateRequest)
     {
-        _logger.LogDebug($"Adding range block");
+        _logger.LogDebug("Adding range block");
         var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(rangeBlockCreateRequest.TaskId)
             .ConfigureAwait(false);
 
@@ -118,7 +120,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
         {
             case BlockType.DateRange:
                 response.Block =
-                    await RetryHelper.WithRetry(async () =>
+                    await RetryHelper.WithRetryAsync(async () =>
                     {
                         using (var dbContext = await GetDbContextAsync(rangeBlockCreateRequest.TaskId))
 
@@ -144,11 +146,10 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
                 break;
             case BlockType.NumericRange:
                 response.Block =
-                    await RetryHelper.WithRetry(async () =>
+                    await RetryHelper.WithRetryAsync(async () =>
                     {
                         using (var dbContext = await GetDbContextAsync(rangeBlockCreateRequest.TaskId))
                         {
-                
                             var block = new Block
                             {
                                 TaskDefinitionId = taskDefinition.TaskDefinitionId,
@@ -196,7 +197,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
 
     public async Task<ListBlockCreateResponse> AddListBlockAsync(ListBlockCreateRequest createRequest)
     {
-        _logger.LogDebug($"Adding list block");
+        _logger.LogDebug("Adding list block");
         var taskDefinition =
             await _taskRepository.EnsureTaskDefinitionAsync(createRequest.TaskId).ConfigureAwait(false);
 
@@ -249,7 +250,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
 
     public async Task<ObjectBlockCreateResponse<T>> AddObjectBlockAsync<T>(ObjectBlockCreateRequest<T> createRequest)
     {
-        _logger.LogDebug($"Adding object block");
+        _logger.LogDebug("Adding object block");
         var taskDefinition =
             await _taskRepository.EnsureTaskDefinitionAsync(createRequest.TaskId).ConfigureAwait(false);
 
@@ -282,7 +283,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
         Func<BlocksOfTaskQueryParams,
             Expression<Func<BlockQueryItem, bool>>> query)
     {
-        return await RetryHelper.WithRetry(async () =>
+        return await RetryHelper.WithRetryAsync(async () =>
         {
             var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(blocksOfTaskRequest.TaskId)
                 .ConfigureAwait(false);
@@ -309,7 +310,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
             Expression<Func<BlockQueryItem, bool>>> query,
         ReprocessOption reprocessOption)
     {
-        return await RetryHelper.WithRetry(async () =>
+        return await RetryHelper.WithRetryAsync(async () =>
         {
             var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(blocksOfTaskRequest.TaskId)
                 .ConfigureAwait(false);
@@ -354,7 +355,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
             compressedData = LargeValueCompressor.Zip(header);
         }
 
-        return await RetryHelper.WithRetry(async () =>
+        return await RetryHelper.WithRetryAsync(async () =>
         {
             using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
 
@@ -387,14 +388,11 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
 
     private async Task AddListBlockItemsAsync(long blockId, ListBlockCreateRequest createRequest)
     {
-        await RetryHelper.WithRetry(async () =>
+        await RetryHelper.WithRetryAsync(async () =>
         {
             using (var dbContext = await GetDbContextAsync(createRequest.TaskId).ConfigureAwait(false))
 
             {
-                 
-
-
                 foreach (var value in (List<string>)createRequest.SerializedValues)
                 {
                     var item = new ListBlockItem
@@ -420,9 +418,6 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
                 }
 
                 await dbContext.SaveChangesAsync().ConfigureAwait(false);
-
-
-                
             }
         });
     }
@@ -443,7 +438,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
             compressedData = LargeValueCompressor.Zip(jsonValue);
         }
 
-        return await RetryHelper.WithRetry(async () =>
+        return await RetryHelper.WithRetryAsync(async () =>
         {
             using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
 
@@ -470,7 +465,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
         ISearchableBlockRequest deadBlocksRequest,
         BlockItemDelegateRunner blockItemDelegateRunner)
     {
-        return await RetryHelper.WithRetry(async () =>
+        return await RetryHelper.WithRetryAsync(async () =>
         {
             var results = new List<ObjectBlock<T>>();
             var taskDefinition =
@@ -500,6 +495,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
                     }
                 }
             }
+
             _logger.LogDebug($"{nameof(FindSearchableObjectBlocksAsync)} is returning {results.Count} rows");
             return results;
         });
@@ -520,7 +516,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
             Expression<Func<BlockQueryItem, bool>>> query,
         ReprocessOption reprocessOption)
     {
-        return await RetryHelper.WithRetry(async () =>
+        return await RetryHelper.WithRetryAsync(async () =>
         {
             var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(blocksOfTaskRequest.TaskId)
                 .ConfigureAwait(false);
@@ -563,7 +559,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
     private async Task<IList<ForcedRangeBlockQueueItem>> GetForcedRangeBlocksAsync(
         QueuedForcedBlocksRequest queuedForcedBlocksRequest)
     {
-        return await RetryHelper.WithRetry(async () =>
+        return await RetryHelper.WithRetryAsync(async () =>
         {
             var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(queuedForcedBlocksRequest.TaskId)
                 .ConfigureAwait(false);
@@ -619,6 +615,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
                         throw GetBlockTypeException(queuedForcedBlocksRequest, blockType);
                     }
                 }
+
                 _logger.LogDebug($"{nameof(GetForcedRangeBlocksAsync)} is returning {results.Count} rows");
                 return results;
             }
@@ -628,7 +625,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
     private async Task<IList<ForcedListBlockQueueItem>> GetForcedListBlocksAsync(
         QueuedForcedBlocksRequest queuedForcedBlocksRequest)
     {
-        return await RetryHelper.WithRetry(async () =>
+        return await RetryHelper.WithRetryAsync(async () =>
         {
             var results = new List<ForcedListBlockQueueItem>();
             var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(queuedForcedBlocksRequest.TaskId)
@@ -672,6 +669,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
                     }
                 }
             }
+
             _logger.LogDebug($"{nameof(GetForcedListBlocksAsync)} is returning {results.Count} rows");
             return results;
         });
@@ -680,7 +678,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
     private async Task<IList<ForcedObjectBlockQueueItem<T>>> GetForcedObjectBlocksAsync<T>(
         QueuedForcedBlocksRequest queuedForcedBlocksRequest)
     {
-        return await RetryHelper.WithRetry(async () =>
+        return await RetryHelper.WithRetryAsync(async () =>
         {
             var results = new List<ForcedObjectBlockQueueItem<T>>();
             var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(queuedForcedBlocksRequest.TaskId)
@@ -725,6 +723,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
                     }
                 }
             }
+
             _logger.LogDebug($"{nameof(GetForcedObjectBlocksAsync)} is returning {results.Count} rows");
             return results;
         });
@@ -741,7 +740,7 @@ This could occur if the block type of the process has been changed during a new 
 
     private async Task UpdateForcedBlocksAsync(DequeueForcedBlocksRequest dequeueForcedBlocksRequest)
     {
-        await RetryHelper.WithRetry(async () =>
+        await RetryHelper.WithRetryAsync(async () =>
         {
             using (var dbContext = await GetDbContextAsync(dequeueForcedBlocksRequest.TaskId).ConfigureAwait(false))
             {
@@ -764,7 +763,7 @@ This could occur if the block type of the process has been changed during a new 
 
     private async Task<long> AddBlockExecutionAsync(BlockExecutionCreateRequest executionCreateRequest)
     {
-        return await RetryHelper.WithRetry(async () =>
+        return await RetryHelper.WithRetryAsync(async () =>
         {
             using (var dbContext = await GetDbContextAsync(executionCreateRequest.TaskId).ConfigureAwait(false))
 

@@ -9,12 +9,12 @@ using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_TaskExecutionContext;
 
-[Collection(Constants.CollectionName)]
+[Collection(TestConstants.CollectionName)]
 public class When_Start
 {
-    private readonly ILogger<When_Start> _logger;
-    private readonly IExecutionsHelper _executionsHelper;
     private readonly IClientHelper _clientHelper;
+    private readonly IExecutionsHelper _executionsHelper;
+    private readonly ILogger<When_Start> _logger;
     private readonly int _taskDefinitionId;
 
     public When_Start(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper, IClientHelper clientHelper,
