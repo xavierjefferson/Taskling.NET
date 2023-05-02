@@ -1,7 +1,6 @@
-﻿namespace TasklingTester.Configuration
+﻿namespace TasklingTester.Configuration;
+
+public interface IMyApplicationConfiguration
 {
-    public interface IMyApplicationConfiguration
-    {
-        DateTime FirstRunDate { get; }
-    }
+    DateTime FirstRunDate { get; }
 }

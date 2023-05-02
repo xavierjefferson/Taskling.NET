@@ -206,7 +206,7 @@ public class BlockFactory : IBlockFactory
 
         return Convert<TItem, THeader>(lastProtoListBlock, true);
     }
-   
+
     public async Task<List<RangeBlockContext>> GenerateRangeBlocksAsync<T>(T blockRequest, Func<T, bool> testadd,
         Func<T, int, Task<List<RangeBlockContext>>> newBlockFunc) where T : BlockRequest
     {

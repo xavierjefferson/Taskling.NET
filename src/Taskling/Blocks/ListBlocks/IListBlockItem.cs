@@ -12,10 +12,10 @@ public interface IListBlockItem<T>
     DateTime LastUpdated { get; }
     int? Step { get; set; }
 
-    Task CompletedAsync();
+    Task CompleteAsync();
     Task FailedAsync(string message);
     Task DiscardedAsync(string message);
-    void Failed(string toString);
-    void Discarded(string discardedDueToDistanceRule);
-    void Completed();
+    void Failed(string message);
+    void Discarded(string message);
+    void Complete();
 }

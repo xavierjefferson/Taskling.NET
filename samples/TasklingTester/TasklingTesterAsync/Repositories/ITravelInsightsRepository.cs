@@ -1,14 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using TasklingTester.Common.Entities;
+﻿using TasklingTester.Common.Entities;
 
-namespace TasklingTesterAsync.Repositories
+namespace TasklingTesterAsync.Repositories;
+
+public interface ITravelInsightsRepository
 {
-    public interface ITravelInsightsRepository
-    {
-        Task AddAsync(IList<TravelInsight> insights);
-    }
+    Task AddAsync(IList<TravelInsight> insights);
 }

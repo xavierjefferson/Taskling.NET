@@ -1,9 +1,8 @@
 ﻿using TasklingTester.Common.Entities;
 
-namespace TasklingTester.Repositories
+namespace TasklingTester.Repositories;
+
+public interface ITravelInsightsRepository
 {
-    public interface ITravelInsightsRepository
-    {
-        void Add(IList<TravelInsight> insights);
-    }
+    void Add(IList<TravelInsight> insights);
 }

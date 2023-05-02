@@ -8,7 +8,6 @@ using Taskling.Blocks.ObjectBlocks;
 using Taskling.Contexts;
 using Taskling.Events;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.SqlServer.Tests.Contexts.Given_RangeBlockContext;
 using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 

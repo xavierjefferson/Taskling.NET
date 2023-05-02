@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Nito.AsyncEx.Synchronous;
-using Taskling.Blocks.Factories;
 using Taskling.Contexts;
 using Taskling.Exceptions;
 using Taskling.ExecutionContext;

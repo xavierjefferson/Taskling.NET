@@ -1,6 +1,5 @@
 ﻿using System;
 using Microsoft.Extensions.Logging;
-using Taskling.Configuration;
 using Taskling.Contexts;
 
 namespace Taskling.SqlServer.Tests.Helpers;
@@ -8,9 +7,9 @@ namespace Taskling.SqlServer.Tests.Helpers;
 public class ClientHelper : IClientHelper
 {
     private readonly ILogger<ClientHelper> _logger;
-    private readonly IServiceProvider _serviceProvider;
 
     private readonly object _mutex = new();
+    private readonly IServiceProvider _serviceProvider;
 
     public ClientHelper(IServiceProvider serviceProvider, ILogger<ClientHelper> logger)
     {

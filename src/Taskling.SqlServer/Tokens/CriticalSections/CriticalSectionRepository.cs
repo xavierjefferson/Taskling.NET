@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Taskling.Blocks.Factories;
 using Taskling.Exceptions;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.CriticalSections;
@@ -8,6 +7,7 @@ using Taskling.SqlServer.AncilliaryServices;
 using Taskling.SqlServer.Models;
 using Taskling.Tasks;
 using TransactionScopeRetryHelper;
+using TaskDefinition = Taskling.SqlServer.Models.TaskDefinition;
 
 namespace Taskling.SqlServer.Tokens.CriticalSections;
 
@@ -90,7 +90,8 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
                 //await dbContext.SaveChangesAsync();
                 //exampleEntity.State = EntityState.Detached;
 
-                var entityEntry = dbContext.TaskDefinitions.Attach(new Models.TaskDefinition() { TaskDefinitionId = taskDefinitionId });
+                var entityEntry = dbContext.TaskDefinitions.Attach(new TaskDefinition
+                    { TaskDefinitionId = taskDefinitionId });
                 if (criticalSectionType == CriticalSectionType.User)
                 {
                     entityEntry.Entity.UserCsStatus = 1;

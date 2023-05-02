@@ -14,9 +14,10 @@ namespace Taskling.Contexts;
 
 public interface ITaskExecutionContext : IDisposable
 {
+    bool IsStarted { get; }
+
     IList<IDateRangeBlockContext> GetDateRangeBlocks(
         Func<IFluentDateRangeBlockDescriptor, object> fluentBlockRequest);
-    bool IsStarted { get; }
 
     void SetOptions(string applicationName,
         string taskName,
@@ -34,14 +35,15 @@ public interface ITaskExecutionContext : IDisposable
     ICriticalSectionContext CreateCriticalSection();
     Task<IDateRangeBlock> GetLastDateRangeBlockAsync(LastBlockOrder lastBlockOrder);
     Task<INumericRangeBlock> GetLastNumericRangeBlockAsync(LastBlockOrder lastBlockOrder);
-     INumericRangeBlock GetLastNumericRangeBlock(LastBlockOrder lastBlockOrder);
+    INumericRangeBlock GetLastNumericRangeBlock(LastBlockOrder lastBlockOrder);
     Task<IListBlock<T>> GetLastListBlockAsync<T>();
     Task<IListBlock<TItem, THeader>> GetLastListBlockAsync<TItem, THeader>();
     Task<IObjectBlock<T>> GetLastObjectBlockAsync<T>();
 
     Task<IList<IDateRangeBlockContext>> GetDateRangeBlocksAsync(
         Func<IFluentDateRangeBlockDescriptor, object> fluentBlockRequest);
-     IList<INumericRangeBlockContext> GetNumericRangeBlocks(
+
+    IList<INumericRangeBlockContext> GetNumericRangeBlocks(
         Func<IFluentNumericRangeBlockDescriptor, object> fluentBlockRequest);
 
     Task<IList<INumericRangeBlockContext>> GetNumericRangeBlocksAsync(
@@ -63,9 +65,9 @@ public interface ITaskExecutionContext : IDisposable
     IDateRangeBlock GetLastDateRangeBlock(LastBlockOrder lastCreated);
     void Complete();
     void Error(string toString, bool b);
-    IList<IListBlockContext<TItem, THeader>> GetListBlocks<TItem, THeader>(Func<IFluentListBlockDescriptorBase<TItem, THeader>, object> fluentBlockRequest);
+
+    IList<IListBlockContext<TItem, THeader>> GetListBlocks<TItem, THeader>(
+        Func<IFluentListBlockDescriptorBase<TItem, THeader>, object> fluentBlockRequest);
+
     IListBlock<TItem, THeader> GetLastListBlock<TItem, THeader>();
-
-
-
 }

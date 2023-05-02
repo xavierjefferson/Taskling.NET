@@ -77,10 +77,7 @@ public class RetryHelper
     {
         var policyBuilder = Policy<T>.Handle<DbException>(i => i.IsTransient).OrInner<DbException>(i => i.IsTransient);
 
-        foreach (var extension in Extensions)
-        {
-            policyBuilder = extension.Add(policyBuilder);
-        }
+        foreach (var extension in Extensions) policyBuilder = extension.Add(policyBuilder);
 
         return policyBuilder;
     }

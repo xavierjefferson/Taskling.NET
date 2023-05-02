@@ -100,7 +100,7 @@ public class WhenDisposed
         executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
         // ACT
-        await StartContextWithoutUsingOrCompleteAsync();
+        await StartContextWithoutUsingOrCompletedAsync();
         GC.Collect(0, GCCollectionMode.Forced); // referenceless context is collected
         Thread.Sleep(6000);
 
@@ -110,7 +110,7 @@ public class WhenDisposed
         Assert.True(lastKeepAlive < expectedLastKeepAliveMax);
     }
 
-    private async Task StartContextWithoutUsingOrCompleteAsync()
+    private async Task StartContextWithoutUsingOrCompletedAsync()
     {
         var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
             _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing());

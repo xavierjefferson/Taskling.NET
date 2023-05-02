@@ -77,19 +77,17 @@ public class RangeBlockContext : IDateRangeBlockContext, INumericRangeBlockConte
 
     public void Start()
     {
-        this.StartAsync().WaitAndUnwrapException();
-        
+        StartAsync().WaitAndUnwrapException();
     }
 
     public void Complete(int itemCountProcessed)
     {
-        this.CompleteAsync(itemCountProcessed).WaitAndUnwrapException();
-        
+        CompleteAsync(itemCountProcessed).WaitAndUnwrapException();
     }
 
     public void Failed(string toString)
     {
-        this.FailedAsync(toString).WaitAndUnwrapException();
+        FailedAsync(toString).WaitAndUnwrapException();
     }
 
     public async Task FailedAsync()

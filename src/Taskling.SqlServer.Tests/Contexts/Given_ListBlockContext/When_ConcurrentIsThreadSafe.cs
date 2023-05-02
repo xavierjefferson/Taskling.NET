@@ -57,10 +57,10 @@ public class When_ConcurrentIsThreadSafe
                 {
                     await listBlock.StartAsync();
                     var items = await listBlock.GetItemsAsync(ItemStatus.Failed, ItemStatus.Pending);
-                    
+
                     await items.ParallelForEachAsync(async currentItem =>
                     {
-                        await listBlock.ItemCompleteAsync(currentItem);
+                        await listBlock.ItemCompletedAsync(currentItem);
                     });
 
                     await listBlock.CompleteAsync();
@@ -99,7 +99,7 @@ public class When_ConcurrentIsThreadSafe
                     var items = await listBlock.GetItemsAsync(ItemStatus.Failed, ItemStatus.Pending);
                     await items.ParallelForEachAsync(async currentItem =>
                     {
-                        await listBlock.ItemCompleteAsync(currentItem);
+                        await listBlock.ItemCompletedAsync(currentItem);
                     });
 
                     await listBlock.CompleteAsync();
@@ -138,7 +138,7 @@ public class When_ConcurrentIsThreadSafe
 
                     await items.ParallelForEachAsync(async currentItem =>
                     {
-                        await listBlock.ItemCompleteAsync(currentItem);
+                        await listBlock.ItemCompletedAsync(currentItem);
                     });
 
                     await listBlock.CompleteAsync();
@@ -180,7 +180,7 @@ public class When_ConcurrentIsThreadSafe
                     await currentBlock.StartAsync();
 
                     foreach (var currentItem in await currentBlock.GetItemsAsync(ItemStatus.Pending))
-                        await currentBlock.ItemCompleteAsync(currentItem);
+                        await currentBlock.ItemCompletedAsync(currentItem);
                     ;
 
                     await currentBlock.CompleteAsync();

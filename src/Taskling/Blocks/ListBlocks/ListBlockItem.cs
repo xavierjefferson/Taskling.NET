@@ -17,7 +17,7 @@ public class ListBlockItem<T> : IListBlockItem<T>
     public DateTime LastUpdated { get; set; }
     public int? Step { get; set; }
 
-    public async Task CompletedAsync()
+    public async Task CompleteAsync()
     {
         await _itemComplete(this).ConfigureAwait(false);
     }
@@ -32,20 +32,19 @@ public class ListBlockItem<T> : IListBlockItem<T>
         await _discardItem(this, message, null).ConfigureAwait(false);
     }
 
-    public void Failed(string toString)
+    public void Failed(string message)
     {
-        this.FailedAsync(toString).WaitAndUnwrapException();
-        
+        FailedAsync(message).WaitAndUnwrapException();
     }
 
-    public void Discarded(string discardedDueToDistanceRule)
+    public void Discarded(string message)
     {
-       this.DiscardedAsync(discardedDueToDistanceRule).WaitAndUnwrapException();
+        DiscardedAsync(message).WaitAndUnwrapException();
     }
 
-    public void Completed()
+    public void Complete()
     {
-        this.CompletedAsync().WaitAndUnwrapException();
+        CompleteAsync().WaitAndUnwrapException();
     }
 
     internal void SetParentContext(Func<IListBlockItem<T>, Task> itemComplete,

@@ -91,12 +91,6 @@ public class TaskRepository : DbOperationsService, ITaskRepository
         });
     }
 
-    private static IQueryable<Models.TaskDefinition> GetTaskDefinitionsByTaskIdAsync(TaskId taskId, TasklingDbContext dbContext)
-    {
-        return dbContext.TaskDefinitions
-            .Where(i => i.TaskName == taskId.TaskName && i.ApplicationName == taskId.ApplicationName);
-    }
-
     public void ClearCache()
     {
         CacheSemaphore.Wait();
@@ -108,6 +102,13 @@ public class TaskRepository : DbOperationsService, ITaskRepository
         {
             CacheSemaphore.Release();
         }
+    }
+
+    private static IQueryable<Models.TaskDefinition> GetTaskDefinitionsByTaskIdAsync(TaskId taskId,
+        TasklingDbContext dbContext)
+    {
+        return dbContext.TaskDefinitions
+            .Where(i => i.TaskName == taskId.TaskName && i.ApplicationName == taskId.ApplicationName);
     }
 
     private async Task<TaskDefinition?> GetTaskAsync(TaskId taskId)

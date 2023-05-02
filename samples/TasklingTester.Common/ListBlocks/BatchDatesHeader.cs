@@ -1,8 +1,7 @@
-﻿namespace TasklingTester.Common.ListBlocks
+﻿namespace TasklingTester.Common.ListBlocks;
+
+public class BatchDatesHeader
 {
-    public class BatchDatesHeader
-    {
-        public DateTime FromDate { get; set; }
-        public DateTime ToDate { get; set; }
-    }
+    public DateTime FromDate { get; set; }
+    public DateTime ToDate { get; set; }
 }

@@ -1,9 +1,8 @@
-﻿namespace TasklingTester.Common.Entities
+﻿namespace TasklingTester.Common.Entities;
+
+public class TravelInsight
 {
-    public class TravelInsight
-    {
-        public string PassengerName { get; set; }
-        public string InsightText { get; set; }
-        public DateTime InsightDate { get; set; }
-    }
+    public string PassengerName { get; set; }
+    public string InsightText { get; set; }
+    public DateTime InsightDate { get; set; }
 }

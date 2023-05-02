@@ -37,23 +37,24 @@ public class ListBlockContext<TItem, THeader> : ListBlockContextBase<TItem, THea
     }
 
     public IListBlock<TItem, THeader> Block => _blockWithHeader;
+
     public IEnumerable<IListBlockItem<TItem>> GetItems(params ItemStatus[] statuses)
     {
-        return this.GetItemsAsync(statuses).WaitAndUnwrapException();
+        return GetItemsAsync(statuses).WaitAndUnwrapException();
     }
 
     public void Complete()
     {
-        this.CompleteAsync().WaitAndUnwrapException();
+        CompleteAsync().WaitAndUnwrapException();
     }
 
     public void Failed(string toString)
     {
-        this.FailedAsync(toString).WaitAndUnwrapException();
+        FailedAsync(toString).WaitAndUnwrapException();
     }
 
     public void Start()
     {
-        this.StartAsync().WaitAndUnwrapException();
+        StartAsync().WaitAndUnwrapException();
     }
 }

@@ -326,7 +326,8 @@ public class ListBlockContextBase<TItem, THeader>
                 _headerlessBlock.Items = Convert(protoListBlockItems);
 
                 foreach (var item in _headerlessBlock.Items)
-                    ((ListBlockItem<TItem>)item).SetParentContext(ItemCompleteAsync, ItemFailedAsync, DiscardItemAsync);
+                    ((ListBlockItem<TItem>)item).SetParentContext(ItemCompletedAsync, ItemFailedAsync,
+                        DiscardItemAsync);
             }
 
             if (statuses.Any(x => x == ItemStatus.All))
@@ -358,7 +359,8 @@ public class ListBlockContextBase<TItem, THeader>
                 _blockWithHeader.Items = Convert(protoListBlockItems);
 
                 foreach (var item in _blockWithHeader.Items)
-                    ((ListBlockItem<TItem>)item).SetParentContext(ItemCompleteAsync, ItemFailedAsync, DiscardItemAsync);
+                    ((ListBlockItem<TItem>)item).SetParentContext(ItemCompletedAsync, ItemFailedAsync,
+                        DiscardItemAsync);
             }
 
             if (statuses.Any(x => x == ItemStatus.All))
@@ -390,7 +392,7 @@ public class ListBlockContextBase<TItem, THeader>
             SetItems(listBlockItems);
 
             foreach (var item in listBlockItems)
-                ((ListBlockItem<TItem>)item).SetParentContext(ItemCompleteAsync, ItemFailedAsync, DiscardItemAsync);
+                ((ListBlockItem<TItem>)item).SetParentContext(ItemCompletedAsync, ItemFailedAsync, DiscardItemAsync);
         }
         finally
         {
@@ -406,7 +408,7 @@ public class ListBlockContextBase<TItem, THeader>
         return await GetItemsFromHeaderlessBlockAsync(statuses).ConfigureAwait(false);
     }
 
-    public async Task ItemCompleteAsync(IListBlockItem<TItem> item)
+    public async Task ItemCompletedAsync(IListBlockItem<TItem> item)
     {
         ValidateBlockIsActive();
         item.Status = ItemStatus.Completed;

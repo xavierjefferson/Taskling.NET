@@ -1,18 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using TasklingTester.Common.Entities;
+﻿using TasklingTester.Common.Entities;
 
-namespace TasklingTesterAsync.ListBlocks
+namespace TasklingTesterAsync.ListBlocks;
+
+public class NotificationService : INotificationService
 {
-    public class NotificationService : INotificationService
+    public async Task NotifyUserAsync(TravelInsight travelInsight)
     {
-        public async Task NotifyUserAsync(TravelInsight travelInsight)
-        {
-            // send a push notification or something
-            await Task.Yield();
-        }
+        // send a push notification or something
+        await Task.Yield();
     }
 }

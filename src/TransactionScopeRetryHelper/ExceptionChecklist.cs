@@ -8,12 +8,10 @@ public interface IPollyCheck
     public PolicyBuilder Add(PolicyBuilder input);
 }
 
-
 public class ExceptionChecklist : List<Func<Exception, bool>>
 {
 }
 
 public class PollyExtension : List<IPollyCheck>
 {
-
 }

@@ -9,7 +9,6 @@ using Taskling.Blocks.ListBlocks;
 using Taskling.Contexts;
 using Taskling.Events;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.SqlServer.Tests.Contexts.Given_RangeBlockContext;
 using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
@@ -99,7 +98,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
                     {
                         // do the processing
 
-                        await itemToProcess.CompletedAsync();
+                        await itemToProcess.CompleteAsync();
 
                         // More more should be Completed
                         expectedCompletedItems++;
@@ -342,7 +341,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
                     {
                         // do the processing
 
-                        await itemToProcess.CompletedAsync();
+                        await itemToProcess.CompleteAsync();
 
                         // There should be 0 Completed because we batch commit at the end
                         Assert.Equal(0,
@@ -427,7 +426,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
                         itemsProcessed++;
                         // do the processing
 
-                        await itemToProcess.CompletedAsync();
+                        await itemToProcess.CompleteAsync();
 
                         // There should be 0 Completed unless we have reached the batch size 10
                         if (itemsProcessed % 10 == 0)
@@ -562,7 +561,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
                 {
                     await listBlock.StartAsync();
                     foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatus.Pending))
-                        await itemToProcess.CompletedAsync();
+                        await itemToProcess.CompleteAsync();
 
                     await listBlock.CompleteAsync();
                 }
@@ -641,7 +640,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
                 {
                     await listBlock.StartAsync();
                     foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatus.Pending))
-                        await itemToProcess.CompletedAsync();
+                        await itemToProcess.CompleteAsync();
 
                     await listBlock.CompleteAsync();
                 }
@@ -694,7 +693,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
                     if (counter == 2)
                         await itemToProcess.FailedAsync("Exception");
                     else
-                        await itemToProcess.CompletedAsync();
+                        await itemToProcess.CompleteAsync();
 
                     counter++;
                 }
@@ -739,7 +738,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
                     if (counter == 2)
                         await listBlocks[0].ItemFailedAsync(itemToProcess, "Exception", 1);
                     else
-                        await listBlocks[0].ItemCompleteAsync(itemToProcess);
+                        await listBlocks[0].ItemCompletedAsync(itemToProcess);
 
                     counter++;
                 }
@@ -751,7 +750,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
 
                 foreach (var itemToProcess in await listBlocks[1].GetItemsAsync(ItemStatus.Pending))
                 {
-                    await listBlocks[1].ItemCompleteAsync(itemToProcess);
+                    await listBlocks[1].ItemCompletedAsync(itemToProcess);
 
                     counter++;
                 }
@@ -923,7 +922,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
                 {
                     await listBlock.StartAsync();
                     foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatus.Pending))
-                        await listBlock.ItemCompleteAsync(itemToProcess);
+                        await listBlock.ItemCompletedAsync(itemToProcess);
 
                     await listBlock.CompleteAsync();
                 }
@@ -955,7 +954,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
                     await listBlock.StartAsync();
 
                     foreach (var item in await listBlock.GetItemsAsync())
-                        await listBlock.ItemCompleteAsync(item);
+                        await listBlock.ItemCompletedAsync(item);
 
                     await listBlock.CompleteAsync();
                 }
@@ -1003,7 +1002,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
 
                     var itemsToProcess = await listBlock.Block.GetItemsAsync();
                     foreach (var item in itemsToProcess)
-                        await item.CompletedAsync();
+                        await item.CompleteAsync();
 
                     await listBlock.CompleteAsync();
                 }

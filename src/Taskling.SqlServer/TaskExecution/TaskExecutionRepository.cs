@@ -86,7 +86,8 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
 
             {
                 var items = await dbContext.TaskExecutions
-                    .Where(i => i.TaskDefinitionId == taskDefinition.TaskDefinitionId).OrderByDescending(i => i.TaskExecutionId)
+                    .Where(i => i.TaskDefinitionId == taskDefinition.TaskDefinitionId)
+                    .OrderByDescending(i => i.TaskExecutionId)
                     .Take(taskExecutionMetaRequest.ExecutionsToRetrieve)
                     .ToListAsync()
                     .ConfigureAwait(false);
@@ -102,8 +103,6 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
                     executionMeta.CompletedAt = taskExecution.CompletedAt;
                     if (taskExecution.CompletedAt != null)
                     {
-
-
                         var failed = taskExecution.Failed;
                         var blocked = taskExecution.Blocked;
 
@@ -136,7 +135,6 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
                     executionMeta.ReferenceValue = taskExecution.ReferenceValue;
                     response.Executions.Add(executionMeta);
                 }
-
             }
 
             return response;

@@ -28,16 +28,17 @@ using Taskling.InfrastructureContracts.CriticalSections;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.Serialization;
 using Taskling.Tasks;
- 
+
 namespace Taskling.ExecutionContext;
 
 public class TaskExecutionContext : ITaskExecutionContext
 {
     #region .: Public Properties :.
 
-    public IList<IDateRangeBlockContext> GetDateRangeBlocks(Func<IFluentDateRangeBlockDescriptor, object> fluentBlockRequest)
+    public IList<IDateRangeBlockContext> GetDateRangeBlocks(
+        Func<IFluentDateRangeBlockDescriptor, object> fluentBlockRequest)
     {
-        return this.GetDateRangeBlocksAsync(fluentBlockRequest).WaitAndUnwrapException();
+        return GetDateRangeBlocksAsync(fluentBlockRequest).WaitAndUnwrapException();
     }
 
     public bool IsStarted => IsExecutionContextActive;
@@ -71,7 +72,7 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     private const string NotActiveMessage =
         @"The context is not started. Only TryStart() can be called on a not started context. The context may not be in the started state because: 
-1 - Complete() was already called,
+1 - Completed() was already called,
 2 - TryStart() returned false due to reaching the concurrency limit. When you call TryStart() always check the bool result and only continue when the result is true.
 3 - the StartTask attribute has been used in PassThrough mode and the context could not start due to reaching the concurrency limit. When you use the StartTask attribute with PassThrough mode make sure you check the IsStarted property on the context before executing the logic of the job.
 ";
@@ -98,7 +99,7 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     public bool TryStart()
     {
-        return this.TryStartAsync().WaitAndUnwrapException();
+        return TryStartAsync().WaitAndUnwrapException();
     }
 
     public TaskExecutionContext(ITaskExecutionRepository taskExecutionRepository,
@@ -321,8 +322,9 @@ public class TaskExecutionContext : ITaskExecutionContext
     public IList<IDateRangeBlockContext> GetDateRangeBlocksc(
         Func<IFluentDateRangeBlockDescriptor, object> fluentBlockRequest)
     {
-        return this.GetDateRangeBlocksAsync(fluentBlockRequest).WaitAndUnwrapException();
+        return GetDateRangeBlocksAsync(fluentBlockRequest).WaitAndUnwrapException();
     }
+
     public async Task<IList<IDateRangeBlockContext>> GetDateRangeBlocksAsync(
         Func<IFluentDateRangeBlockDescriptor, object> fluentBlockRequest)
     {
@@ -357,9 +359,10 @@ public class TaskExecutionContext : ITaskExecutionContext
         //return await _blockFactory.GenerateDateRangeBlocksAsync(request).ConfigureAwait(false);
     }
 
-    public IList<INumericRangeBlockContext> GetNumericRangeBlocks(Func<IFluentNumericRangeBlockDescriptor, object> fluentBlockRequest)
+    public IList<INumericRangeBlockContext> GetNumericRangeBlocks(
+        Func<IFluentNumericRangeBlockDescriptor, object> fluentBlockRequest)
     {
-        return this.GetNumericRangeBlocksAsync(fluentBlockRequest).WaitAndUnwrapException();
+        return GetNumericRangeBlocksAsync(fluentBlockRequest).WaitAndUnwrapException();
     }
 
     public async Task<IList<T>> GetBlocksAsync<T, U, V, W>(Func<U, object> fluentBlockRequest,
@@ -575,7 +578,7 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     public INumericRangeBlock GetLastNumericRangeBlock(LastBlockOrder lastBlockOrder)
     {
-        return this.GetLastNumericRangeBlockAsync(lastBlockOrder).WaitAndUnwrapException();
+        return GetLastNumericRangeBlockAsync(lastBlockOrder).WaitAndUnwrapException();
     }
 
     public async Task<IListBlock<T>> GetLastListBlockAsync<T>()
@@ -677,24 +680,23 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     public IDateRangeBlock GetLastDateRangeBlock(LastBlockOrder lastCreated)
     {
-        return this.GetLastDateRangeBlockAsync(lastCreated).WaitAndUnwrapException();
+        return GetLastDateRangeBlockAsync(lastCreated).WaitAndUnwrapException();
     }
 
     public void Complete()
     {
-        this.CompleteAsync().WaitAndUnwrapException();
-        
+        CompleteAsync().WaitAndUnwrapException();
     }
 
     public void Error(string toString, bool b)
     {
-        this.ErrorAsync(toString, b).WaitAndUnwrapException();
-        
+        ErrorAsync(toString, b).WaitAndUnwrapException();
     }
 
-    public IList<IListBlockContext<TItem, THeader>> GetListBlocks<TItem, THeader>(Func<IFluentListBlockDescriptorBase<TItem, THeader>, object> fluentBlockRequest)
+    public IList<IListBlockContext<TItem, THeader>> GetListBlocks<TItem, THeader>(
+        Func<IFluentListBlockDescriptorBase<TItem, THeader>, object> fluentBlockRequest)
     {
-        return this.GetListBlocksAsync(fluentBlockRequest).WaitAndUnwrapException();
+        return GetListBlocksAsync(fluentBlockRequest).WaitAndUnwrapException();
     }
 
     public IListBlock<TItem, THeader> GetLastListBlock<TItem, THeader>()

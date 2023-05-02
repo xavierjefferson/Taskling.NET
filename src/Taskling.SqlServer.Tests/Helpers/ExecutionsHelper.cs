@@ -148,12 +148,12 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
 
     /// <summary>
     ///     private const string GetLastEventQuery = @"SELECT [EventType]
-    ///,[Message]
-    ///FROM[Taskling].[TaskExecutionEvent]
-    ///TEE
-    ///JOIN Taskling.TaskExecution AS TE ON TEE.TaskExecutionId = TE.TaskExecutionId
-    ///WHERE TE.TaskDefinitionId = @TaskDefinitionId
-    ///ORDER BY 1 DESC";
+    ///     ,[Message]
+    ///     FROM[Taskling].[TaskExecutionEvent]
+    ///     TEE
+    ///     JOIN Taskling.TaskExecution AS TE ON TEE.TaskExecutionId = TE.TaskExecutionId
+    ///     WHERE TE.TaskDefinitionId = @TaskDefinitionId
+    ///     ORDER BY 1 DESC";
     /// </summary>
     /// <param name="taskDefinitionId"></param>
     /// <returns></returns>
@@ -358,7 +358,6 @@ WHERE TaskExecutionId = @TaskExecutionId
             StartedAt = DATEADD(HOUR, -12, GETUTCDATE())
 WHERE TaskDefinitionId = @TaskDefinitionId
 AND TaskExecutionId = (SELECT MAX(TaskExecutionId) FROM [Taskling].[TaskExecution])";
-
 
 
     private const string GetLastTaskExecutionQuery = @"SELECT *

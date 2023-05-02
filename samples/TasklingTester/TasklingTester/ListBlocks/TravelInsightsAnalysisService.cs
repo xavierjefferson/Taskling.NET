@@ -1,144 +1,137 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Taskling;
-using Taskling.Blocks.Common;
+﻿using Taskling;
 using Taskling.Blocks.ListBlocks;
 using Taskling.Contexts;
-using TasklingTester.Configuration;
 using TasklingTester.Common.Entities;
 using TasklingTester.Common.ListBlocks;
+using TasklingTester.Configuration;
 using TasklingTester.Repositories;
 
-namespace TasklingTester.ListBlocks
+namespace TasklingTester.ListBlocks;
+
+public class TravelInsightsAnalysisService
 {
-    public class TravelInsightsAnalysisService
+    private readonly IMyApplicationConfiguration _configuration;
+    private readonly INotificationService _notificationService;
+    private readonly ITasklingClient _tasklingClient;
+    private readonly IJourneysRepository _travelDataService;
+
+    public TravelInsightsAnalysisService(ITasklingClient tasklingClient,
+        IMyApplicationConfiguration configuration,
+        IJourneysRepository myTravelDataService,
+        INotificationService notificationService)
     {
-        private ITasklingClient _tasklingClient;
-        private IMyApplicationConfiguration _configuration;
-        private IJourneysRepository _travelDataService;
-        private INotificationService _notificationService;
+        _tasklingClient = tasklingClient;
+        _configuration = configuration;
+        _travelDataService = myTravelDataService;
+        _notificationService = notificationService;
+    }
 
-        public TravelInsightsAnalysisService(ITasklingClient tasklingClient,
-            IMyApplicationConfiguration configuration,
-            IJourneysRepository myTravelDataService,
-            INotificationService notificationService)
+    public void RunBatchJob()
+    {
+        using (var taskExecutionContext =
+               _tasklingClient.CreateTaskExecutionContext("MyApplication", "MyListBasedBatchJob"))
         {
-            _tasklingClient = tasklingClient;
-            _configuration = configuration;
-            _travelDataService = myTravelDataService;
-            _notificationService = notificationService;
+            if (taskExecutionContext.TryStart()) RunTask(taskExecutionContext);
         }
+    }
 
-        public void RunBatchJob()
+    private void RunTask(ITaskExecutionContext taskExecutionContext)
+    {
+        try
         {
-            using (var taskExecutionContext = _tasklingClient.CreateTaskExecutionContext("MyApplication", "MyListBasedBatchJob"))
+            var listBlocks = GetListBlocks(taskExecutionContext);
+            foreach (var block in listBlocks)
+                ProcessBlock(block);
+
+            taskExecutionContext.Complete();
+        }
+        catch (Exception ex)
+        {
+            taskExecutionContext.Error(ex.ToString(), true);
+        }
+    }
+
+    private IList<IListBlockContext<Journey, BatchDatesHeader>> GetListBlocks(
+        ITaskExecutionContext taskExecutionContext)
+    {
+        using (var cs = taskExecutionContext.CreateCriticalSection())
+        {
+            if (cs.TryStart())
             {
-                if (taskExecutionContext.TryStart())
+                var startDate = GetDateRangeStartDate(taskExecutionContext);
+                var endDate = DateTime.Now;
+
+                var journeys = _travelDataService.GetJourneys(startDate, endDate).ToList();
+                var batchHeader = new BatchDatesHeader
                 {
-                    RunTask(taskExecutionContext);
-                }
+                    FromDate = startDate,
+                    ToDate = endDate
+                };
+
+                short blockSize = 500;
+                return taskExecutionContext.GetListBlocks<Journey, BatchDatesHeader>(x =>
+                    x.WithPeriodicCommit(journeys, batchHeader, blockSize, BatchSize.Fifty));
             }
+
+            throw new Exception("Could not acquire a critical section, aborted task");
         }
+    }
 
-        private void RunTask(ITaskExecutionContext taskExecutionContext)
+    private DateTime GetDateRangeStartDate(ITaskExecutionContext taskExecutionContext)
+    {
+        var lastBlock = taskExecutionContext.GetLastListBlock<Journey, BatchDatesHeader>();
+        if (lastBlock == null)
+            return _configuration.FirstRunDate;
+        return lastBlock.Header.ToDate;
+    }
+
+    private void ProcessBlock(IListBlockContext<Journey, BatchDatesHeader> blockContext)
+    {
+        try
         {
-            try
-            {
-                var listBlocks = GetListBlocks(taskExecutionContext);
-                foreach (var block in listBlocks)
-                    ProcessBlock(block);
+            blockContext.Start();
 
-                taskExecutionContext.Complete();
-            }
-            catch (Exception ex)
-            {
-                taskExecutionContext.Error(ex.ToString(), true);
-            }
+            foreach (var journeyItem in blockContext.GetItems(ItemStatus.Pending, ItemStatus.Failed))
+                ProcessJourney(journeyItem);
+
+            blockContext.Complete();
         }
-
-        private IList<IListBlockContext<Journey, BatchDatesHeader>> GetListBlocks(ITaskExecutionContext taskExecutionContext)
+        catch (Exception ex)
         {
-            using (var cs = taskExecutionContext.CreateCriticalSection())
-            {
-                if (cs.TryStart())
-                {
-                    var startDate = GetDateRangeStartDate(taskExecutionContext);
-                    var endDate = DateTime.Now;
-
-                    var journeys = _travelDataService.GetJourneys(startDate, endDate).ToList();
-                    var batchHeader = new BatchDatesHeader()
-                    {
-                        FromDate = startDate,
-                        ToDate = endDate
-                    };
-
-                    short blockSize = 500;
-                    return taskExecutionContext.GetListBlocks<Journey, BatchDatesHeader>(x => x.WithPeriodicCommit(journeys, batchHeader, blockSize, BatchSize.Fifty));
-                }
-                throw new Exception("Could not acquire a critical section, aborted task");
-            }
+            blockContext.Failed(ex.ToString());
         }
+    }
 
-        private DateTime GetDateRangeStartDate(ITaskExecutionContext taskExecutionContext)
+    private void ProcessJourney(IListBlockItem<Journey> journeyItem)
+    {
+        try
         {
-            var lastBlock = taskExecutionContext.GetLastListBlock<Journey, BatchDatesHeader>();
-            if (lastBlock == null)
-                return _configuration.FirstRunDate;
+            if (journeyItem.Value.DepartureStation.Equals(journeyItem.Value.ArrivalStation))
+            {
+                journeyItem.Discarded("Discarded due to distance rule");
+            }
             else
-                return lastBlock.Header.ToDate;
+            {
+                var insight = ExtractInsight(journeyItem.Value);
+                _notificationService.NotifyUser(insight);
+                journeyItem.Complete();
+            }
         }
-
-        private void ProcessBlock(IListBlockContext<Journey, BatchDatesHeader> blockContext)
+        catch (Exception ex)
         {
-            try
-            {
-                blockContext.Start();
-
-                foreach (var journeyItem in blockContext.GetItems(ItemStatus.Pending, ItemStatus.Failed))
-                    ProcessJourney(journeyItem);
-
-                blockContext.Complete();
-            }
-            catch (Exception ex)
-            {
-                blockContext.Failed(ex.ToString());
-            }
+            journeyItem.Failed(ex.ToString());
         }
+    }
 
-        private void ProcessJourney(IListBlockItem<Journey> journeyItem)
+    private TravelInsight ExtractInsight(Journey journey)
+    {
+        var insight = new TravelInsight
         {
-            try
-            {
-                if (journeyItem.Value.DepartureStation.Equals(journeyItem.Value.ArrivalStation))
-                {
-                    journeyItem.Discarded("Discarded due to distance rule");
-                }
-                else
-                {
-                    var insight = ExtractInsight(journeyItem.Value);
-                    _notificationService.NotifyUser(insight);
-                    journeyItem.Completed();
-                }
-            }
-            catch(Exception ex)
-            {
-                journeyItem.Failed(ex.ToString());
-            }
-        }
+            InsightDate = journey.TravelDate.Date,
+            InsightText = "Some useful insight",
+            PassengerName = journey.PassengerName
+        };
 
-        private TravelInsight ExtractInsight(Journey journey)
-        {
-            var insight = new TravelInsight()
-            {
-                InsightDate = journey.TravelDate.Date,
-                InsightText = "Some useful insight",
-                PassengerName = journey.PassengerName
-            };
-
-            return insight;
-        }
+        return insight;
     }
 }
