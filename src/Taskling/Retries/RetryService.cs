@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Polly;
 using Taskling.Exceptions;
 
 namespace Taskling.Retries;
@@ -8,35 +9,19 @@ public class RetryService
 {
     public static async Task InvokeWithRetryAsync<RQ>(Func<RQ, Task> requestAction, RQ request)
     {
-        var interval = 5000;
-        double publishExponentialBackoffExponent = 2;
-        var attemptLimit = 3;
-        var attemptsMade = 0;
 
-        var successFullySent = false;
-        Exception lastException = null;
+        const double publishExponentialBackoffExponent = 2;
+        const int attemptLimit = 3;
+        const int interval = 5000;
 
-        while (attemptsMade < attemptLimit && successFullySent == false)
+        TimeSpan SleepDurationProvider(int attempt)
         {
-            try
-            {
-                await requestAction(request).ConfigureAwait(false);
-                successFullySent = true;
-            }
-            catch (TransientException ex)
-            {
-                lastException = ex;
-            }
-
-            interval = (int)(interval * publishExponentialBackoffExponent);
-            attemptsMade++;
-
-            if (!successFullySent)
-                await Task.Delay(interval).ConfigureAwait(false);
+            var value = Math.Pow(publishExponentialBackoffExponent, attempt - 1) * interval;
+            return TimeSpan.FromMilliseconds(value);
         }
 
-        if (!successFullySent)
-            throw new ExecutionException("A persistent transient exception has caused all retries to fail",
-                lastException);
+        var asyncRetryPolicy = Policy.Handle<Exception>().WaitAndRetryAsync(attemptLimit, SleepDurationProvider);
+        await asyncRetryPolicy.ExecuteAsync(() => requestAction(request));
+
     }
 }

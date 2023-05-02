@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using Taskling;
 using Taskling.Blocks.Common;
 using Taskling.Contexts;
+using TasklingTesterAsync.Configuration;
+using TasklingTesterAsync.Entities;
 using TasklingTesterAsync.Repositories;
 
 namespace TasklingTesterAsync.DateRangeBlocks

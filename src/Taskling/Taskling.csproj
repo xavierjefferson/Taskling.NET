@@ -26,6 +26,8 @@
     <PackageReference Include="microsoft.extensions.dependencyinjection.abstractions" Version="6.0.0" />
     <PackageReference Include="microsoft.extensions.logging.abstractions" Version="6.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="9.0.1" />
+    <PackageReference Include="nito.asyncex" Version="5.1.2" />
+    <PackageReference Include="polly" Version="7.2.3" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Extensions\" />

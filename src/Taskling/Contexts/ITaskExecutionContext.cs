@@ -14,12 +14,15 @@ namespace Taskling.Contexts;
 
 public interface ITaskExecutionContext : IDisposable
 {
+    IList<IDateRangeBlockContext> GetDateRangeBlocks(
+        Func<IFluentDateRangeBlockDescriptor, object> fluentBlockRequest);
     bool IsStarted { get; }
 
     void SetOptions(string applicationName,
         string taskName,
         TaskExecutionOptions taskExecutionOptions, ITaskConfigurationRepository taskConfigurationRepository);
 
+    bool TryStart();
     Task<bool> TryStartAsync();
     Task<bool> TryStartAsync(string referenceValue);
     Task<bool> TryStartAsync<TExecutionHeader>(TExecutionHeader executionHeader);
@@ -31,12 +34,15 @@ public interface ITaskExecutionContext : IDisposable
     ICriticalSectionContext CreateCriticalSection();
     Task<IDateRangeBlock> GetLastDateRangeBlockAsync(LastBlockOrder lastBlockOrder);
     Task<INumericRangeBlock> GetLastNumericRangeBlockAsync(LastBlockOrder lastBlockOrder);
+     INumericRangeBlock GetLastNumericRangeBlock(LastBlockOrder lastBlockOrder);
     Task<IListBlock<T>> GetLastListBlockAsync<T>();
     Task<IListBlock<TItem, THeader>> GetLastListBlockAsync<TItem, THeader>();
     Task<IObjectBlock<T>> GetLastObjectBlockAsync<T>();
 
     Task<IList<IDateRangeBlockContext>> GetDateRangeBlocksAsync(
         Func<IFluentDateRangeBlockDescriptor, object> fluentBlockRequest);
+     IList<INumericRangeBlockContext> GetNumericRangeBlocks(
+        Func<IFluentNumericRangeBlockDescriptor, object> fluentBlockRequest);
 
     Task<IList<INumericRangeBlockContext>> GetNumericRangeBlocksAsync(
         Func<IFluentNumericRangeBlockDescriptor, object> fluentBlockRequest);
@@ -54,4 +60,12 @@ public interface ITaskExecutionContext : IDisposable
     Task<IList<TaskExecutionMeta>> GetLastExecutionMetasAsync(int numberToRetrieve);
     Task<TaskExecutionMeta<TExecutionHeader>> GetLastExecutionMetaAsync<TExecutionHeader>();
     Task<IList<TaskExecutionMeta<TExecutionHeader>>> GetLastExecutionMetasAsync<TExecutionHeader>(int numberToRetrieve);
+    IDateRangeBlock GetLastDateRangeBlock(LastBlockOrder lastCreated);
+    void Complete();
+    void Error(string toString, bool b);
+    IList<IListBlockContext<TItem, THeader>> GetListBlocks<TItem, THeader>(Func<IFluentListBlockDescriptorBase<TItem, THeader>, object> fluentBlockRequest);
+    IListBlock<TItem, THeader> GetLastListBlock<TItem, THeader>();
+
+
+
 }

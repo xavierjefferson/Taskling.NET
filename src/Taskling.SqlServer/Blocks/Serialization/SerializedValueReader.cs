@@ -5,7 +5,7 @@ namespace Taskling.SqlServer.Blocks.Serialization;
 
 public class SerializedValueReader
 {
-    public static T ReadValue<T>(string? value, byte[]? compressedBytes)
+    public static T? ReadValue<T>(string? value, byte[]? compressedBytes)
     {
         if (value == null && compressedBytes == null) return default;
 

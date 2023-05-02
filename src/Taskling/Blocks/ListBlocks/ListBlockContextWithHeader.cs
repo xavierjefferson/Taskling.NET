@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using Nito.AsyncEx.Synchronous;
 using Taskling.Contexts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.TaskExecution;
@@ -35,4 +37,23 @@ public class ListBlockContext<TItem, THeader> : ListBlockContextBase<TItem, THea
     }
 
     public IListBlock<TItem, THeader> Block => _blockWithHeader;
+    public IEnumerable<IListBlockItem<TItem>> GetItems(params ItemStatus[] statuses)
+    {
+        return this.GetItemsAsync(statuses).WaitAndUnwrapException();
+    }
+
+    public void Complete()
+    {
+        this.CompleteAsync().WaitAndUnwrapException();
+    }
+
+    public void Failed(string toString)
+    {
+        this.FailedAsync(toString).WaitAndUnwrapException();
+    }
+
+    public void Start()
+    {
+        this.StartAsync().WaitAndUnwrapException();
+    }
 }

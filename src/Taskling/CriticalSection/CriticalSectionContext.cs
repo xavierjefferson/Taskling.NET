@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Nito.AsyncEx.Synchronous;
 using Taskling.Blocks.Factories;
 using Taskling.Contexts;
 using Taskling.Exceptions;
@@ -78,6 +79,11 @@ public class CriticalSectionContext : ICriticalSectionContext
         await _criticalSectionRepository.CompleteAsync(completeRequest).ConfigureAwait(false);
 
         _completeCalled = true;
+    }
+
+    public bool TryStart()
+    {
+        return TryStartAsync().WaitAndUnwrapException();
     }
 
     public void Dispose()

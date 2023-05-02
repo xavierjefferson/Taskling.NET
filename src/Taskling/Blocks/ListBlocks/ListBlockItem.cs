@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Nito.AsyncEx.Synchronous;
 
 namespace Taskling.Blocks.ListBlocks;
 
@@ -29,6 +30,22 @@ public class ListBlockItem<T> : IListBlockItem<T>
     public async Task DiscardedAsync(string message)
     {
         await _discardItem(this, message, null).ConfigureAwait(false);
+    }
+
+    public void Failed(string toString)
+    {
+        this.FailedAsync(toString).WaitAndUnwrapException();
+        
+    }
+
+    public void Discarded(string discardedDueToDistanceRule)
+    {
+       this.DiscardedAsync(discardedDueToDistanceRule).WaitAndUnwrapException();
+    }
+
+    public void Completed()
+    {
+        this.CompletedAsync().WaitAndUnwrapException();
     }
 
     internal void SetParentContext(Func<IListBlockItem<T>, Task> itemComplete,

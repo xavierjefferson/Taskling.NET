@@ -9,4 +9,5 @@ public interface ICriticalSectionContext : IDisposable
     Task<bool> TryStartAsync();
     Task<bool> TryStartAsync(TimeSpan retryInterval, int numberOfAttempts);
     Task CompleteAsync();
+    bool TryStart();
 }

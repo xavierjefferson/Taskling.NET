@@ -15,13 +15,17 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Taskling.SqlServer", "Taskl
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsoleApp1", "ConsoleApp1\ConsoleApp1.csproj", "{D23D7DC9-A43F-46F2-AE6F-65443DFFB344}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransactionScopeRetryHelper", "TransactionScopeRetryHelper\TransactionScopeRetryHelper.csproj", "{998FB500-A709-4D39-AE26-F408DBF01FFF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TransactionScopeRetryHelper", "TransactionScopeRetryHelper\TransactionScopeRetryHelper.csproj", "{998FB500-A709-4D39-AE26-F408DBF01FFF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransactionScopeRetryHelper.SystemDataSqlClient", "TransactionScopeRetryHelper.SystemDataSqlClient\TransactionScopeRetryHelper.SystemDataSqlClient.csproj", "{4FB874F5-C307-4932-93A2-7C2E3BF295D2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TransactionScopeRetryHelper.SystemDataSqlClient", "TransactionScopeRetryHelper.SystemDataSqlClient\TransactionScopeRetryHelper.SystemDataSqlClient.csproj", "{4FB874F5-C307-4932-93A2-7C2E3BF295D2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransactionScopeRetryHelper.MicrosoftDataSqlClient", "TransactionScopeRetryHelper.MicrosoftDataSqlClient\TransactionScopeRetryHelper.MicrosoftDataSqlClient.csproj", "{B8FF0446-7530-429E-8838-A4034651F349}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TransactionScopeRetryHelper.MicrosoftDataSqlClient", "TransactionScopeRetryHelper.MicrosoftDataSqlClient\TransactionScopeRetryHelper.MicrosoftDataSqlClient.csproj", "{B8FF0446-7530-429E-8838-A4034651F349}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransactionScopeRetryHelper.MySqlClient", "TransactionScopeRetryHelper.MySqlData\TransactionScopeRetryHelper.MySqlClient.csproj", "{A3598B83-AAD3-4FA3-976B-A34063E2BB53}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TransactionScopeRetryHelper.MySqlClient", "TransactionScopeRetryHelper.MySqlData\TransactionScopeRetryHelper.MySqlClient.csproj", "{A3598B83-AAD3-4FA3-976B-A34063E2BB53}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TasklingTester", "..\samples\TasklingTester\TasklingTester\TasklingTester.csproj", "{159F0D17-79F1-4AC2-94A0-6614FB3E8E10}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TasklingTesterAsync", "..\samples\TasklingTester\TasklingTesterAsync\TasklingTesterAsync.csproj", "{AB217961-540A-42E2-9C8B-BB4960CA7179}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -67,6 +71,14 @@ Global
 		{A3598B83-AAD3-4FA3-976B-A34063E2BB53}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A3598B83-AAD3-4FA3-976B-A34063E2BB53}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A3598B83-AAD3-4FA3-976B-A34063E2BB53}.Release|Any CPU.Build.0 = Release|Any CPU
+		{159F0D17-79F1-4AC2-94A0-6614FB3E8E10}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{159F0D17-79F1-4AC2-94A0-6614FB3E8E10}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{159F0D17-79F1-4AC2-94A0-6614FB3E8E10}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{159F0D17-79F1-4AC2-94A0-6614FB3E8E10}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AB217961-540A-42E2-9C8B-BB4960CA7179}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AB217961-540A-42E2-9C8B-BB4960CA7179}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AB217961-540A-42E2-9C8B-BB4960CA7179}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AB217961-540A-42E2-9C8B-BB4960CA7179}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

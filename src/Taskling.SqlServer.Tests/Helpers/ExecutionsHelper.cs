@@ -146,13 +146,24 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
         });
     }
 
+    /// <summary>
+    ///     private const string GetLastEventQuery = @"SELECT [EventType]
+    ///,[Message]
+    ///FROM[Taskling].[TaskExecutionEvent]
+    ///TEE
+    ///JOIN Taskling.TaskExecution AS TE ON TEE.TaskExecutionId = TE.TaskExecutionId
+    ///WHERE TE.TaskDefinitionId = @TaskDefinitionId
+    ///ORDER BY 1 DESC";
+    /// </summary>
+    /// <param name="taskDefinitionId"></param>
+    /// <returns></returns>
     public GetLastEventResponse GetLastEvent(int taskDefinitionId)
     {
         return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
-                var z = dbContext.TaskExecutionEvents.OrderByDescending(i => i.TaskExecutionId)
+                var z = dbContext.TaskExecutionEvents.OrderByDescending(i => i.TaskExecutionEventId)
                     .Where(i => i.TaskExecution.TaskDefinitionId == taskDefinitionId)
                     .Select(i => new { i.EventType, i.Message }).FirstOrDefault();
 
@@ -348,12 +359,7 @@ WHERE TaskExecutionId = @TaskExecutionId
 WHERE TaskDefinitionId = @TaskDefinitionId
 AND TaskExecutionId = (SELECT MAX(TaskExecutionId) FROM [Taskling].[TaskExecution])";
 
-    private const string GetLastEventQuery = @"SELECT [EventType]
-      ,[Message]
-FROM [Taskling].[TaskExecutionEvent] TEE
-JOIN Taskling.TaskExecution AS TE ON TEE.TaskExecutionId = TE.TaskExecutionId
-WHERE TE.TaskDefinitionId = @TaskDefinitionId
-ORDER BY 1 DESC";
+
 
     private const string GetLastTaskExecutionQuery = @"SELECT *
 FROM [Taskling].[TaskExecution] TE
@@ -707,14 +713,14 @@ AND T.TaskName = @TaskName";
             using (var dbContext = GetDbContext())
             {
                 var a = dbContext.TaskExecutions.GroupBy(i => 1).Select(i => i.Max(j => j.TaskExecutionId));
-                var b = a
+                var taskExecution = a
                     .Join(dbContext.TaskExecutions, i => i, j => j.TaskExecutionId, (i, j) => j)
                     .FirstOrDefault(j => j.TaskDefinitionId == taskDefinitionId);
-                if (b != null)
+                if (taskExecution != null)
                 {
-                    b.CompletedAt = null;
-                    b.StartedAt = b.LastKeepAlive = DateTime.UtcNow.AddHours(-12);
-                    dbContext.TaskExecutions.Update(b);
+                    taskExecution.CompletedAt = null;
+                    taskExecution.StartedAt = taskExecution.LastKeepAlive = DateTime.UtcNow.AddHours(-12);
+                    dbContext.TaskExecutions.Update(taskExecution);
                 }
 
                 dbContext.SaveChanges();

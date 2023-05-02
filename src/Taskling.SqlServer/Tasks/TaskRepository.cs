@@ -3,7 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.AncilliaryServices;
+using Taskling.SqlServer.Models;
 using TransactionScopeRetryHelper;
+using TaskDefinition = Taskling.InfrastructureContracts.TaskExecution.TaskDefinition;
 
 namespace Taskling.SqlServer.Tasks;
 
@@ -62,14 +64,10 @@ public class TaskRepository : DbOperationsService, ITaskRepository
         {
             using (var dbContext = await GetDbContextAsync(taskId))
             {
-                var tuple = await dbContext.TaskDefinitions
-                    .Where(i => i.TaskName == taskId.TaskName && i.ApplicationName == taskId.ApplicationName)
+                var tuple = await GetTaskDefinitionsByTaskIdAsync(taskId, dbContext)
                     .Select(i => new { i.LastCleaned }).FirstOrDefaultAsync().ConfigureAwait(false);
-                if (tuple == null) return DateTime.MinValue;
-                return tuple.LastCleaned ?? DateTime.MinValue;
+                return tuple == null ? DateTime.MinValue : tuple.LastCleaned ?? DateTime.MinValue;
             }
-
-            return DateTime.MinValue;
         });
     }
 
@@ -79,8 +77,7 @@ public class TaskRepository : DbOperationsService, ITaskRepository
         {
             using (var dbContext = await GetDbContextAsync(taskId))
             {
-                var taskDefinitions = await dbContext.TaskDefinitions
-                    .Where(i => i.TaskName == taskId.TaskName && i.ApplicationName == taskId.ApplicationName)
+                var taskDefinitions = await GetTaskDefinitionsByTaskIdAsync(taskId, dbContext)
                     .ToListAsync()
                     .ConfigureAwait(false);
                 foreach (var taskDefinition in taskDefinitions)
@@ -92,6 +89,12 @@ public class TaskRepository : DbOperationsService, ITaskRepository
                 await dbContext.SaveChangesAsync();
             }
         });
+    }
+
+    private static IQueryable<Models.TaskDefinition> GetTaskDefinitionsByTaskIdAsync(TaskId taskId, TasklingDbContext dbContext)
+    {
+        return dbContext.TaskDefinitions
+            .Where(i => i.TaskName == taskId.TaskName && i.ApplicationName == taskId.ApplicationName);
     }
 
     public void ClearCache()
@@ -144,8 +147,7 @@ public class TaskRepository : DbOperationsService, ITaskRepository
     {
         using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
         {
-            var tuple = await dbContext.TaskDefinitions
-                .Where(i => i.ApplicationName == taskId.ApplicationName && i.TaskName == taskId.TaskName)
+            var tuple = await GetTaskDefinitionsByTaskIdAsync(taskId, dbContext)
                 .Select(i => new { i.TaskDefinitionId }).FirstOrDefaultAsync().ConfigureAwait(false);
             if (tuple != null)
                 return new TaskDefinition
@@ -183,8 +185,10 @@ public class TaskRepository : DbOperationsService, ITaskRepository
             await dbContext.SaveChangesAsync();
 
 
-            var task = new TaskDefinition();
-            task.TaskDefinitionId = taskDefinition.TaskDefinitionId;
+            var task = new TaskDefinition
+            {
+                TaskDefinitionId = taskDefinition.TaskDefinitionId
+            };
 
             var key = taskId.ApplicationName + "::" + taskId.TaskName;
 

@@ -1,4 +1,5 @@
 ﻿using System.Threading.Tasks;
+using Nito.AsyncEx.Synchronous;
 using Taskling.Blocks.Common;
 using Taskling.Contexts;
 using Taskling.InfrastructureContracts;
@@ -72,6 +73,23 @@ public class RangeBlockContext : IDateRangeBlockContext, INumericRangeBlockConte
 
         var actionRequest = _rangeBlockRepository.ChangeStatusAsync;
         await RetryService.InvokeWithRetryAsync(actionRequest, request).ConfigureAwait(false);
+    }
+
+    public void Start()
+    {
+        this.StartAsync().WaitAndUnwrapException();
+        
+    }
+
+    public void Complete(int itemCountProcessed)
+    {
+        this.CompleteAsync(itemCountProcessed).WaitAndUnwrapException();
+        
+    }
+
+    public void Failed(string toString)
+    {
+        this.FailedAsync(toString).WaitAndUnwrapException();
     }
 
     public async Task FailedAsync()

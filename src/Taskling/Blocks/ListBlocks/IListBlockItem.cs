@@ -15,4 +15,7 @@ public interface IListBlockItem<T>
     Task CompletedAsync();
     Task FailedAsync(string message);
     Task DiscardedAsync(string message);
+    void Failed(string toString);
+    void Discarded(string discardedDueToDistanceRule);
+    void Completed();
 }

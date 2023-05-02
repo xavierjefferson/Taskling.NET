@@ -1,4 +1,5 @@
-﻿using System.Transactions;
+﻿using System.Data.Common;
+using System.Transactions;
 using Polly;
 
 namespace TransactionScopeRetryHelper;
@@ -65,7 +66,7 @@ public class RetryHelper
 
     private static PolicyBuilder GetPolicy()
     {
-        var policyBuilder = Policy.Handle<Exception>(i => false);
+        var policyBuilder = Policy.Handle<DbException>(i => i.IsTransient).OrInner<DbException>(i => i.IsTransient);
 
         foreach (var extension in Extensions) policyBuilder = extension.Add(policyBuilder);
 
@@ -74,7 +75,7 @@ public class RetryHelper
 
     private static PolicyBuilder<T> GetGenericPolicy<T>()
     {
-        var policyBuilder = Policy<T>.Handle<Exception>(i => false);
+        var policyBuilder = Policy<T>.Handle<DbException>(i => i.IsTransient).OrInner<DbException>(i => i.IsTransient);
 
         foreach (var extension in Extensions)
         {

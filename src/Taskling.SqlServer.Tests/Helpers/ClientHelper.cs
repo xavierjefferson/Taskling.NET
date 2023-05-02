@@ -84,8 +84,7 @@ public class ClientHelper : IClientHelper
     {
         lock (_mutex)
         {
-            return new TasklingClient(_serviceProvider,
-                new TaskConfigurationRepository(new TestConfigurationReader(configurationOptions)));
+            return new TasklingClient(_serviceProvider, new TestConfigurationReader(configurationOptions));
         }
     }
 }

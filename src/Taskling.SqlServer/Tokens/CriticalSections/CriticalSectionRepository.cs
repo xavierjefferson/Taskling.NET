@@ -90,19 +90,19 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
                 //await dbContext.SaveChangesAsync();
                 //exampleEntity.State = EntityState.Detached;
 
-
-                var taskDefinition = await
-                    dbContext.TaskDefinitions.FirstOrDefaultAsync(i => i.TaskDefinitionId == taskDefinitionId);
-                if (taskDefinition != null)
+                var entityEntry = dbContext.TaskDefinitions.Attach(new Models.TaskDefinition() { TaskDefinitionId = taskDefinitionId });
+                if (criticalSectionType == CriticalSectionType.User)
                 {
-                    if (criticalSectionType == CriticalSectionType.User)
-                        taskDefinition.UserCsStatus = 1;
-                    else
-                        taskDefinition.ClientCsStatus = 1;
-
-                    dbContext.TaskDefinitions.Update(taskDefinition);
-                    await dbContext.SaveChangesAsync().ConfigureAwait(false);
+                    entityEntry.Entity.UserCsStatus = 1;
+                    entityEntry.Property(i => i.UserCsStatus).IsModified = true;
                 }
+                else
+                {
+                    entityEntry.Entity.ClientCsStatus = 1;
+                    entityEntry.Property(i => i.ClientCsStatus).IsModified = true;
+                }
+
+                await dbContext.SaveChangesAsync().ConfigureAwait(false);
             }
 
             return response;

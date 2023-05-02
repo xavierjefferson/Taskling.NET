@@ -19,7 +19,7 @@ namespace Taskling.SqlServer;
 
 public static class TasklingServiceCollectionExtensions
 {
-    public static void AddTaskling(this IServiceCollection services)
+    public static IServiceCollection AddTaskling(this IServiceCollection services)
     {
         services.AddSingleton(new TasklingOptions());
         services.AddSingleton<ITaskRepository, TaskRepository>();
@@ -43,5 +43,6 @@ public static class TasklingServiceCollectionExtensions
         services.AddScoped<ICleanUpService, CleanUpService>();
 
         services.AddSingleton<IConnectionStore, ConnectionStore>();
+        return services;
     }
 }

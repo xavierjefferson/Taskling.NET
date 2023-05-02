@@ -22,6 +22,7 @@ public abstract class DbOperationsService
 
     protected async Task<TasklingDbContext> GetDbContextAsync(TaskId taskId)
     {
+        await Task.CompletedTask;
         return _dbContextFactoryEx.GetDbContext(taskId);
     }
 }

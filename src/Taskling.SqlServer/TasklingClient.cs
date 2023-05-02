@@ -107,10 +107,10 @@ public class TasklingClient : ITasklingClient
     //            new CleanUpService(tasklingConfigurationFactory, cleanUpRepository, taskExecutionRepository);
     //}
 
-    public TasklingClient(IServiceProvider serviceProvider, ITaskConfigurationRepository taskConfigurationRepository)
+    public TasklingClient(IServiceProvider serviceProvider, IConfigurationReader configurationReader)
     {
         _serviceProvider = serviceProvider;
-        _taskConfigurationRepository = taskConfigurationRepository;
+        _taskConfigurationRepository = new TaskConfigurationRepository(configurationReader);
         _connectionStore = serviceProvider.GetRequiredService<IConnectionStore>() ??
                            throw new NullReferenceException(nameof(IConnectionStore));
 

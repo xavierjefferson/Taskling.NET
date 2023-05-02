@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Nito.AsyncEx.Synchronous;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.Factories;
 using Taskling.Blocks.ListBlocks;
@@ -27,12 +28,17 @@ using Taskling.InfrastructureContracts.CriticalSections;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.Serialization;
 using Taskling.Tasks;
-
+ 
 namespace Taskling.ExecutionContext;
 
 public class TaskExecutionContext : ITaskExecutionContext
 {
     #region .: Public Properties :.
+
+    public IList<IDateRangeBlockContext> GetDateRangeBlocks(Func<IFluentDateRangeBlockDescriptor, object> fluentBlockRequest)
+    {
+        return this.GetDateRangeBlocksAsync(fluentBlockRequest).WaitAndUnwrapException();
+    }
 
     public bool IsStarted => IsExecutionContextActive;
 
@@ -88,6 +94,11 @@ public class TaskExecutionContext : ITaskExecutionContext
 
         _executionHasFailed = false;
         _taskConfiguration = taskConfigurationRepository.GetTaskConfiguration(applicationName, taskName);
+    }
+
+    public bool TryStart()
+    {
+        return this.TryStartAsync().WaitAndUnwrapException();
     }
 
     public TaskExecutionContext(ITaskExecutionRepository taskExecutionRepository,
@@ -307,6 +318,11 @@ public class TaskExecutionContext : ITaskExecutionContext
         return _userCriticalSectionContext;
     }
 
+    public IList<IDateRangeBlockContext> GetDateRangeBlocksc(
+        Func<IFluentDateRangeBlockDescriptor, object> fluentBlockRequest)
+    {
+        return this.GetDateRangeBlocksAsync(fluentBlockRequest).WaitAndUnwrapException();
+    }
     public async Task<IList<IDateRangeBlockContext>> GetDateRangeBlocksAsync(
         Func<IFluentDateRangeBlockDescriptor, object> fluentBlockRequest)
     {
@@ -339,6 +355,11 @@ public class TaskExecutionContext : ITaskExecutionContext
         //}
 
         //return await _blockFactory.GenerateDateRangeBlocksAsync(request).ConfigureAwait(false);
+    }
+
+    public IList<INumericRangeBlockContext> GetNumericRangeBlocks(Func<IFluentNumericRangeBlockDescriptor, object> fluentBlockRequest)
+    {
+        return this.GetNumericRangeBlocksAsync(fluentBlockRequest).WaitAndUnwrapException();
     }
 
     public async Task<IList<T>> GetBlocksAsync<T, U, V, W>(Func<U, object> fluentBlockRequest,
@@ -552,6 +573,11 @@ public class TaskExecutionContext : ITaskExecutionContext
         return await _rangeBlockRepository.GetLastRangeBlockAsync(request).ConfigureAwait(false);
     }
 
+    public INumericRangeBlock GetLastNumericRangeBlock(LastBlockOrder lastBlockOrder)
+    {
+        return this.GetLastNumericRangeBlockAsync(lastBlockOrder).WaitAndUnwrapException();
+    }
+
     public async Task<IListBlock<T>> GetLastListBlockAsync<T>()
     {
         if (!IsExecutionContextActive)
@@ -647,6 +673,33 @@ public class TaskExecutionContext : ITaskExecutionContext
                 .ToList();
 
         return new List<TaskExecutionMeta<TExecutionHeader>>();
+    }
+
+    public IDateRangeBlock GetLastDateRangeBlock(LastBlockOrder lastCreated)
+    {
+        return this.GetLastDateRangeBlockAsync(lastCreated).WaitAndUnwrapException();
+    }
+
+    public void Complete()
+    {
+        this.CompleteAsync().WaitAndUnwrapException();
+        
+    }
+
+    public void Error(string toString, bool b)
+    {
+        this.ErrorAsync(toString, b).WaitAndUnwrapException();
+        
+    }
+
+    public IList<IListBlockContext<TItem, THeader>> GetListBlocks<TItem, THeader>(Func<IFluentListBlockDescriptorBase<TItem, THeader>, object> fluentBlockRequest)
+    {
+        return this.GetListBlocksAsync(fluentBlockRequest).WaitAndUnwrapException();
+    }
+
+    public IListBlock<TItem, THeader> GetLastListBlock<TItem, THeader>()
+    {
+        return GetLastListBlockAsync<TItem, THeader>().WaitAndUnwrapException();
     }
 
     #endregion .: Public methods :.

@@ -86,57 +86,57 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
 
             {
                 var items = await dbContext.TaskExecutions
-                    .Where(i => i.TaskDefinitionId == taskDefinition.TaskDefinitionId)
-                    .Take(taskExecutionMetaRequest.ExecutionsToRetrieve).OrderByDescending(i => i.TaskExecutionId)
+                    .Where(i => i.TaskDefinitionId == taskDefinition.TaskDefinitionId).OrderByDescending(i => i.TaskExecutionId)
+                    .Take(taskExecutionMetaRequest.ExecutionsToRetrieve)
                     .ToListAsync()
                     .ConfigureAwait(false);
 
 
                 var now = DateTime.UtcNow;
 
+
+                foreach (var taskExecution in items)
                 {
-                    foreach (var reader in items)
+                    var executionMeta = new TaskExecutionMetaItem();
+                    executionMeta.StartedAt = taskExecution.StartedAt;
+                    executionMeta.CompletedAt = taskExecution.CompletedAt;
+                    if (taskExecution.CompletedAt != null)
                     {
-                        var executionMeta = new TaskExecutionMetaItem();
-                        executionMeta.StartedAt = reader.StartedAt;
 
-                        if (reader.CompletedAt != null)
-                        {
-                            executionMeta.CompletedAt = reader.CompletedAt;
 
-                            var failed = reader.Failed;
-                            var blocked = reader.Blocked;
+                        var failed = taskExecution.Failed;
+                        var blocked = taskExecution.Blocked;
 
-                            if (failed)
-                                executionMeta.Status = TaskExecutionStatus.Failed;
-                            else if (blocked)
-                                executionMeta.Status = TaskExecutionStatus.Blocked;
-                            else
-                                executionMeta.Status = TaskExecutionStatus.Completed;
-                        }
+                        if (failed)
+                            executionMeta.Status = TaskExecutionStatus.Failed;
+                        else if (blocked)
+                            executionMeta.Status = TaskExecutionStatus.Blocked;
                         else
-                        {
-                            var taskDeathMode = (TaskDeathMode)reader.TaskDeathMode;
-                            if (taskDeathMode == TaskDeathMode.KeepAlive)
-                            {
-                                var lastKeepAlive = reader.LastKeepAlive;
-                                var keepAliveThreshold = reader.KeepAliveDeathThreshold;
-                                var dbServerUtcNow = now;
-
-                                var timeSinceLastKeepAlive = dbServerUtcNow - lastKeepAlive;
-                                if (timeSinceLastKeepAlive > keepAliveThreshold)
-                                    executionMeta.Status = TaskExecutionStatus.Dead;
-                                else
-                                    executionMeta.Status = TaskExecutionStatus.InProgress;
-                            }
-                        }
-
-
-                        executionMeta.Header = reader.ExecutionHeader;
-                        executionMeta.ReferenceValue = reader.ReferenceValue;
-                        response.Executions.Add(executionMeta);
+                            executionMeta.Status = TaskExecutionStatus.Completed;
                     }
+                    else
+                    {
+                        var taskDeathMode = (TaskDeathMode)taskExecution.TaskDeathMode;
+                        if (taskDeathMode == TaskDeathMode.KeepAlive)
+                        {
+                            var lastKeepAlive = taskExecution.LastKeepAlive;
+                            var keepAliveThreshold = taskExecution.KeepAliveDeathThreshold;
+                            var dbServerUtcNow = now;
+
+                            var timeSinceLastKeepAlive = dbServerUtcNow - lastKeepAlive;
+                            if (timeSinceLastKeepAlive > keepAliveThreshold)
+                                executionMeta.Status = TaskExecutionStatus.Dead;
+                            else
+                                executionMeta.Status = TaskExecutionStatus.InProgress;
+                        }
+                    }
+
+
+                    executionMeta.Header = taskExecution.ExecutionHeader;
+                    executionMeta.ReferenceValue = taskExecution.ReferenceValue;
+                    response.Executions.Add(executionMeta);
                 }
+
             }
 
             return response;

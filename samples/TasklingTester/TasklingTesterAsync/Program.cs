@@ -1,56 +1,65 @@
-﻿using System;
-using System.Threading.Tasks;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Taskling.Configuration;
 using Taskling.SqlServer;
 using TasklingTesterAsync.Configuration;
 using TasklingTesterAsync.ListBlocks;
 using TasklingTesterAsync.Repositories;
+using TravelInsightsAnalysisService = TasklingTesterAsync.DateRangeBlocks.TravelInsightsAnalysisService;
 
-namespace TasklingTesterAsync
+namespace TasklingTesterAsync;
+
+internal class Program
 {
-    class Program
+
+
+
+    static async Task Main(string[] args)
     {
-        static void Main(string[] args)
-        {
-            MainAsync(args).GetAwaiter().GetResult();
-        }
+        //setup our DI
+        var serviceCollection = new ServiceCollection()
+            .AddLogging()
+            .AddTaskling();
+        serviceCollection.AddSingleton<IConfigurationReader, MyConfigReader>();
+        var serviceProvider = serviceCollection
+            .BuildServiceProvider();
 
-        static async Task MainAsync(string[] args)
-        { 
-            //var insightService = GetDateRangeInsightService();
-            //await insightService.RunBatchJobAsync();
 
-            //var insightService = GetNumericRangeInsightService();
-            //await insightService.RunBatchJobAsync();
+        //var insightService = GetDateRangeInsightService(serviceProvider);
+        //await insightService.RunBatchJobAsync();
 
-            var insightService = GetListInsightService();
-            await insightService.RunBatchJobAsync();
-        }
+        //var insightService = GetNumericRangeInsightService(serviceProvider);
+        //await insightService.RunBatchJobAsync();
 
-        private static DateRangeBlocks.TravelInsightsAnalysisService GetDateRangeInsightService()
-        {
-            return new DateRangeBlocks.TravelInsightsAnalysisService(new TasklingClient(new MyConfigReader()),
-                new MyApplicationConfiguration(),
-                new JourneysRepository(),
-                new TravelInsightsRepository());
+        var insightService = GetListInsightService(serviceProvider);
+        await insightService.RunBatchJobAsync();
+    }
 
-        }
+    private static TravelInsightsAnalysisService GetDateRangeInsightService(IServiceProvider serviceProvider)
+    {
+        var my = serviceProvider.GetRequiredService<IConfigurationReader>();
+        return new TravelInsightsAnalysisService(new TasklingClient(serviceProvider, my),
+            new MyApplicationConfiguration(),
+            new JourneysRepository(),
+            new TravelInsightsRepository());
+    }
 
-        private static NumericRangeBlocks.TravelInsightsAnalysisService GetNumericRangeInsightService()
-        {
-            return new NumericRangeBlocks.TravelInsightsAnalysisService(new TasklingClient(new MyConfigReader()),
-                new MyApplicationConfiguration(),
-                new JourneysRepository(),
-                new TravelInsightsRepository());
+    private static NumericRangeBlocks.TravelInsightsAnalysisService GetNumericRangeInsightService(
+        IServiceProvider serviceProvider)
+    {
+        var my = serviceProvider.GetRequiredService<IConfigurationReader>();
+        return new NumericRangeBlocks.TravelInsightsAnalysisService(new TasklingClient(serviceProvider, my),
+            new MyApplicationConfiguration(),
+            new JourneysRepository(),
+            new TravelInsightsRepository());
+    }
 
-        }
+    private static ListBlocks.TravelInsightsAnalysisService GetListInsightService(IServiceProvider serviceProvider)
+    {
+        var my = serviceProvider.GetRequiredService<IConfigurationReader>();
 
-        private static ListBlocks.TravelInsightsAnalysisService GetListInsightService()
-        {
-            return new ListBlocks.TravelInsightsAnalysisService(new TasklingClient(new MyConfigReader()),
-                new MyApplicationConfiguration(),
-                new JourneysRepository(),
-                new NotificationService());
-
-        }
+        return new ListBlocks.TravelInsightsAnalysisService(new TasklingClient(serviceProvider, my),
+            new MyApplicationConfiguration(),
+            new JourneysRepository(),
+            new NotificationService());
     }
 }

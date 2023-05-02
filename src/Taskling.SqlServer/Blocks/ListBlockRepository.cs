@@ -8,6 +8,7 @@ using Taskling.InfrastructureContracts.Blocks.ListBlocks;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.AncilliaryServices;
 using Taskling.SqlServer.Blocks.Serialization;
+using Taskling.SqlServer.Models;
 using TransactionScopeRetryHelper;
 
 namespace Taskling.SqlServer.Blocks;
@@ -28,25 +29,24 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
         {
             using (var dbContext = await GetDbContextAsync(changeStatusRequest.TaskId))
             {
-                var blockExecution = await dbContext.BlockExecutions.FirstOrDefaultAsync(i =>
-                    i.BlockExecutionId == changeStatusRequest.BlockExecutionId).ConfigureAwait(false);
-                if (blockExecution != null)
+                var blockExecution = new BlockExecution { BlockExecutionId = changeStatusRequest.BlockExecutionId };
+                var entityEntry = dbContext.BlockExecutions.Attach(blockExecution);
+                blockExecution.BlockExecutionStatus = (int)changeStatusRequest.BlockExecutionStatus;
+                switch (changeStatusRequest.BlockExecutionStatus)
                 {
-                    blockExecution.BlockExecutionStatus = (int)changeStatusRequest.BlockExecutionStatus;
-                    switch (changeStatusRequest.BlockExecutionStatus)
-                    {
-                        case BlockExecutionStatus.Completed:
-                        case BlockExecutionStatus.Failed:
-                            blockExecution.CompletedAt = DateTime.UtcNow;
-                            break;
-                        default:
-                            blockExecution.StartedAt = DateTime.UtcNow;
-                            break;
-                    }
-
-                    dbContext.BlockExecutions.Update(blockExecution);
-                    await dbContext.SaveChangesAsync().ConfigureAwait(false);
+                    case BlockExecutionStatus.Completed:
+                    case BlockExecutionStatus.Failed:
+                        blockExecution.CompletedAt = DateTime.UtcNow;
+                        entityEntry.Property(i => i.CompletedAt).IsModified = true;
+                        break;
+                    default:
+                        blockExecution.StartedAt = DateTime.UtcNow;
+                        entityEntry.Property(i => i.StartedAt).IsModified = true;
+                        break;
                 }
+
+                //dbContext.BlockExecutions.Update(blockExecution);
+                await dbContext.SaveChangesAsync().ConfigureAwait(false);
             }
         });
     }
