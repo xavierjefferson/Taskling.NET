@@ -1,4 +1,4 @@
-﻿namespace TasklingTester.Entities
+﻿namespace TasklingTester.Common.Entities
 {
     public class Journey
     {

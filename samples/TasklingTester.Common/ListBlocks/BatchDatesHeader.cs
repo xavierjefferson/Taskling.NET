@@ -1,4 +1,4 @@
-﻿namespace TasklingTester.ListBlocks
+﻿namespace TasklingTester.Common.ListBlocks
 {
     public class BatchDatesHeader
     {

@@ -8,7 +8,8 @@ using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
 using Taskling.Contexts;
 using TasklingTester.Configuration;
-using TasklingTester.Entities;
+using TasklingTester.Common.Entities;
+using TasklingTester.Common.ListBlocks;
 using TasklingTester.Repositories;
 
 namespace TasklingTester.ListBlocks

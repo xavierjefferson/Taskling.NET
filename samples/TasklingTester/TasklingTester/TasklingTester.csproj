@@ -8,19 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="DatabasePreparationScripts\AddSomeMoreJourneys.txt" />
-    <None Remove="DatabasePreparationScripts\DeleteAllTaskingData.txt" />
-    <None Remove="DatabasePreparationScripts\Prepare database.txt" />
     <None Remove="readme.txt" />
-    <None Remove="UsefulTasklingQueries\Get tasks and blocks overview.txt" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="DatabasePreparationScripts\AddSomeMoreJourneys.txt" />
-    <Content Include="DatabasePreparationScripts\DeleteAllTaskingData.txt" />
-    <Content Include="DatabasePreparationScripts\Prepare database.txt" />
     <Content Include="readme.txt" />
-    <Content Include="UsefulTasklingQueries\Get tasks and blocks overview.txt" />
   </ItemGroup>
 
   <ItemGroup>
@@ -32,6 +24,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Taskling.SqlServer\Taskling.SqlServer.csproj" />
     <ProjectReference Include="..\..\..\src\Taskling\Taskling.csproj" />
+    <ProjectReference Include="..\..\TasklingTester.Common\TasklingTester.Common.csproj" />
   </ItemGroup>
 
 </Project>

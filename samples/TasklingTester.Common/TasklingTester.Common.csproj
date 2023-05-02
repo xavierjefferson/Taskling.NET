@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="DatabasePreparationScripts\AddSomeMoreJourneys.txt" />
+    <None Remove="DatabasePreparationScripts\DeleteAllTaskingData.txt" />
+    <None Remove="DatabasePreparationScripts\Prepare database.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="DatabasePreparationScripts\AddSomeMoreJourneys.txt" />
+    <Content Include="DatabasePreparationScripts\DeleteAllTaskingData.txt" />
+    <Content Include="DatabasePreparationScripts\Prepare database.txt" />
+  </ItemGroup>
+
+</Project>

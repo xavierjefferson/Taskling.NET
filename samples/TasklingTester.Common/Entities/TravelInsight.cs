@@ -1,4 +1,4 @@
-﻿namespace TasklingTesterAsync.Entities
+﻿namespace TasklingTester.Common.Entities
 {
     public class TravelInsight
     {

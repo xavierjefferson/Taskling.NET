@@ -27,6 +27,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TasklingTester", "..\sample
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TasklingTesterAsync", "..\samples\TasklingTester\TasklingTesterAsync\TasklingTesterAsync.csproj", "{AB217961-540A-42E2-9C8B-BB4960CA7179}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TasklingTester.Common", "..\samples\TasklingTester.Common\TasklingTester.Common.csproj", "{913D5F1A-ADA3-405D-A5B0-D66191B82CB2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -79,6 +81,10 @@ Global
 		{AB217961-540A-42E2-9C8B-BB4960CA7179}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AB217961-540A-42E2-9C8B-BB4960CA7179}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AB217961-540A-42E2-9C8B-BB4960CA7179}.Release|Any CPU.Build.0 = Release|Any CPU
+		{913D5F1A-ADA3-405D-A5B0-D66191B82CB2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{913D5F1A-ADA3-405D-A5B0-D66191B82CB2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{913D5F1A-ADA3-405D-A5B0-D66191B82CB2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{913D5F1A-ADA3-405D-A5B0-D66191B82CB2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -7,8 +7,9 @@ using Taskling;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
 using Taskling.Contexts;
+using TasklingTester.Common.Entities;
+using TasklingTester.Common.ListBlocks;
 using TasklingTesterAsync.Configuration;
-using TasklingTesterAsync.Entities;
 using TasklingTesterAsync.Repositories;
 
 namespace TasklingTesterAsync.ListBlocks

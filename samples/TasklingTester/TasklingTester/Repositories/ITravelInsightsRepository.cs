@@ -1,4 +1,4 @@
-﻿using TasklingTester.Entities;
+﻿using TasklingTester.Common.Entities;
 
 namespace TasklingTester.Repositories
 {

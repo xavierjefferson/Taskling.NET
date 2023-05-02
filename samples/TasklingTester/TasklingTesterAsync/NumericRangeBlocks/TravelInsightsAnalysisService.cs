@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 using Taskling;
 using Taskling.Blocks.Common;
 using Taskling.Contexts;
+using TasklingTester.Common.Entities;
 using TasklingTesterAsync.Configuration;
-using TasklingTesterAsync.Entities;
 using TasklingTesterAsync.Repositories;
 
 namespace TasklingTesterAsync.NumericRangeBlocks

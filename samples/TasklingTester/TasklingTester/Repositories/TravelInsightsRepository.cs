@@ -5,7 +5,7 @@ using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using TasklingTester.Entities;
+using TasklingTester.Common.Entities;
 
 namespace TasklingTester.Repositories
 {
