@@ -7,12 +7,13 @@ using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
+using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_RangeBlockRepository;
 
 [Collection(TestConstants.CollectionName)]
-public class When_ChangeStatus
+public class When_ChangeStatus : TestBase
 {
     private readonly IBlocksHelper _blocksHelper;
     private readonly IExecutionsHelper _executionsHelper;
@@ -26,16 +27,16 @@ public class When_ChangeStatus
 
     public When_ChangeStatus(IBlocksHelper blocksHelper, IRangeBlockRepository rangeBlockRepository,
         IExecutionsHelper executionsHelper, ILogger<When_ChangeStatus> logger,
-        ITaskRepository taskRepository)
+        ITaskRepository taskRepository) : base(executionsHelper)
     {
         _blocksHelper = blocksHelper;
         _logger = logger;
         _rangeBlockRepository = rangeBlockRepository;
-        _blocksHelper.DeleteBlocks(TestConstants.ApplicationName);
+        _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
         _executionsHelper = executionsHelper;
-        _executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+        _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
 
-        _taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
         _executionsHelper.InsertUnlimitedExecutionToken(_taskDefinitionId);
 
         taskRepository.ClearCache();
@@ -72,26 +73,29 @@ public class When_ChangeStatus
     [Trait("Area", "Blocks")]
     public async Task If_SetStatusOfDateRangeBlock_ThenItemsCountIsCorrect()
     {
-        // ARRANGE
-        InsertDateRangeBlock();
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertDateRangeBlock();
 
-        var request = new BlockExecutionChangeStatusRequest(
-            new TaskId(TestConstants.ApplicationName, TestConstants.TaskName),
-            _taskExecution1,
-            BlockType.DateRange,
-            _blockExecutionId,
-            BlockExecutionStatus.Completed);
-        request.ItemsProcessed = 10000;
+            var request = new BlockExecutionChangeStatusRequest(
+                CurrentTaskId,
+                _taskExecution1,
+                BlockType.DateRange,
+                _blockExecutionId,
+                BlockExecutionStatus.Completed);
+            request.ItemsProcessed = 10000;
 
 
-        // ACT
-        var sut = CreateSut();
-        await sut.ChangeStatusAsync(request);
+            // ACT
+            var sut = CreateSut();
+            await sut.ChangeStatusAsync(request);
 
-        var itemCount = _blocksHelper.GetBlockExecutionItemCount(_blockExecutionId);
+            var itemCount = _blocksHelper.GetBlockExecutionItemCount(_blockExecutionId);
 
-        // ASSERT
-        Assert.Equal(10000, itemCount);
+            // ASSERT
+            Assert.Equal(10000, itemCount);
+        });
     }
 
     [Fact]
@@ -99,25 +103,28 @@ public class When_ChangeStatus
     [Trait("Area", "Blocks")]
     public async Task If_SetStatusOfNumericRangeBlock_ThenItemsCountIsCorrect()
     {
-        // ARRANGE
-        InsertNumericRangeBlock();
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertNumericRangeBlock();
 
-        var request = new BlockExecutionChangeStatusRequest(
-            new TaskId(TestConstants.ApplicationName, TestConstants.TaskName),
-            _taskExecution1,
-            BlockType.NumericRange,
-            _blockExecutionId,
-            BlockExecutionStatus.Completed);
-        request.ItemsProcessed = 10000;
+            var request = new BlockExecutionChangeStatusRequest(
+                CurrentTaskId,
+                _taskExecution1,
+                BlockType.NumericRange,
+                _blockExecutionId,
+                BlockExecutionStatus.Completed);
+            request.ItemsProcessed = 10000;
 
 
-        // ACT
-        var sut = CreateSut();
-        await sut.ChangeStatusAsync(request);
+            // ACT
+            var sut = CreateSut();
+            await sut.ChangeStatusAsync(request);
 
-        var itemCount = _blocksHelper.GetBlockExecutionItemCount(_blockExecutionId);
+            var itemCount = _blocksHelper.GetBlockExecutionItemCount(_blockExecutionId);
 
-        // ASSERT
-        Assert.Equal(10000, itemCount);
+            // ASSERT
+            Assert.Equal(10000, itemCount);
+        });
     }
 }

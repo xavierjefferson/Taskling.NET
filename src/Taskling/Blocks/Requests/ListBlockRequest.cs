@@ -1,12 +1,13 @@
 ﻿using System.Collections.Generic;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
+using Taskling.InfrastructureContracts;
 
 namespace Taskling.Blocks.Requests;
 
 public class ListBlockRequest : BlockRequest
 {
-    public ListBlockRequest()
+    public ListBlockRequest(TaskId taskId) : base(taskId)
     {
         BlockType = BlockType.List;
     }

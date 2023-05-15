@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Taskling.InfrastructureContracts.Blocks.ListBlocks;
 
 namespace Taskling.Blocks.ListBlocks;
 

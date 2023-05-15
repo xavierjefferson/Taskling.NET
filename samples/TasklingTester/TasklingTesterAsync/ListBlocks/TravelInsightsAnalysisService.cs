@@ -1,6 +1,7 @@
 ﻿using Taskling;
 using Taskling.Blocks.ListBlocks;
 using Taskling.Contexts;
+using Taskling.InfrastructureContracts;
 using TasklingTester.Common.Entities;
 using TasklingTester.Common.ListBlocks;
 using TasklingTesterAsync.Configuration;

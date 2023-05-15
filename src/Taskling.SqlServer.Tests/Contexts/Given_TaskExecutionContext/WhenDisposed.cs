@@ -2,23 +2,24 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Taskling.SqlServer.Tests.Helpers;
+using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Taskling.SqlServer.Tokens.Executions;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_TaskExecutionContext;
 
 [Collection(TestConstants.CollectionName)]
-public class WhenDisposed
+public class WhenDisposed:TestBase
 {
     private readonly IClientHelper _clientHelper;
     private readonly IExecutionsHelper _executionsHelper;
 
-    public WhenDisposed(IClientHelper clientHelper, IExecutionsHelper executionsHelper)
+    public WhenDisposed(IClientHelper clientHelper, IExecutionsHelper executionsHelper) : base(executionsHelper)
     {
         _clientHelper = clientHelper;
         _executionsHelper = executionsHelper;
 
-        executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+        executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
     }
 
     [Fact]
@@ -26,9 +27,10 @@ public class WhenDisposed
     [Trait("Area", "TaskExecutions")]
     public async Task If_InUsingBlockAndNoExecutionTokenExists_ThenExecutionTokenCreatedAutomatically()
     {
-        // ARRANGE
+        await InSemaphoreAsync(async ()=>{
+// ARRANGE
         var executionsHelper = _executionsHelper;
-        var taskDefinitionId = executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        var taskDefinitionId = executionsHelper.InsertTask(CurrentTaskId);
 
         // ACT
 
@@ -36,32 +38,33 @@ public class WhenDisposed
         ExecutionTokenStatus tokenStatusAfterStart;
         ExecutionTokenStatus tokenStatusAfterUsingBlock;
 
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+        using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
                    _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             startedOk = await executionContext.TryStartAsync();
             tokenStatusAfterStart =
-                executionsHelper.GetExecutionTokenStatus(TestConstants.ApplicationName, TestConstants.TaskName);
+                executionsHelper.GetExecutionTokenStatus(CurrentTaskId);
         }
 
         await Task.Delay(1000);
         tokenStatusAfterUsingBlock =
-            executionsHelper.GetExecutionTokenStatus(TestConstants.ApplicationName, TestConstants.TaskName);
+            executionsHelper.GetExecutionTokenStatus(CurrentTaskId);
 
         // ASSERT
         Assert.True(startedOk);
         Assert.Equal(ExecutionTokenStatus.Unavailable, tokenStatusAfterStart);
         Assert.Equal(ExecutionTokenStatus.Available, tokenStatusAfterUsingBlock);
-    }
+    });}
 
     [Fact]
     [Trait("Speed", "Fast")]
     [Trait("Area", "TaskExecutions")]
     public async Task If_InUsingBlock_ThenExecutionCompletedOnEndOfBlock()
     {
-        // ARRANGE
+        await InSemaphoreAsync(async ()=>{
+// ARRANGE
         var executionsHelper = _executionsHelper;
-        var taskDefinitionId = executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        var taskDefinitionId = executionsHelper.InsertTask(CurrentTaskId);
         executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
         // ACT
@@ -70,49 +73,52 @@ public class WhenDisposed
         ExecutionTokenStatus tokenStatusAfterStart;
         ExecutionTokenStatus tokenStatusAfterUsingBlock;
 
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+        using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
                    _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             startedOk = await executionContext.TryStartAsync();
             tokenStatusAfterStart =
-                executionsHelper.GetExecutionTokenStatus(TestConstants.ApplicationName, TestConstants.TaskName);
+                executionsHelper.GetExecutionTokenStatus(CurrentTaskId);
         }
 
         await Task.Delay(1000);
 
         tokenStatusAfterUsingBlock =
-            executionsHelper.GetExecutionTokenStatus(TestConstants.ApplicationName, TestConstants.TaskName);
+            executionsHelper.GetExecutionTokenStatus(CurrentTaskId);
 
         // ASSERT
         Assert.True(startedOk);
         Assert.Equal(ExecutionTokenStatus.Unavailable, tokenStatusAfterStart);
         Assert.Equal(ExecutionTokenStatus.Available, tokenStatusAfterUsingBlock);
-    }
+    });}
 
     [Fact]
     [Trait("Speed", "Fast")]
     [Trait("Area", "TaskExecutions")]
     public async Task If_KeepAlive_ThenKeepAliveContinuesUntilExecutionContextDies()
     {
-        // ARRANGE
-        var executionsHelper = _executionsHelper;
-        var taskDefinitionId = executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
+        await InSemaphoreAsync(async () =>
+        {
+// ARRANGE
+            var executionsHelper = _executionsHelper;
+            var taskDefinitionId = executionsHelper.InsertTask(CurrentTaskId);
+            executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
-        // ACT
-        await StartContextWithoutUsingOrCompletedAsync();
-        GC.Collect(0, GCCollectionMode.Forced); // referenceless context is collected
-        Thread.Sleep(6000);
+            // ACT
+            await StartContextWithoutUsingOrCompletedAsync();
+            GC.Collect(0, GCCollectionMode.Forced); // referenceless context is collected
+            Thread.Sleep(6000);
 
-        // ASSERT
-        var expectedLastKeepAliveMax = DateTime.UtcNow.AddSeconds(-5);
-        var lastKeepAlive = executionsHelper.GetLastKeepAlive(taskDefinitionId);
-        Assert.True(lastKeepAlive < expectedLastKeepAliveMax);
+            // ASSERT
+            var expectedLastKeepAliveMax = DateTime.UtcNow.AddSeconds(-5);
+            var lastKeepAlive = executionsHelper.GetLastKeepAlive(taskDefinitionId);
+            Assert.True(lastKeepAlive < expectedLastKeepAliveMax);
+        });
     }
 
     private async Task StartContextWithoutUsingOrCompletedAsync()
     {
-        var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+        var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
             _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing());
         await executionContext.TryStartAsync();
     }

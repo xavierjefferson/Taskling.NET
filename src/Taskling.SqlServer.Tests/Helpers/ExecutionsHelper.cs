@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
+using Bogus;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 using Taskling.Events;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.TaskExecution;
+using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Taskling.SqlServer.Tokens.Executions;
 using Taskling.Tasks;
 using TransactionScopeRetryHelper;
@@ -15,13 +17,42 @@ namespace Taskling.SqlServer.Tests.Helpers;
 
 public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
 {
+    private static bool _ranFirstExecution;
+    private readonly IConnectionStore _connectionStore;
+    private readonly Faker<TestTaskInfo> _faker;
+
+
     public ExecutionsHelper(IConnectionStore connectionStore, ITaskRepository taskRepository)
     {
+        _connectionStore = connectionStore;
         taskRepository.ClearCache();
-        connectionStore.SetConnection(new TaskId(TestConstants.ApplicationName, TestConstants.TaskName),
+        _faker = new Faker<TestTaskInfo>().RuleFor(i => i.ApplicationName, i => i.Database.Column())
+            .RuleFor(i => i.TaskName, i => Guid.NewGuid().ToString());
+        var testTaskInfo = _faker.Generate();
+        CurrentTaskId = new TaskId(testTaskInfo.ApplicationName, testTaskInfo.TaskName);
+        if (_ranFirstExecution == false)
+        {
+            using (var dbContext = DbContextOptionsHelper.GetDbContext())
+            {
+                dbContext.Database.EnsureCreated();
+                dbContext.TaskExecutionEvents.RemoveRange(dbContext.TaskExecutionEvents);
+                dbContext.BlockExecutions.RemoveRange(dbContext.BlockExecutions);
+                dbContext.TaskExecutions.RemoveRange(dbContext.TaskExecutions);
+                dbContext.ForceBlockQueues.RemoveRange(dbContext.ForceBlockQueues);
+                dbContext.ListBlockItems.RemoveRange(dbContext.ListBlockItems);
+                dbContext.Blocks.RemoveRange(dbContext.Blocks);
+                dbContext.TaskDefinitions.RemoveRange(dbContext.TaskDefinitions);
+                dbContext.SaveChanges();
+            }
+
+            _ranFirstExecution = true;
+        }
+
+        _connectionStore.SetConnection(CurrentTaskId,
             new ClientConnectionSettings(TestConstants.GetTestConnectionString(), TestConstants.QueryTimeout));
     }
 
+    public TaskId CurrentTaskId { get; }
 
     public void DeleteRecordsOfApplication(string applicationName)
     {
@@ -195,15 +226,14 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
 
     #region .: Tasks :.
 
-    //public int CreateTaskAndExecutionToken(string applicationName, string taskName, int tokenCount = 1)
+    //public int CreateTaskAndExecutionToken(TaskId taskId, int tokenCount = 1)
     //{
-    //    var taskDefinitionId = InsertTask(applicationName, taskName);
+    //    var taskDefinitionId = InsertTask(taskId);
     //    InsertUnavailableExecutionToken(taskDefinitionId, 0);
 
     //    return taskDefinitionId;
     //}
-
-    public int InsertTask(string applicationName, string taskName)
+    public int InsertTask(TaskId taskId)
     {
         return RetryHelper.WithRetry(() =>
         {
@@ -211,8 +241,8 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
             {
                 var task = new TaskDefinition
                 {
-                    ApplicationName = applicationName,
-                    TaskName = taskName,
+                    ApplicationName = taskId.ApplicationName,
+                    TaskName = taskId.TaskName,
                     UserCsStatus = 1,
                     ClientCsStatus = 1
                 };
@@ -224,8 +254,8 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
             //{
             //    var command = connection.CreateCommand();
             //    command.CommandText = InsertTaskQuery;
-            //    command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
-            //    command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
+            //    command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = taskId.ApplicationName;
+            //    command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskId.TaskName;
             //    var reader = command.ExecuteReader();
             //    while (reader.Read()) return reader.GetInt32("TaskDefinitionId");
             //}
@@ -234,7 +264,13 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
         });
     }
 
+    public int InsertTask(string applicationName, string taskName)
+    {
+        return InsertTask(new TaskId(applicationName, taskName));
+    }
+
     #endregion .: Tasks :.
+
 
     #region .: Queries :.
 
@@ -398,7 +434,7 @@ AND T.TaskName = @TaskName";
 
     public void InsertUnlimitedExecutionToken(int taskDefinitionId)
     {
-        InsertExecutionToken(taskDefinitionId, new List<Execinfo>
+        InsertExecutionToken(taskDefinitionId, new ExecInfoList
         {
             new(ExecutionTokenStatus.Unlimited, 0)
         });
@@ -406,7 +442,7 @@ AND T.TaskName = @TaskName";
 
     public void InsertUnavailableExecutionToken(int taskDefinitionId)
     {
-        InsertExecutionToken(taskDefinitionId, new List<Execinfo>
+        InsertExecutionToken(taskDefinitionId, new ExecInfoList
         {
             new(ExecutionTokenStatus.Unavailable, 0)
         });
@@ -414,14 +450,14 @@ AND T.TaskName = @TaskName";
 
     public void InsertAvailableExecutionToken(int taskDefinitionId, int count = 1)
     {
-        var list = new List<Execinfo>();
+        var list = new ExecInfoList();
         for (var i = 0; i < count; i++)
             list.Add(new Execinfo(ExecutionTokenStatus.Available, 0));
 
         InsertExecutionToken(taskDefinitionId, list);
     }
 
-    public void InsertExecutionToken(int taskDefinitionId, List<Execinfo> tokens)
+    public void InsertExecutionToken(int taskDefinitionId, ExecInfoList tokens)
     {
         RetryHelper.WithRetry(() =>
         {
@@ -453,36 +489,20 @@ AND T.TaskName = @TaskName";
         });
     }
 
-    private string GenerateTokensString(List<Execinfo> tokens)
+
+    private string GenerateTokensString(ExecInfoList tokens)
     {
-        var sb = new StringBuilder();
-        var counter = 0;
-        foreach (var token in tokens)
-        {
-            if (counter > 0)
-                sb.Append("|");
-
-            sb.Append("I:");
-            sb.Append(Guid.NewGuid());
-            sb.Append(",S:");
-            sb.Append(((int)token.Status).ToString());
-            sb.Append(",G:");
-            sb.Append(token.GrantedTaskExecutionId);
-
-            counter++;
-        }
-
-        return sb.ToString();
+        return JsonConvert.SerializeObject(tokens);
     }
 
-    public ExecutionTokenList GetExecutionTokens(string applicationName, string taskName)
+    public ExecutionTokenList GetExecutionTokens(TaskId taskId)
     {
         return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
                 var tmp = dbContext.TaskDefinitions
-                    .Where(i => i.ApplicationName == applicationName && i.TaskName == taskName)
+                    .Where(i => i.ApplicationName == taskId.ApplicationName && i.TaskName == taskId.TaskName)
                     .Select(i => i.ExecutionTokens).FirstOrDefault();
                 return ExecutionTokenRepository.ParseTokensString(tmp);
                 //var objectBlock = new Block()
@@ -502,8 +522,8 @@ AND T.TaskName = @TaskName";
             //{
             //    var command = connection.CreateCommand();
             //    command.CommandText = GetExecutionTokensQuery;
-            //    command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
-            //    command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
+            //    command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = taskId.ApplicationName;
+            //    command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskId.TaskName;
             //    var result = command.ExecuteScalar().ToString();
 
 
@@ -511,34 +531,21 @@ AND T.TaskName = @TaskName";
         });
     }
 
-    public ExecutionTokenStatus GetExecutionTokenStatus(string applicationName, string taskName)
+    public ExecutionTokenStatus GetExecutionTokenStatus(TaskId taskId)
     {
         return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
                 var result = dbContext.TaskDefinitions
-                    .Where(i => i.ApplicationName == applicationName && i.TaskName == taskName)
+                    .Where(i => i.ApplicationName == taskId.ApplicationName && i.TaskName == taskId.TaskName)
                     .Select(i => i.ExecutionTokens).FirstOrDefault();
                 //=> i.TaskExecutionId)
                 //.Where(i => i.TaskDefinitionId == taskDefinitionId).Select(i => i.Blocked).FirstOrDefault();
                 if (string.IsNullOrEmpty(result))
                     return ExecutionTokenStatus.Available;
-
-                return (ExecutionTokenStatus)int.Parse(result.Substring(result.IndexOf("S:") + 2, 1));
+                return JsonConvert.DeserializeObject<ExecInfoList>(result)[0].Status;
             }
-            //using (var connection = GetConnection())
-            //{
-            //    var command = connection.CreateCommand();
-            //    command.CommandText = GetExecutionTokensQuery;
-            //    command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
-            //    command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
-            //    var result = command.ExecuteScalar().ToString();
-            //    if (string.IsNullOrEmpty(result))
-            //        return ExecutionTokenStatus.Available;
-
-            //    return (ExecutionTokenStatus)int.Parse(result.Substring(result.IndexOf("S:") + 2, 1));
-            //}
         });
     }
 
@@ -928,15 +935,15 @@ AND T.TaskName = @TaskName";
         });
     }
 
-    public int GetCriticalSectionTokenStatus(string applicationName, string taskName)
+    public int GetCriticalSectionTokenStatus(TaskId taskId)
     {
         return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
                 var a = dbContext.TaskExecutions.Include(i => i.TaskDefinition)
-                    .Where(i => i.TaskDefinition.ApplicationName == applicationName &&
-                                i.TaskDefinition.TaskName == taskName)
+                    .Where(i => i.TaskDefinition.ApplicationName == taskId.ApplicationName &&
+                                i.TaskDefinition.TaskName == taskId.TaskName)
                     .Select(i => i.TaskDefinition.UserCsStatus).FirstOrDefault();
                 return a;
             }
@@ -944,8 +951,8 @@ AND T.TaskName = @TaskName";
             //{
             //    var command = connection.CreateCommand();
             //    command.CommandText = GetCriticalSectionTokenStatusByTaskExecutionQuery;
-            //    command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = applicationName;
-            //    command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskName;
+            //    command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = taskId.ApplicationName;
+            //    command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskId.TaskName;
             //    return (int)command.ExecuteScalar();
             //}
         });
@@ -974,6 +981,17 @@ public class Execinfo
         GrantedTaskExecutionId = grantedTaskExecutionId;
     }
 
-    public ExecutionTokenStatus Status { get; }
-    public int GrantedTaskExecutionId { get; }
+    public Execinfo()
+    {
+    }
+
+    [JsonProperty("I")] public Guid TokenId { get; set; } = Guid.NewGuid();
+
+    [JsonProperty("S")] public ExecutionTokenStatus Status { get; set; }
+
+    [JsonProperty("G")] public int GrantedTaskExecutionId { get; set; }
+}
+
+public class ExecInfoList : List<Execinfo>
+{
 }

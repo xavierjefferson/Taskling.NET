@@ -1,9 +1,10 @@
 ﻿using Taskling.Configuration;
+using Taskling.InfrastructureContracts;
 
 namespace Taskling.CleanUp;
 
 public interface ICleanUpService
 {
-    void CleanOldData(string applicationName, string taskName, int taskExecutionId,
+    void CleanOldData(TaskId taskId, int taskExecutionId,
         ITaskConfigurationRepository taskConfigurationRepository);
 }

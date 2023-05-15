@@ -129,9 +129,9 @@ ORDER BY B.CreatedDate ASC";
 
 public class BlockItemRequestWrapper
 {
-    public TasklingDbContext DbContext { get; set; }
+    public TasklingDbContext? DbContext { get; set; }
     public int Limit { get; set; }
-    public ISearchableBlockRequest Body { get; set; }
+    public ISearchableBlockRequest? Body { get; set; }
     public BlockType BlockType { get; set; }
     public int TaskDefinitionId { get; set; }
 }

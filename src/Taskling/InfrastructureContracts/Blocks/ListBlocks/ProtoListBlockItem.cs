@@ -3,7 +3,15 @@ using Taskling.Blocks.ListBlocks;
 
 namespace Taskling.InfrastructureContracts.Blocks.ListBlocks;
 
-public class ProtoListBlockItem
+public interface IListBlockUpdateArgs
+{
+    long ListBlockItemId { get; set; }
+    ItemStatus Status { get; set; }
+    string StatusReason { get; set; }
+    int? Step { get; set; }
+}
+
+public class ProtoListBlockItem : IListBlockUpdateArgs
 {
     public long ListBlockItemId { get; set; }
     public string Value { get; set; }

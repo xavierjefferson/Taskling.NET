@@ -7,12 +7,13 @@ using Microsoft.Extensions.Logging;
 using Taskling.Blocks.ListBlocks;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
+using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_ListBlockContext;
 
 [Collection(TestConstants.CollectionName)]
-public class When_ConcurrentIsThreadSafe
+public class When_ConcurrentIsThreadSafe:TestBase
 {
     private readonly IBlocksHelper _blocksHelper;
     private readonly IClientHelper _clientHelper;
@@ -20,16 +21,16 @@ public class When_ConcurrentIsThreadSafe
     private readonly ILogger<When_ConcurrentIsThreadSafe> _logger;
 
     public When_ConcurrentIsThreadSafe(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper,
-        IClientHelper clientHelper, ILogger<When_ConcurrentIsThreadSafe> logger, ITaskRepository taskRepository)
+        IClientHelper clientHelper, ILogger<When_ConcurrentIsThreadSafe> logger, ITaskRepository taskRepository) : base(executionsHelper)
     {
         _blocksHelper = blocksHelper;
         _clientHelper = clientHelper;
         _logger = logger;
-        _blocksHelper.DeleteBlocks(TestConstants.ApplicationName);
+        _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
         _executionsHelper = executionsHelper;
-        _executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+        _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
 
-        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        var taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
         _executionsHelper.InsertUnlimitedExecutionToken(taskDefinitionId);
     }
 
@@ -39,38 +40,41 @@ public class When_ConcurrentIsThreadSafe
     public async Task
         If_AsListWithSingleUnitCommit_BlocksProcessedSequentially_BlocksListItemsProcessedInParallel_ThenNoConcurrencyIssues()
     {
-        _logger.LogDebug("Starting test");
-        // ACT and // ASSERT
-        bool startedOk;
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
-                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing(10000)))
+        await InSemaphoreAsync(async () =>
         {
-            startedOk = await executionContext.TryStartAsync();
-            if (startedOk)
+            _logger.LogDebug("Starting test");
+            // ACT and // ASSERT
+            bool startedOk;
+            using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
+                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing(10000)))
             {
-                var values = GetList(100000);
-                var maxBlockSize = 1000;
-                var listBlocks =
-                    await executionContext.GetListBlocksAsync<PersonDto>(x =>
-                        x.WithSingleUnitCommit(values, maxBlockSize));
-                foreach (var listBlock in listBlocks)
+                startedOk = await executionContext.TryStartAsync();
+                if (startedOk)
                 {
-                    await listBlock.StartAsync();
-                    var items = await listBlock.GetItemsAsync(ItemStatus.Failed, ItemStatus.Pending);
-
-                    await items.ParallelForEachAsync(async currentItem =>
+                    var values = GetList(100000);
+                    var maxBlockSize = 1000;
+                    var listBlocks =
+                        await executionContext.GetListBlocksAsync<PersonDto>(x =>
+                            x.WithSingleUnitCommit(values, maxBlockSize));
+                    foreach (var listBlock in listBlocks)
                     {
-                        await listBlock.ItemCompletedAsync(currentItem);
-                    });
+                        await listBlock.StartAsync();
+                        var items = await listBlock.GetItemsAsync(ItemStatus.Failed, ItemStatus.Pending);
 
-                    await listBlock.CompleteAsync();
+                        await items.ParallelForEachAsync(async currentItem =>
+                        {
+                            await listBlock.ItemCompletedAsync(currentItem);
+                        });
 
-                    // All items should be completed now
-                    Assert.Equal((await listBlock.GetItemsAsync(ItemStatus.Completed)).Count(),
-                        _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId, ItemStatus.Completed));
+                        await listBlock.CompleteAsync();
+
+                        // All items should be completed now
+                        Assert.Equal((await listBlock.GetItemsAsync(ItemStatus.Completed)).Count(),
+                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId, ItemStatus.Completed));
+                    }
                 }
             }
-        }
+        });
     }
 
     [Fact]
@@ -79,37 +83,40 @@ public class When_ConcurrentIsThreadSafe
     public async Task
         If_AsListWithBatchCommitAtEnd_BlocksProcessedSequentially_BlocksListItemsProcessedInParallel_ThenNoConcurrencyIssues()
     {
-        _logger.LogDebug("Starting test");
-        // ACT and // ASSERT
-        bool startedOk;
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
-                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing(10000)))
+        await InSemaphoreAsync(async () =>
         {
-            startedOk = await executionContext.TryStartAsync();
-            if (startedOk)
+            _logger.LogDebug("Starting test");
+            // ACT and // ASSERT
+            bool startedOk;
+            using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
+                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing(10000)))
             {
-                var values = GetList(100000);
-                var maxBlockSize = 1000;
-                var listBlocks =
-                    await executionContext.GetListBlocksAsync<PersonDto>(x =>
-                        x.WithBatchCommitAtEnd(values, maxBlockSize));
-                foreach (var listBlock in listBlocks)
+                startedOk = await executionContext.TryStartAsync();
+                if (startedOk)
                 {
-                    await listBlock.StartAsync();
-                    var items = await listBlock.GetItemsAsync(ItemStatus.Failed, ItemStatus.Pending);
-                    await items.ParallelForEachAsync(async currentItem =>
+                    var values = GetList(100000);
+                    var maxBlockSize = 1000;
+                    var listBlocks =
+                        await executionContext.GetListBlocksAsync<PersonDto>(x =>
+                            x.WithBatchCommitAtEnd(values, maxBlockSize));
+                    foreach (var listBlock in listBlocks)
                     {
-                        await listBlock.ItemCompletedAsync(currentItem);
-                    });
+                        await listBlock.StartAsync();
+                        var items = await listBlock.GetItemsAsync(ItemStatus.Failed, ItemStatus.Pending);
+                        await items.ParallelForEachAsync(async currentItem =>
+                        {
+                            await listBlock.ItemCompletedAsync(currentItem);
+                        });
 
-                    await listBlock.CompleteAsync();
+                        await listBlock.CompleteAsync();
 
-                    // All items should be completed now
-                    Assert.Equal((await listBlock.GetItemsAsync(ItemStatus.Completed)).Count(),
-                        _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId, ItemStatus.Completed));
+                        // All items should be completed now
+                        Assert.Equal((await listBlock.GetItemsAsync(ItemStatus.Completed)).Count(),
+                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId, ItemStatus.Completed));
+                    }
                 }
             }
-        }
+        });
     }
 
     [Fact]
@@ -118,40 +125,43 @@ public class When_ConcurrentIsThreadSafe
     public async Task
         If_AsListWithPeriodicCommit_BlocksProcessedSequentially_BlocksListItemsProcessedInParallel_ThenNoConcurrencyIssues()
     {
-        _logger.LogDebug("Starting test");
-        // ACT and // ASSERT
-        bool startedOk;
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
-                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing(10000)))
+        await InSemaphoreAsync(async () =>
         {
-            startedOk = await executionContext.TryStartAsync();
-            if (startedOk)
+            _logger.LogDebug("Starting test");
+            // ACT and // ASSERT
+            bool startedOk;
+            using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
+                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing(10000)))
             {
-                var values = GetList(100000);
-                var maxBlockSize = 1000;
-                var listBlocks = await executionContext.GetListBlocksAsync<PersonDto>(x =>
-                    x.WithPeriodicCommit(values, maxBlockSize, BatchSize.Hundred));
-                foreach (var listBlock in listBlocks)
+                startedOk = await executionContext.TryStartAsync();
+                if (startedOk)
                 {
-                    await listBlock.StartAsync();
-                    var items = await listBlock.GetItemsAsync(ItemStatus.Failed, ItemStatus.Pending);
-
-                    await items.ParallelForEachAsync(async currentItem =>
+                    var values = GetList(100000);
+                    var maxBlockSize = 1000;
+                    var listBlocks = await executionContext.GetListBlocksAsync<PersonDto>(x =>
+                        x.WithPeriodicCommit(values, maxBlockSize, BatchSize.Hundred));
+                    foreach (var listBlock in listBlocks)
                     {
-                        await listBlock.ItemCompletedAsync(currentItem);
-                    });
+                        await listBlock.StartAsync();
+                        var items = await listBlock.GetItemsAsync(ItemStatus.Failed, ItemStatus.Pending);
 
-                    await listBlock.CompleteAsync();
+                        await items.ParallelForEachAsync(async currentItem =>
+                        {
+                            await listBlock.ItemCompletedAsync(currentItem);
+                        });
 
-                    // All items should be completed now
-                    var expectedCount = (await listBlock.GetItemsAsync(ItemStatus.Completed)).Count();
-                    var actualCount =
-                        _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId, ItemStatus.Completed);
+                        await listBlock.CompleteAsync();
 
-                    Assert.Equal(expectedCount, actualCount);
+                        // All items should be completed now
+                        var expectedCount = (await listBlock.GetItemsAsync(ItemStatus.Completed)).Count();
+                        var actualCount =
+                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId, ItemStatus.Completed);
+
+                        Assert.Equal(expectedCount, actualCount);
+                    }
                 }
             }
-        }
+        });
     }
 
     [Fact]
@@ -160,36 +170,40 @@ public class When_ConcurrentIsThreadSafe
     public async Task
         If_AsListWithSingleUnitCommit_BlocksProcessedInParallel_BlocksListItemsProcessedSequentially_ThenNoConcurrencyIssues()
     {
-        _logger.LogDebug("Starting test");
-        // ACT and // ASSERT
-        bool startedOk;
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
-                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing(10000)))
+        await InSemaphoreAsync(async () =>
         {
-            startedOk = await executionContext.TryStartAsync();
-            if (startedOk)
+            _logger.LogDebug("Starting test");
+            // ACT and // ASSERT
+            bool startedOk;
+            using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
+                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing(10000)))
             {
-                var values = GetList(100000);
-                var maxBlockSize = 1000;
-                var listBlocks =
-                    await executionContext.GetListBlocksAsync<PersonDto>(x =>
-                        x.WithSingleUnitCommit(values, maxBlockSize));
-
-                await listBlocks.ParallelForEachAsync(async currentBlock =>
+                startedOk = await executionContext.TryStartAsync();
+                if (startedOk)
                 {
-                    await currentBlock.StartAsync();
+                    var values = GetList(100000);
+                    var maxBlockSize = 1000;
+                    var listBlocks =
+                        await executionContext.GetListBlocksAsync<PersonDto>(x =>
+                            x.WithSingleUnitCommit(values, maxBlockSize));
 
-                    foreach (var currentItem in await currentBlock.GetItemsAsync(ItemStatus.Pending))
-                        await currentBlock.ItemCompletedAsync(currentItem);
-                    ;
+                    await listBlocks.ParallelForEachAsync(async currentBlock =>
+                    {
+                        await currentBlock.StartAsync();
 
-                    await currentBlock.CompleteAsync();
-                    // All items should be completed now
-                    Assert.Equal((await currentBlock.GetItemsAsync(ItemStatus.Completed)).Count(),
-                        _blocksHelper.GetListBlockItemCountByStatus(currentBlock.ListBlockId, ItemStatus.Completed));
-                });
+                        foreach (var currentItem in await currentBlock.GetItemsAsync(ItemStatus.Pending))
+                            await currentBlock.ItemCompletedAsync(currentItem);
+                        ;
+
+                        await currentBlock.CompleteAsync();
+                        // All items should be completed now
+                        Assert.Equal((await currentBlock.GetItemsAsync(ItemStatus.Completed)).Count(),
+                            _blocksHelper.GetListBlockItemCountByStatus(currentBlock.ListBlockId,
+                                ItemStatus.Completed));
+                    });
+                }
             }
-        }
+        });
     }
 
     private List<PersonDto> GetList(int count)

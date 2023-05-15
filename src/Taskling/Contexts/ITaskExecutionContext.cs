@@ -8,6 +8,7 @@ using Taskling.Blocks.RangeBlocks;
 using Taskling.Configuration;
 using Taskling.Fluent;
 using Taskling.Fluent.RangeBlocks;
+using Taskling.InfrastructureContracts;
 using Taskling.Tasks;
 
 namespace Taskling.Contexts;
@@ -19,15 +20,15 @@ public interface ITaskExecutionContext : IDisposable
     IList<IDateRangeBlockContext> GetDateRangeBlocks(
         Func<IFluentDateRangeBlockDescriptor, object> fluentBlockRequest);
 
-    void SetOptions(string applicationName,
-        string taskName,
+
+    void SetOptions(TaskId taskId,
         TaskExecutionOptions taskExecutionOptions, ITaskConfigurationRepository taskConfigurationRepository);
 
     bool TryStart();
     Task<bool> TryStartAsync();
-    Task<bool> TryStartAsync(string referenceValue);
+    Task<bool> TryStartAsync(Guid referenceValue);
     Task<bool> TryStartAsync<TExecutionHeader>(TExecutionHeader executionHeader);
-    Task<bool> TryStartAsync<TExecutionHeader>(TExecutionHeader executionHeader, string referenceValue);
+    Task<bool> TryStartAsync<TExecutionHeader>(TExecutionHeader executionHeader, Guid referenceValue);
     Task CompleteAsync();
     Task CheckpointAsync(string checkpointMessage);
     Task ErrorAsync(string errorMessage, bool treatTaskAsFailed);

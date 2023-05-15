@@ -1,11 +1,28 @@
-﻿namespace Taskling.SqlServer.Tokens.Executions;
+﻿using System.Text;
+using Newtonsoft.Json;
+using Taskling.SqlServer.Configuration;
 
-public class ExecutionTokenList
+namespace Taskling.SqlServer.Tokens.Executions;
+
+public class ExecutionTokenList:List<ExecutionToken>
 {
-    public ExecutionTokenList()
+    //public ExecutionTokenList()
+    //{
+    
+    //}
+
+    //public ExecutionTokenList(IEnumerable<ExecutionToken> executionTokens) : base(executionTokens)
+    //{
+
+    //}
+
+    public string Serialize()
     {
-        Tokens = new List<ExecutionToken>();
+        return JsonConvert.SerializeObject(this);
     }
 
-    public List<ExecutionToken> Tokens { get; set; }
+    public static ExecutionTokenList Deserialize(string tokensString)
+    {
+        return JsonConvert.DeserializeObject<ExecutionTokenList>(tokensString);
+    }
 }

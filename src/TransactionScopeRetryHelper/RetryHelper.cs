@@ -6,9 +6,9 @@ namespace TransactionScopeRetryHelper;
 
 public class RetryHelper
 {
-    private const int DefaultMaxDelayMilliseconds = 2000;
+    private const int DefaultMaxDelayMilliseconds = 10000;
     private const int DefaultMaxRetries = 10;
-    private const int DefaultDelayMilliseconds = 1000;
+    private const int DefaultDelayMilliseconds = 5000;
 
     public static ExceptionChecklist TransientCheckFunctions { get; } = new();
     public static PollyExtension Extensions { get; } = new();

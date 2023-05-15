@@ -1,5 +1,6 @@
 ﻿using System;
 using Taskling.Contexts;
+using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.TaskExecution;
 
@@ -11,8 +12,7 @@ public class ListBlockContext<T> : ListBlockContextBase<T, bool>, IListBlockCont
 
     public ListBlockContext(IListBlockRepository listBlockRepository,
         ITaskExecutionRepository taskExecutionRepository,
-        string applicationName,
-        string taskName,
+        TaskId taskId,
         int taskExecutionId,
         ListUpdateMode listUpdateMode,
         int uncommittedThreshold,
@@ -22,8 +22,7 @@ public class ListBlockContext<T> : ListBlockContextBase<T, bool>, IListBlockCont
         int forcedBlockQueueId = 0)
         : base(listBlockRepository,
             taskExecutionRepository,
-            applicationName,
-            taskName,
+            taskId,
             taskExecutionId,
             listUpdateMode,
             uncommittedThreshold,

@@ -20,7 +20,7 @@ public class TaskExecution
     public TimeSpan? KeepAliveDeathThreshold { get; set; }
     public int FailedTaskRetryLimit { get; set; }
     public int DeadTaskRetryLimit { get; set; }
-    public string? ReferenceValue { get; set; }
+    public Guid ReferenceValue { get; set; }
     public bool Failed { get; set; }
     public bool Blocked { get; set; }
     public string? TasklingVersion { get; set; }

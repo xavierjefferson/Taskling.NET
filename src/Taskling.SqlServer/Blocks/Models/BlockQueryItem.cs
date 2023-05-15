@@ -9,7 +9,7 @@ public class BlockQueryItem : IBlockQueryItem
     public DateTime LastKeepAlive { get; set; }
     public DateTime CreatedDate { get; set; }
     public int TaskDefinitionId { get; set; }
-    public string? ReferenceValue { get; set; }
+    public Guid? ReferenceValue { get; set; }
     public int BlockExecutionStatus { get; set; }
     public long BlockId { get; set; }
     public int Attempt { get; set; }

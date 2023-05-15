@@ -134,8 +134,7 @@ public class BlockFactory : IBlockFactory
                 blocks.Where(x => x.IsForcedBlock).Select(x => x.ForcedBlockQueueId).ToList()).ConfigureAwait(false);
 
         if (!blocks.Any())
-            await LogEmptyBlockEventAsync(blockRequest.TaskExecutionId, blockRequest.ApplicationName,
-                blockRequest.TaskName).ConfigureAwait(false);
+            await LogEmptyBlockEventAsync(blockRequest.TaskExecutionId, blockRequest.TaskId).ConfigureAwait(false);
 
         return blockContexts.OrderBy(x => x.Block.ListBlockId).ToList();
     }
@@ -152,8 +151,7 @@ public class BlockFactory : IBlockFactory
                 blocks.Where(x => x.IsForcedBlock).Select(x => x.ForcedBlockQueueId).ToList()).ConfigureAwait(false);
 
         if (!blocks.Any())
-            await LogEmptyBlockEventAsync(blockRequest.TaskExecutionId, blockRequest.ApplicationName,
-                blockRequest.TaskName).ConfigureAwait(false);
+            await LogEmptyBlockEventAsync(blockRequest.TaskExecutionId, blockRequest.TaskId).ConfigureAwait(false);
 
         return blockContexts.OrderBy(x => x.Block.ListBlockId).ToList();
     }
@@ -162,7 +160,7 @@ public class BlockFactory : IBlockFactory
     {
         var blocks = new List<IObjectBlockContext<T>>();
 
-        if (!string.IsNullOrEmpty(blockRequest.ReprocessReferenceValue))
+        if (blockRequest.ReprocessReferenceValue != Guid.Empty)
         {
             blocks = await LoadObjectBlocksOfTaskAsync(blockRequest).ConfigureAwait(false);
         }
@@ -182,8 +180,7 @@ public class BlockFactory : IBlockFactory
         }
 
         if (!blocks.Any())
-            await LogEmptyBlockEventAsync(blockRequest.TaskExecutionId, blockRequest.ApplicationName,
-                blockRequest.TaskName).ConfigureAwait(false);
+            await LogEmptyBlockEventAsync(blockRequest.TaskExecutionId, blockRequest.TaskId).ConfigureAwait(false);
 
         return blocks.OrderBy(x => x.Block.ObjectBlockId).ToList();
     }
@@ -212,7 +209,7 @@ public class BlockFactory : IBlockFactory
     {
         var blocks = new List<RangeBlockContext>();
 
-        if (!string.IsNullOrEmpty(blockRequest.ReprocessReferenceValue))
+        if (blockRequest.ReprocessReferenceValue != Guid.Empty)
         {
             _logger.LogDebug($"{nameof(blockRequest.ReprocessReferenceValue)} is not null or empty");
             blocks = await LoadRangeBlocksOfTaskAsync(blockRequest).ConfigureAwait(false);
@@ -288,8 +285,7 @@ public class BlockFactory : IBlockFactory
         if (!blocks.Any())
         {
             _logger.LogDebug("No blocks were pulled");
-            await LogEmptyBlockEventAsync(blockRequest.TaskExecutionId, blockRequest.ApplicationName,
-                blockRequest.TaskName).ConfigureAwait(false);
+            await LogEmptyBlockEventAsync(blockRequest.TaskExecutionId, blockRequest.TaskId).ConfigureAwait(false);
         }
         else
         {
@@ -305,7 +301,7 @@ public class BlockFactory : IBlockFactory
     {
         var utcNow = DateTime.UtcNow;
 
-        return new FindDeadBlocksRequest(new TaskId(blockRequest.ApplicationName, blockRequest.TaskName),
+        return new FindDeadBlocksRequest(blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             blockRequest.BlockType,
             utcNow - blockRequest.DeadTaskDetectionRange,
@@ -320,16 +316,16 @@ public class BlockFactory : IBlockFactory
 
     #region .: Range Blocks :.
 
-    private async Task LogEmptyBlockEventAsync(int taskExecutionId, string appName, string taskName)
+    private async Task LogEmptyBlockEventAsync(int taskExecutionId, TaskId taskId)
     {
-        var checkPointRequest = new TaskExecutionCheckpointRequest
+        var checkPointRequest = new TaskExecutionCheckpointRequest(taskId)
         {
             TaskExecutionId = taskExecutionId,
-            Message = "No values for generate the block. Emtpy Block context returned.",
-            TaskId = new TaskId(appName, taskName)
+            Message = "No values for generate the block. Emtpy Block context returned."
         };
         await _taskExecutionRepository.CheckpointAsync(checkPointRequest).ConfigureAwait(false);
     }
+
 
     private int GetBlocksRemaining<T>(BlockRequest blockRequest, List<T> blocks)
     {
@@ -339,7 +335,7 @@ public class BlockFactory : IBlockFactory
     private async Task<List<RangeBlockContext>> GetForcedBlocksAsync(BlockRequest blockRequest)
     {
         var forcedBlockRequest = new QueuedForcedBlocksRequest(
-            new TaskId(blockRequest.ApplicationName, blockRequest.TaskName),
+            blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             blockRequest.BlockType);
 
@@ -361,7 +357,7 @@ public class BlockFactory : IBlockFactory
     private async Task DequeueForcedBlocksAsync(BlockRequest blockRequest, List<int> forcedBlockQueueIds)
     {
         var request = new DequeueForcedBlocksRequest(
-            new TaskId(blockRequest.ApplicationName, blockRequest.TaskName),
+            blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             blockRequest.BlockType,
             forcedBlockQueueIds);
@@ -372,7 +368,7 @@ public class BlockFactory : IBlockFactory
     private async Task<List<RangeBlockContext>> LoadRangeBlocksOfTaskAsync(BlockRequest blockRequest)
     {
         var failedBlockRequest = new FindBlocksOfTaskRequest(
-            new TaskId(blockRequest.ApplicationName, blockRequest.TaskName),
+            blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             blockRequest.BlockType,
             blockRequest.ReprocessReferenceValue,
@@ -389,7 +385,7 @@ public class BlockFactory : IBlockFactory
     private async Task<IList<ProtoListBlock>> LoadListBlocksOfTaskAsync(ListBlockRequest blockRequest)
     {
         var failedBlockRequest = new FindBlocksOfTaskRequest(
-            new TaskId(blockRequest.ApplicationName, blockRequest.TaskName),
+            blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             blockRequest.BlockType,
             blockRequest.ReprocessReferenceValue,
@@ -410,7 +406,7 @@ public class BlockFactory : IBlockFactory
     private async Task<List<RangeBlockContext>> GetFailedBlocksAsync(BlockRequest blockRequest, int blockCountLimit)
     {
         var failedBlockRequest = new FindFailedBlocksRequest(
-            new TaskId(blockRequest.ApplicationName, blockRequest.TaskName),
+            blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             blockRequest.BlockType,
             DateTime.UtcNow - blockRequest.FailedTaskDetectionRange,
@@ -442,7 +438,7 @@ public class BlockFactory : IBlockFactory
     {
         var attempt = rangeBlock.Attempt + 1;
         var createRequest = new BlockExecutionCreateRequest(
-            new TaskId(blockRequest.ApplicationName, blockRequest.TaskName),
+            blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             blockRequest.BlockType,
             rangeBlock.RangeBlockId,
@@ -451,8 +447,7 @@ public class BlockFactory : IBlockFactory
         var blockExecutionId = await _blockRepository.AddRangeBlockExecutionAsync(createRequest).ConfigureAwait(false);
         var blockContext = new RangeBlockContext(_rangeBlockRepository,
             _taskExecutionRepository,
-            blockRequest.ApplicationName,
-            blockRequest.TaskName,
+            blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             rangeBlock, blockExecutionId,
             forcedBlockQueueId);
@@ -493,7 +488,7 @@ public class BlockFactory : IBlockFactory
     private async Task<RangeBlock> GenerateDateRangeBlockAsync(DateRangeBlockRequest blockRequest, DateTime rangeBegin,
         DateTime rangeEnd)
     {
-        var request = new RangeBlockCreateRequest(new TaskId(blockRequest.ApplicationName, blockRequest.TaskName),
+        var request = new RangeBlockCreateRequest(blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             rangeBegin,
             rangeEnd);
@@ -536,7 +531,7 @@ public class BlockFactory : IBlockFactory
     private async Task<RangeBlock> GenerateNumericRangeBlockAsync(NumericRangeBlockRequest blockRequest,
         long rangeBegin, long rangeEnd)
     {
-        var request = new RangeBlockCreateRequest(new TaskId(blockRequest.ApplicationName, blockRequest.TaskName),
+        var request = new RangeBlockCreateRequest(blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             rangeBegin,
             rangeEnd);
@@ -556,7 +551,7 @@ public class BlockFactory : IBlockFactory
     {
         var blocks = new List<ProtoListBlock>();
 
-        if (!string.IsNullOrEmpty(blockRequest.ReprocessReferenceValue))
+        if (blockRequest.ReprocessReferenceValue != Guid.Empty)
         {
             blocks = (await LoadListBlocksOfTaskAsync(blockRequest).ConfigureAwait(false)).ToList();
         }
@@ -596,7 +591,7 @@ public class BlockFactory : IBlockFactory
     private async Task<IList<ForcedListBlockQueueItem>> GetForcedListBlocksAsync(ListBlockRequest blockRequest)
     {
         var forcedBlockRequest = new QueuedForcedBlocksRequest(
-            new TaskId(blockRequest.ApplicationName, blockRequest.TaskName),
+            blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             blockRequest.BlockType);
 
@@ -631,7 +626,7 @@ public class BlockFactory : IBlockFactory
         int blockCountLimit)
     {
         var failedBlockRequest = new FindFailedBlocksRequest(
-            new TaskId(blockRequest.ApplicationName, blockRequest.TaskName),
+            blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             blockRequest.BlockType,
             DateTime.UtcNow - blockRequest.FailedTaskDetectionRange,
@@ -674,7 +669,7 @@ public class BlockFactory : IBlockFactory
 
     private async Task<ProtoListBlock> GenerateListBlockAsync(ListBlockRequest blockRequest, List<string> values)
     {
-        var request = new ListBlockCreateRequest(new TaskId(blockRequest.ApplicationName, blockRequest.TaskName),
+        var request = new ListBlockCreateRequest(blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             values,
             blockRequest.SerializedHeader,
@@ -707,7 +702,7 @@ public class BlockFactory : IBlockFactory
     {
         var attempt = listBlock.Attempt + 1;
         var createRequest = new BlockExecutionCreateRequest(
-            new TaskId(blockRequest.ApplicationName, blockRequest.TaskName),
+            blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             BlockType.List,
             listBlock.ListBlockId,
@@ -718,8 +713,7 @@ public class BlockFactory : IBlockFactory
         var listBlockOfT = Convert<T>(listBlock);
         var blockContext = new ListBlockContext<T>(_listBlockRepository,
             _taskExecutionRepository,
-            blockRequest.ApplicationName,
-            blockRequest.TaskName,
+            blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             blockRequest.ListUpdateMode,
             blockRequest.UncommittedItemsThreshold,
@@ -750,7 +744,7 @@ public class BlockFactory : IBlockFactory
     {
         var attempt = listBlock.Attempt + 1;
         var createRequest = new BlockExecutionCreateRequest(
-            new TaskId(blockRequest.ApplicationName, blockRequest.TaskName),
+            blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             blockRequest.BlockType,
             listBlock.ListBlockId,
@@ -761,8 +755,7 @@ public class BlockFactory : IBlockFactory
         var listBlockOfT = Convert<TItem, THeader>(listBlock);
         var blockContext = new ListBlockContext<TItem, THeader>(_listBlockRepository,
             _taskExecutionRepository,
-            blockRequest.ApplicationName,
-            blockRequest.TaskName,
+            blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             blockRequest.ListUpdateMode,
             blockRequest.UncommittedItemsThreshold,
@@ -839,7 +832,7 @@ public class BlockFactory : IBlockFactory
     private async Task<List<IObjectBlockContext<T>>> LoadObjectBlocksOfTaskAsync<T>(ObjectBlockRequest<T> blockRequest)
     {
         var failedBlockRequest = new FindBlocksOfTaskRequest(
-            new TaskId(blockRequest.ApplicationName, blockRequest.TaskName),
+            blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             blockRequest.BlockType,
             blockRequest.ReprocessReferenceValue,
@@ -856,7 +849,7 @@ public class BlockFactory : IBlockFactory
     private async Task<List<IObjectBlockContext<T>>> GetForcedObjectBlocksAsync<T>(ObjectBlockRequest<T> blockRequest)
     {
         var forcedBlockRequest = new QueuedForcedBlocksRequest(
-            new TaskId(blockRequest.ApplicationName, blockRequest.TaskName),
+            blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             blockRequest.BlockType);
 
@@ -901,7 +894,7 @@ public class BlockFactory : IBlockFactory
         int blockCountLimit)
     {
         var failedBlockRequest = new FindFailedBlocksRequest(
-            new TaskId(blockRequest.ApplicationName, blockRequest.TaskName),
+            blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             blockRequest.BlockType,
             DateTime.UtcNow - blockRequest.FailedTaskDetectionRange,
@@ -933,7 +926,7 @@ public class BlockFactory : IBlockFactory
     {
         var attempt = objectBlock.Attempt + 1;
         var createRequest = new BlockExecutionCreateRequest(
-            new TaskId(blockRequest.ApplicationName, blockRequest.TaskName),
+            blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             blockRequest.BlockType,
             objectBlock.ObjectBlockId,
@@ -942,8 +935,7 @@ public class BlockFactory : IBlockFactory
         var blockExecutionId = await _blockRepository.AddObjectBlockExecutionAsync(createRequest).ConfigureAwait(false);
         var blockContext = new ObjectBlockContext<T>(_objectBlockRepository,
             _taskExecutionRepository,
-            blockRequest.ApplicationName,
-            blockRequest.TaskName,
+            blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             objectBlock,
             blockExecutionId,
@@ -960,7 +952,7 @@ public class BlockFactory : IBlockFactory
 
     private async Task<ObjectBlock<T>> GenerateObjectBlockAsync<T>(ObjectBlockRequest<T> blockRequest)
     {
-        var request = new ObjectBlockCreateRequest<T>(new TaskId(blockRequest.ApplicationName, blockRequest.TaskName),
+        var request = new ObjectBlockCreateRequest<T>(blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             blockRequest.Object,
             blockRequest.CompressionThreshold);

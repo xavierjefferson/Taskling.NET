@@ -1,8 +1,10 @@
-﻿namespace Taskling.Fluent;
+﻿using System;
+
+namespace Taskling.Fluent;
 
 public interface IReprocessTaskDescriptor
 {
-    IComplete OfExecutionWith(string referenceValue);
+    IComplete OfExecutionWith(Guid referenceValue);
 }
 
 public interface IReprocessScopeDescriptor

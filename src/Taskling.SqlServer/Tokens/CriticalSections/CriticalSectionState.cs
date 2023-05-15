@@ -7,7 +7,7 @@ internal class CriticalSectionState
     private int? _grantedToExecution;
     private bool _isGranted;
 
-    private List<CriticalSectionQueueItem> _queue;
+    private List<CriticalSectionQueueItem>? _queue;
 
     public bool IsGranted
     {

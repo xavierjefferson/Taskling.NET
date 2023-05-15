@@ -5,12 +5,13 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
+using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_TaskExecutionContext;
 
 [Collection(TestConstants.CollectionName)]
-public class When_Start
+public class When_Start : TestBase
 {
     private readonly IClientHelper _clientHelper;
     private readonly IExecutionsHelper _executionsHelper;
@@ -18,15 +19,15 @@ public class When_Start
     private readonly int _taskDefinitionId;
 
     public When_Start(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper, IClientHelper clientHelper,
-        ILogger<When_Start> logger, ITaskRepository taskRepository)
+        ILogger<When_Start> logger, ITaskRepository taskRepository) : base(executionsHelper)
     {
         _logger = logger;
         _executionsHelper = executionsHelper;
         _clientHelper = clientHelper;
 
-        executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+        executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
 
-        _taskDefinitionId = executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _taskDefinitionId = executionsHelper.InsertTask(CurrentTaskId);
     }
 
     [Fact]
@@ -34,28 +35,31 @@ public class When_Start
     [Trait("Area", "TaskExecutions")]
     public async Task If_TryStart_ThenLogCorrectTasklingVersion()
     {
-        // ARRANGE
-        var executionsHelper = _executionsHelper;
-
-        // ACT
-        bool startedOk;
-
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
-                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        await InSemaphoreAsync(async () =>
         {
-            startedOk = await executionContext.TryStartAsync();
-            var sqlServerImplAssembly =
-                AppDomain.CurrentDomain.GetAssemblies()
-                    .First(x => x.FullName.Contains("Taskling")
-                                && !x.FullName.Contains("Taskling.Sql")
-                                && !x.FullName.Contains("Tests"));
-            var fileVersionInfo = FileVersionInfo.GetVersionInfo(sqlServerImplAssembly.Location);
-            var versionOfTaskling = fileVersionInfo.ProductVersion;
-            var executionVersion = executionsHelper.GetLastExecutionVersion(_taskDefinitionId);
-            Assert.Equal(versionOfTaskling.Trim(), executionVersion.Trim());
-        }
+            // ARRANGE
+            var executionsHelper = _executionsHelper;
 
-        // ASSERT
+            // ACT
+            bool startedOk;
+
+            using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
+                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+            {
+                startedOk = await executionContext.TryStartAsync();
+                var sqlServerImplAssembly =
+                    AppDomain.CurrentDomain.GetAssemblies()
+                        .First(x => x.FullName.Contains("Taskling")
+                                    && !x.FullName.Contains("Taskling.Sql")
+                                    && !x.FullName.Contains("Tests"));
+                var fileVersionInfo = FileVersionInfo.GetVersionInfo(sqlServerImplAssembly.Location);
+                var versionOfTaskling = fileVersionInfo.ProductVersion;
+                var executionVersion = executionsHelper.GetLastExecutionVersion(_taskDefinitionId);
+                Assert.Equal(versionOfTaskling.Trim(), executionVersion.Trim());
+            }
+
+            // ASSERT
+        });
     }
 
     [Fact]
@@ -63,28 +67,31 @@ public class When_Start
     [Trait("Area", "TaskExecutions")]
     public async Task If_TryStartWithHeader_ThenGetHeaderReturnsTheHeader()
     {
-        // ARRANGE
-        var executionsHelper = _executionsHelper;
-        var myHeader = new MyHeader
+        await InSemaphoreAsync(async () =>
         {
-            Name = "Jack",
-            Id = 367
-        };
+            // ARRANGE
+            var executionsHelper = _executionsHelper;
+            var myHeader = new MyHeader
+            {
+                Name = "Jack",
+                Id = 367
+            };
 
-        // ACT
-        bool startedOk;
+            // ACT
+            bool startedOk;
 
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
-                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
-        {
-            startedOk = await executionContext.TryStartAsync(myHeader);
+            using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
+                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+            {
+                startedOk = await executionContext.TryStartAsync(myHeader);
 
-            var myHeaderBack = executionContext.GetHeader<MyHeader>();
-            Assert.Equal(myHeader.Name, myHeaderBack.Name);
-            Assert.Equal(myHeader.Id, myHeaderBack.Id);
-        }
+                var myHeaderBack = executionContext.GetHeader<MyHeader>();
+                Assert.Equal(myHeader.Name, myHeaderBack.Name);
+                Assert.Equal(myHeader.Id, myHeaderBack.Id);
+            }
 
-        // ASSERT
+            // ASSERT
+        });
     }
 
     [Fact]
@@ -92,30 +99,33 @@ public class When_Start
     [Trait("Area", "TaskExecutions")]
     public async Task If_TryStartWithHeader_ThenHeaderWrittenToDatabase()
     {
-        // ARRANGE
-        var executionsHelper = _executionsHelper;
-        var myHeader = new MyHeader
+        await InSemaphoreAsync(async () =>
         {
-            Name = "Jack",
-            Id = 367
-        };
+            // ARRANGE
+            var executionsHelper = _executionsHelper;
+            var myHeader = new MyHeader
+            {
+                Name = "Jack",
+                Id = 367
+            };
 
-        // ACT
-        bool startedOk;
+            // ACT
+            bool startedOk;
 
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
-                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
-        {
-            startedOk = await executionContext.TryStartAsync(myHeader);
+            using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
+                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+            {
+                startedOk = await executionContext.TryStartAsync(myHeader);
 
-            var myHeaderBack = executionContext.GetHeader<MyHeader>();
-        }
+                var myHeaderBack = executionContext.GetHeader<MyHeader>();
+            }
 
-        var dbHelper = executionsHelper;
-        var executionHeader = dbHelper.GetLastExecutionHeader(_taskDefinitionId);
-        var expectedHeader = "{\"Name\":\"Jack\",\"Id\":367}";
+            var dbHelper = executionsHelper;
+            var executionHeader = dbHelper.GetLastExecutionHeader(_taskDefinitionId);
+            var expectedHeader = "{\"Name\":\"Jack\",\"Id\":367}";
 
-        // ASSERT
-        Assert.Equal(expectedHeader, executionHeader);
+            // ASSERT
+            Assert.Equal(expectedHeader, executionHeader);
+        });
     }
 }

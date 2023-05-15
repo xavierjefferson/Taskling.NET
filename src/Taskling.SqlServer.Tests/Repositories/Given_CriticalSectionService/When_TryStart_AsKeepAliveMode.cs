@@ -6,28 +6,31 @@ using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.CriticalSections;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
+using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Taskling.Tasks;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_CriticalSectionService;
 
 [Collection(TestConstants.CollectionName)]
-public class When_TryStart_AsKeepAliveMode
+public class When_TryStart_AsKeepAliveMode : TestBase
 {
     private readonly ICriticalSectionRepository _criticalSectionRepository;
     private readonly IExecutionsHelper _executionsHelper;
     private readonly ILogger<When_TryStart_AsKeepAliveMode> _logger;
 
+
     public When_TryStart_AsKeepAliveMode(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper,
         IClientHelper clientHelper,
         ILogger<When_TryStart_AsKeepAliveMode> logger, ITaskRepository taskRepository,
-        ICriticalSectionRepository criticalSectionRepository)
+        ICriticalSectionRepository criticalSectionRepository) : base(executionsHelper)
     {
         _executionsHelper = executionsHelper;
         _logger = logger;
         _criticalSectionRepository = criticalSectionRepository;
 
-        _executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+
+        _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
     }
 
     [Fact]
@@ -35,24 +38,27 @@ public class When_TryStart_AsKeepAliveMode
     [Trait("Area", "CriticalSectionTokens")]
     public async Task If_KeepAliveMode_TokenAvailableAndNothingInQueue_ThenGrant()
     {
-        // ARRANGE
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
 
-        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        var taskExecutionId = _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId);
-        _executionsHelper.InsertUnlimitedExecutionToken(taskDefinitionId);
+            var taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
+            var taskExecutionId = _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId);
+            _executionsHelper.InsertUnlimitedExecutionToken(taskDefinitionId);
 
-        var request = new StartCriticalSectionRequest(new TaskId(TestConstants.ApplicationName, TestConstants.TaskName),
-            taskExecutionId,
-            TaskDeathMode.KeepAlive,
-            CriticalSectionType.User);
-        request.KeepAliveDeathThreshold = new TimeSpan(0, 1, 0);
+            var request = new StartCriticalSectionRequest(CurrentTaskId,
+                taskExecutionId,
+                TaskDeathMode.KeepAlive,
+                CriticalSectionType.User);
+            request.KeepAliveDeathThreshold = new TimeSpan(0, 1, 0);
 
-        // ACT
-        var sut = _criticalSectionRepository;
-        var response = await sut.StartAsync(request);
+            // ACT
+            var sut = _criticalSectionRepository;
+            var response = await sut.StartAsync(request);
 
-        // ASSERT
-        Assert.Equal(GrantStatus.Granted, response.GrantStatus);
+            // ASSERT
+            Assert.Equal(GrantStatus.Granted, response.GrantStatus);
+        });
     }
 
     [Fact]
@@ -60,32 +66,35 @@ public class When_TryStart_AsKeepAliveMode
     [Trait("Area", "CriticalSectionTokens")]
     public async Task If_KeepAliveMode_TokenNotAvailableAndNothingInQueue_ThenAddToQueueAndDeny()
     {
-        // ARRANGE
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
 
-        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        _executionsHelper.InsertUnlimitedExecutionToken(taskDefinitionId);
+            var taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
+            _executionsHelper.InsertUnlimitedExecutionToken(taskDefinitionId);
 
-        // Create execution 1 and assign critical section to it
-        var taskExecutionId1 = _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId);
-        _executionsHelper.InsertUnavailableCriticalSectionToken(taskDefinitionId, taskExecutionId1);
+            // Create execution 1 and assign critical section to it
+            var taskExecutionId1 = _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId);
+            _executionsHelper.InsertUnavailableCriticalSectionToken(taskDefinitionId, taskExecutionId1);
 
-        // Create second execution
-        var taskExecutionId2 = _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId);
+            // Create second execution
+            var taskExecutionId2 = _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId);
 
-        var request = new StartCriticalSectionRequest(new TaskId(TestConstants.ApplicationName, TestConstants.TaskName),
-            taskExecutionId2,
-            TaskDeathMode.KeepAlive,
-            CriticalSectionType.User);
-        request.KeepAliveDeathThreshold = new TimeSpan(0, 1, 0);
+            var request = new StartCriticalSectionRequest(CurrentTaskId,
+                taskExecutionId2,
+                TaskDeathMode.KeepAlive,
+                CriticalSectionType.User);
+            request.KeepAliveDeathThreshold = new TimeSpan(0, 1, 0);
 
-        // ACT
-        var sut = _criticalSectionRepository;
-        var response = await sut.StartAsync(request);
+            // ACT
+            var sut = _criticalSectionRepository;
+            var response = await sut.StartAsync(request);
 
-        // ASSERT
-        var isInQueue = _executionsHelper.GetQueueCount(taskExecutionId2) == 1;
-        Assert.True(isInQueue);
-        Assert.Equal(GrantStatus.Denied, response.GrantStatus);
+            // ASSERT
+            var isInQueue = _executionsHelper.GetQueueCount(taskExecutionId2) == 1;
+            Assert.True(isInQueue);
+            Assert.Equal(GrantStatus.Denied, response.GrantStatus);
+        });
     }
 
     [Fact]
@@ -93,33 +102,36 @@ public class When_TryStart_AsKeepAliveMode
     [Trait("Area", "CriticalSectionTokens")]
     public async Task If_KeepAliveMode_TokenNotAvailableAndAlreadyInQueue_ThenDoNotAddToQueueAndDeny()
     {
-        // ARRANGE
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
 
-        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        _executionsHelper.InsertUnlimitedExecutionToken(taskDefinitionId);
+            var taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
+            _executionsHelper.InsertUnlimitedExecutionToken(taskDefinitionId);
 
-        // Create execution 1 and assign critical section to it
-        var taskExecutionId1 = _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId);
-        _executionsHelper.InsertUnavailableCriticalSectionToken(taskDefinitionId, taskExecutionId1);
+            // Create execution 1 and assign critical section to it
+            var taskExecutionId1 = _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId);
+            _executionsHelper.InsertUnavailableCriticalSectionToken(taskDefinitionId, taskExecutionId1);
 
-        // Create second execution and insert into queue
-        var taskExecutionId2 = _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId);
-        _executionsHelper.InsertIntoCriticalSectionQueue(taskDefinitionId, 1, taskExecutionId2);
+            // Create second execution and insert into queue
+            var taskExecutionId2 = _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId);
+            _executionsHelper.InsertIntoCriticalSectionQueue(taskDefinitionId, 1, taskExecutionId2);
 
-        var request = new StartCriticalSectionRequest(new TaskId(TestConstants.ApplicationName, TestConstants.TaskName),
-            taskExecutionId2,
-            TaskDeathMode.KeepAlive,
-            CriticalSectionType.User);
-        request.KeepAliveDeathThreshold = new TimeSpan(0, 10, 0);
+            var request = new StartCriticalSectionRequest(CurrentTaskId,
+                taskExecutionId2,
+                TaskDeathMode.KeepAlive,
+                CriticalSectionType.User);
+            request.KeepAliveDeathThreshold = new TimeSpan(0, 10, 0);
 
-        // ACT
-        var sut = _criticalSectionRepository;
-        var response = await sut.StartAsync(request);
+            // ACT
+            var sut = _criticalSectionRepository;
+            var response = await sut.StartAsync(request);
 
-        // ASSERT
-        var numberOfQueueRecords = _executionsHelper.GetQueueCount(taskExecutionId2);
-        Assert.Equal(1, numberOfQueueRecords);
-        Assert.Equal(GrantStatus.Denied, response.GrantStatus);
+            // ASSERT
+            var numberOfQueueRecords = _executionsHelper.GetQueueCount(taskExecutionId2);
+            Assert.Equal(1, numberOfQueueRecords);
+            Assert.Equal(GrantStatus.Denied, response.GrantStatus);
+        });
     }
 
     [Fact]
@@ -127,30 +139,33 @@ public class When_TryStart_AsKeepAliveMode
     [Trait("Area", "CriticalSectionTokens")]
     public async Task If_KeepAliveMode_TokenAvailableAndIsFirstInQueue_ThenRemoveFromQueueAndGrant()
     {
-        // ARRANGE
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
 
-        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        _executionsHelper.InsertUnlimitedExecutionToken(taskDefinitionId);
+            var taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
+            _executionsHelper.InsertUnlimitedExecutionToken(taskDefinitionId);
 
-        // Create execution 1 and create available critical section token
-        var taskExecutionId1 = _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId);
-        _executionsHelper.InsertIntoCriticalSectionQueue(taskDefinitionId, 1, taskExecutionId1);
-        _executionsHelper.InsertAvailableCriticalSectionToken(taskDefinitionId, 0);
+            // Create execution 1 and create available critical section token
+            var taskExecutionId1 = _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId);
+            _executionsHelper.InsertIntoCriticalSectionQueue(taskDefinitionId, 1, taskExecutionId1);
+            _executionsHelper.InsertAvailableCriticalSectionToken(taskDefinitionId, 0);
 
-        var request = new StartCriticalSectionRequest(new TaskId(TestConstants.ApplicationName, TestConstants.TaskName),
-            taskExecutionId1,
-            TaskDeathMode.KeepAlive,
-            CriticalSectionType.User);
-        request.KeepAliveDeathThreshold = new TimeSpan(0, 1, 0);
+            var request = new StartCriticalSectionRequest(CurrentTaskId,
+                taskExecutionId1,
+                TaskDeathMode.KeepAlive,
+                CriticalSectionType.User);
+            request.KeepAliveDeathThreshold = new TimeSpan(0, 1, 0);
 
-        // ACT
-        var sut = _criticalSectionRepository;
-        var response = await sut.StartAsync(request);
+            // ACT
+            var sut = _criticalSectionRepository;
+            var response = await sut.StartAsync(request);
 
-        // ASSERT
-        var numberOfQueueRecords = _executionsHelper.GetQueueCount(taskExecutionId1);
-        Assert.Equal(0, numberOfQueueRecords);
-        Assert.Equal(GrantStatus.Granted, response.GrantStatus);
+            // ASSERT
+            var numberOfQueueRecords = _executionsHelper.GetQueueCount(taskExecutionId1);
+            Assert.Equal(0, numberOfQueueRecords);
+            Assert.Equal(GrantStatus.Granted, response.GrantStatus);
+        });
     }
 
     [Fact]
@@ -158,36 +173,39 @@ public class When_TryStart_AsKeepAliveMode
     [Trait("Area", "CriticalSectionTokens")]
     public async Task If_KeepAliveMode_TokenAvailableAndIsNotFirstInQueue_ThenDoNotChangeQueueAndDeny()
     {
-        // ARRANGE
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
 
-        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        _executionsHelper.InsertUnlimitedExecutionToken(taskDefinitionId);
+            var taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
+            _executionsHelper.InsertUnlimitedExecutionToken(taskDefinitionId);
 
-        // Create execution 1 and add it to the queue
-        var taskExecutionId1 = _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId);
-        _executionsHelper.InsertIntoCriticalSectionQueue(taskDefinitionId, 1, taskExecutionId1);
+            // Create execution 1 and add it to the queue
+            var taskExecutionId1 = _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId);
+            _executionsHelper.InsertIntoCriticalSectionQueue(taskDefinitionId, 1, taskExecutionId1);
 
-        // Create execution 2 and add it to the queue
-        var taskExecutionId2 = _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId);
-        _executionsHelper.InsertIntoCriticalSectionQueue(taskDefinitionId, 2, taskExecutionId2);
+            // Create execution 2 and add it to the queue
+            var taskExecutionId2 = _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId);
+            _executionsHelper.InsertIntoCriticalSectionQueue(taskDefinitionId, 2, taskExecutionId2);
 
-        // Create an available critical section token
-        _executionsHelper.InsertAvailableCriticalSectionToken(taskDefinitionId, 0);
+            // Create an available critical section token
+            _executionsHelper.InsertAvailableCriticalSectionToken(taskDefinitionId, 0);
 
-        var request = new StartCriticalSectionRequest(new TaskId(TestConstants.ApplicationName, TestConstants.TaskName),
-            taskExecutionId2,
-            TaskDeathMode.KeepAlive,
-            CriticalSectionType.User);
-        request.KeepAliveDeathThreshold = new TimeSpan(0, 1, 0);
+            var request = new StartCriticalSectionRequest(CurrentTaskId,
+                taskExecutionId2,
+                TaskDeathMode.KeepAlive,
+                CriticalSectionType.User);
+            request.KeepAliveDeathThreshold = new TimeSpan(0, 1, 0);
 
-        // ACT
-        var sut = _criticalSectionRepository;
-        var response = await sut.StartAsync(request);
+            // ACT
+            var sut = _criticalSectionRepository;
+            var response = await sut.StartAsync(request);
 
-        // ASSERT
-        var numberOfQueueRecords = _executionsHelper.GetQueueCount(taskExecutionId2);
-        Assert.Equal(1, numberOfQueueRecords);
-        Assert.Equal(GrantStatus.Denied, response.GrantStatus);
+            // ASSERT
+            var numberOfQueueRecords = _executionsHelper.GetQueueCount(taskExecutionId2);
+            Assert.Equal(1, numberOfQueueRecords);
+            Assert.Equal(GrantStatus.Denied, response.GrantStatus);
+        });
     }
 
     [Fact]
@@ -196,45 +214,48 @@ public class When_TryStart_AsKeepAliveMode
     public async Task
         If_KeepAliveMode_TokenAvailableAndIsNotFirstInQueueButFirstHasExpiredTimeout_ThenRemoveBothFromQueueAndGrant()
     {
-        // ARRANGE
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
 
-        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+            var taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
 
-        var keepAliveThreshold = new TimeSpan(0, 0, 5);
+            var keepAliveThreshold = new TimeSpan(0, 0, 5);
 
-        // Create execution 1 and add it to the queue
-        var taskExecutionId1 =
-            _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId, new TimeSpan(0, 0, 1), keepAliveThreshold);
-        _executionsHelper.InsertUnlimitedExecutionToken(taskDefinitionId);
-        _executionsHelper.SetKeepAlive(taskExecutionId1);
-        _executionsHelper.InsertIntoCriticalSectionQueue(taskDefinitionId, 1, taskExecutionId1);
+            // Create execution 1 and add it to the queue
+            var taskExecutionId1 =
+                _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId, new TimeSpan(0, 0, 1), keepAliveThreshold);
+            _executionsHelper.InsertUnlimitedExecutionToken(taskDefinitionId);
+            _executionsHelper.SetKeepAlive(taskExecutionId1);
+            _executionsHelper.InsertIntoCriticalSectionQueue(taskDefinitionId, 1, taskExecutionId1);
 
-        Thread.Sleep(6000);
+            Thread.Sleep(6000);
 
-        // Create execution 2 and add it to the queue
-        var taskExecutionId2 = _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId);
-        _executionsHelper.SetKeepAlive(taskExecutionId2);
-        _executionsHelper.InsertIntoCriticalSectionQueue(taskDefinitionId, 2, taskExecutionId2);
+            // Create execution 2 and add it to the queue
+            var taskExecutionId2 = _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId);
+            _executionsHelper.SetKeepAlive(taskExecutionId2);
+            _executionsHelper.InsertIntoCriticalSectionQueue(taskDefinitionId, 2, taskExecutionId2);
 
-        // Create an available critical section token
-        _executionsHelper.InsertAvailableCriticalSectionToken(taskDefinitionId, 0);
+            // Create an available critical section token
+            _executionsHelper.InsertAvailableCriticalSectionToken(taskDefinitionId, 0);
 
-        var request = new StartCriticalSectionRequest(new TaskId(TestConstants.ApplicationName, TestConstants.TaskName),
-            taskExecutionId2,
-            TaskDeathMode.KeepAlive,
-            CriticalSectionType.User);
-        request.KeepAliveDeathThreshold = keepAliveThreshold;
+            var request = new StartCriticalSectionRequest(CurrentTaskId,
+                taskExecutionId2,
+                TaskDeathMode.KeepAlive,
+                CriticalSectionType.User);
+            request.KeepAliveDeathThreshold = keepAliveThreshold;
 
-        // ACT
-        var sut = _criticalSectionRepository;
-        var response = await sut.StartAsync(request);
+            // ACT
+            var sut = _criticalSectionRepository;
+            var response = await sut.StartAsync(request);
 
-        // ASSERT
-        var numberOfQueueRecordsForExecution1 = _executionsHelper.GetQueueCount(taskExecutionId1);
-        var numberOfQueueRecordsForExecution2 = _executionsHelper.GetQueueCount(taskExecutionId2);
-        Assert.Equal(0, numberOfQueueRecordsForExecution1);
-        Assert.Equal(0, numberOfQueueRecordsForExecution2);
-        Assert.Equal(GrantStatus.Granted, response.GrantStatus);
+            // ASSERT
+            var numberOfQueueRecordsForExecution1 = _executionsHelper.GetQueueCount(taskExecutionId1);
+            var numberOfQueueRecordsForExecution2 = _executionsHelper.GetQueueCount(taskExecutionId2);
+            Assert.Equal(0, numberOfQueueRecordsForExecution1);
+            Assert.Equal(0, numberOfQueueRecordsForExecution2);
+            Assert.Equal(GrantStatus.Granted, response.GrantStatus);
+        });
     }
 
     [Fact]
@@ -243,40 +264,43 @@ public class When_TryStart_AsKeepAliveMode
     public async Task
         If_KeepAliveMode_TokenAvailableAndIsNotFirstInQueueButFirstHasCompleted_ThenRemoveBothFromQueueAndGrant()
     {
-        // ARRANGE
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
 
-        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        _executionsHelper.InsertUnlimitedExecutionToken(taskDefinitionId);
+            var taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
+            _executionsHelper.InsertUnlimitedExecutionToken(taskDefinitionId);
 
-        // Create execution 1 and add it to the queue
-        var taskExecutionId1 = _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId);
-        _executionsHelper.SetKeepAlive(taskExecutionId1);
-        _executionsHelper.InsertIntoCriticalSectionQueue(taskDefinitionId, 1, taskExecutionId1);
-        _executionsHelper.SetTaskExecutionAsCompleted(taskExecutionId1);
+            // Create execution 1 and add it to the queue
+            var taskExecutionId1 = _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId);
+            _executionsHelper.SetKeepAlive(taskExecutionId1);
+            _executionsHelper.InsertIntoCriticalSectionQueue(taskDefinitionId, 1, taskExecutionId1);
+            _executionsHelper.SetTaskExecutionAsCompleted(taskExecutionId1);
 
-        // Create execution 2 and add it to the queue
-        var taskExecutionId2 = _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId);
-        _executionsHelper.SetKeepAlive(taskExecutionId2);
-        _executionsHelper.InsertIntoCriticalSectionQueue(taskDefinitionId, 2, taskExecutionId2);
+            // Create execution 2 and add it to the queue
+            var taskExecutionId2 = _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId);
+            _executionsHelper.SetKeepAlive(taskExecutionId2);
+            _executionsHelper.InsertIntoCriticalSectionQueue(taskDefinitionId, 2, taskExecutionId2);
 
-        // Create an available critical section token
-        _executionsHelper.InsertAvailableCriticalSectionToken(taskDefinitionId, 0);
+            // Create an available critical section token
+            _executionsHelper.InsertAvailableCriticalSectionToken(taskDefinitionId, 0);
 
-        var request = new StartCriticalSectionRequest(new TaskId(TestConstants.ApplicationName, TestConstants.TaskName),
-            taskExecutionId2,
-            TaskDeathMode.KeepAlive,
-            CriticalSectionType.User);
-        request.KeepAliveDeathThreshold = new TimeSpan(0, 30, 0);
+            var request = new StartCriticalSectionRequest(CurrentTaskId,
+                taskExecutionId2,
+                TaskDeathMode.KeepAlive,
+                CriticalSectionType.User);
+            request.KeepAliveDeathThreshold = new TimeSpan(0, 30, 0);
 
-        // ACT
-        var sut = _criticalSectionRepository;
-        var response = await sut.StartAsync(request);
+            // ACT
+            var sut = _criticalSectionRepository;
+            var response = await sut.StartAsync(request);
 
-        // ASSERT
-        var numberOfQueueRecordsForExecution1 = _executionsHelper.GetQueueCount(taskExecutionId1);
-        var numberOfQueueRecordsForExecution2 = _executionsHelper.GetQueueCount(taskExecutionId2);
-        Assert.Equal(0, numberOfQueueRecordsForExecution1);
-        Assert.Equal(0, numberOfQueueRecordsForExecution2);
-        Assert.Equal(GrantStatus.Granted, response.GrantStatus);
+            // ASSERT
+            var numberOfQueueRecordsForExecution1 = _executionsHelper.GetQueueCount(taskExecutionId1);
+            var numberOfQueueRecordsForExecution2 = _executionsHelper.GetQueueCount(taskExecutionId2);
+            Assert.Equal(0, numberOfQueueRecordsForExecution1);
+            Assert.Equal(0, numberOfQueueRecordsForExecution2);
+            Assert.Equal(GrantStatus.Granted, response.GrantStatus);
+        });
     }
 }

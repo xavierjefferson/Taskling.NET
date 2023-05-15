@@ -7,12 +7,13 @@ using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
+using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_ObjectBlockRepository;
 
 [Collection(TestConstants.CollectionName)]
-public class When_GetLastObjectBlock
+public class When_GetLastObjectBlock : TestBase
 {
     private readonly IBlocksHelper _blocksHelper;
     private readonly IClientHelper _clientHelper;
@@ -33,16 +34,17 @@ public class When_GetLastObjectBlock
     public When_GetLastObjectBlock(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper,
         IClientHelper clientHelper, IObjectBlockRepository objectBlockRepository,
         ILogger<When_GetLastObjectBlock> logger, ITaskRepository taskRepository)
+        : base(executionsHelper)
     {
         _blocksHelper = blocksHelper;
         _clientHelper = clientHelper;
-        _blocksHelper.DeleteBlocks(TestConstants.ApplicationName);
+        _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
         _executionsHelper = executionsHelper;
         _objectBlockRepository = objectBlockRepository;
         _logger = logger;
-        _executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+        _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
 
-        _taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
         _executionsHelper.InsertUnlimitedExecutionToken(_taskDefinitionId);
 
         taskRepository.ClearCache();
@@ -79,22 +81,24 @@ public class When_GetLastObjectBlock
     [Trait("Area", "Blocks")]
     public async Task ThenReturnLastCreated()
     {
-        // ARRANGE
-        InsertBlocks();
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertBlocks();
 
-        // ACT
-        var sut = _objectBlockRepository;
-        var block = await sut.GetLastObjectBlockAsync<string>(CreateRequest());
+            // ACT
+            var block = await _objectBlockRepository.GetLastObjectBlockAsync<string>(CreateRequest());
 
-        // ASSERT
-        Assert.Equal(_block5, block.ObjectBlockId);
-        Assert.Equal("Testing5", block.Object);
+            // ASSERT
+            Assert.Equal(_block5, block.ObjectBlockId);
+            Assert.Equal("Testing5", block.Object);
+        });
     }
 
 
     private LastBlockRequest CreateRequest()
     {
-        var request = new LastBlockRequest(new TaskId(TestConstants.ApplicationName, TestConstants.TaskName),
+        var request = new LastBlockRequest(CurrentTaskId,
             BlockType.Object);
         request.LastBlockOrder = LastBlockOrder.LastCreated;
 

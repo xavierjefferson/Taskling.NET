@@ -1,4 +1,5 @@
-﻿using Taskling.Blocks.Common;
+﻿using System;
+using Taskling.Blocks.Common;
 using Taskling.Tasks;
 
 namespace Taskling.InfrastructureContracts.Blocks.CommonRequests;
@@ -8,7 +9,7 @@ public class FindBlocksOfTaskRequest : BlockRequestBase
     public FindBlocksOfTaskRequest(TaskId taskId,
         int taskExecutionId,
         BlockType blockType,
-        string referenceValueOfTask,
+        Guid referenceValueOfTask,
         ReprocessOption reprocessOption)
         : base(taskId, taskExecutionId, blockType)
     {
@@ -16,6 +17,6 @@ public class FindBlocksOfTaskRequest : BlockRequestBase
         ReprocessOption = reprocessOption;
     }
 
-    public string ReferenceValueOfTask { get; set; }
+    public Guid ReferenceValueOfTask { get; set; }
     public ReprocessOption ReprocessOption { get; set; }
 }

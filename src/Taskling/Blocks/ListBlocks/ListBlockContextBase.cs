@@ -1,8 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Nito.AsyncEx.Synchronous;
 using Taskling.Blocks.Common;
+using Taskling.Blocks.RangeBlocks;
 using Taskling.Exceptions;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
@@ -14,15 +17,13 @@ using Taskling.Serialization;
 
 namespace Taskling.Blocks.ListBlocks;
 
-public class ListBlockContextBase<TItem, THeader>
+public class ListBlockContextBase<TItem, THeader> : BlockContextBase
 {
     #region .: Protected Fields :.
 
     protected IListBlockRepository _listBlockRepository;
-    protected ITaskExecutionRepository _taskExecutionRepository;
-    protected string _applicationName;
-    protected string _taskName;
-    protected int _taskExecutionId;
+
+
     protected int _maxStatusReasonLength;
     protected SemaphoreSlim _uncommittedListSemaphore = new(1, 1);
     protected SemaphoreSlim _getItemsSemaphore = new(1, 1);
@@ -36,28 +37,20 @@ public class ListBlockContextBase<TItem, THeader>
 
     #region .: Constructor :.
 
-    public ListBlockContextBase(IListBlockRepository listBlockRepository,
+    private ListBlockContextBase(IListBlockRepository listBlockRepository,
         ITaskExecutionRepository taskExecutionRepository,
-        string applicationName,
-        string taskName,
+        TaskId taskId,
         int taskExecutionId,
         ListUpdateMode listUpdateMode,
         int uncommittedThreshold,
-        ListBlock<TItem> listBlock,
         long blockExecutionId,
         int maxStatusReasonLength,
-        int forcedBlockQueueId = 0)
+        int forcedBlockQueueId = 0) : base(taskId, blockExecutionId, taskExecutionId, taskExecutionRepository,
+        forcedBlockQueueId)
     {
         _listBlockRepository = listBlockRepository;
-        _taskExecutionRepository = taskExecutionRepository;
-        _headerlessBlock = listBlock;
-        BlockExecutionId = blockExecutionId;
         ListUpdateMode = listUpdateMode;
-        ForcedBlockQueueId = forcedBlockQueueId;
         UncommittedThreshold = uncommittedThreshold;
-        _applicationName = applicationName;
-        _taskName = taskName;
-        _taskExecutionId = taskExecutionId;
         _maxStatusReasonLength = maxStatusReasonLength;
 
         if (listUpdateMode != ListUpdateMode.SingleItemCommit)
@@ -68,32 +61,32 @@ public class ListBlockContextBase<TItem, THeader>
 
     public ListBlockContextBase(IListBlockRepository listBlockRepository,
         ITaskExecutionRepository taskExecutionRepository,
-        string applicationName,
-        string taskName,
+        TaskId taskId,
+        int taskExecutionId,
+        ListUpdateMode listUpdateMode,
+        int uncommittedThreshold,
+        ListBlock<TItem> listBlock,
+        long blockExecutionId,
+        int maxStatusReasonLength,
+        int forcedBlockQueueId = 0) : this(listBlockRepository, taskExecutionRepository, taskId, taskExecutionId,
+        listUpdateMode, uncommittedThreshold, blockExecutionId, maxStatusReasonLength, forcedBlockQueueId)
+    {
+        _headerlessBlock = listBlock;
+    }
+
+    public ListBlockContextBase(IListBlockRepository listBlockRepository,
+        ITaskExecutionRepository taskExecutionRepository,
+        TaskId taskId,
         int taskExecutionId,
         ListUpdateMode listUpdateMode,
         int uncommittedThreshold,
         ListBlock<TItem, THeader> listBlock,
         long blockExecutionId,
         int maxStatusReasonLength,
-        int forcedBlockQueueId = 0)
+        int forcedBlockQueueId = 0) : this(listBlockRepository, taskExecutionRepository, taskId, taskExecutionId,
+        listUpdateMode, uncommittedThreshold, blockExecutionId, maxStatusReasonLength, forcedBlockQueueId)
     {
-        _listBlockRepository = listBlockRepository;
-        _taskExecutionRepository = taskExecutionRepository;
         _blockWithHeader = listBlock;
-        BlockExecutionId = blockExecutionId;
-        ListUpdateMode = listUpdateMode;
-        ForcedBlockQueueId = forcedBlockQueueId;
-        UncommittedThreshold = uncommittedThreshold;
-        _applicationName = applicationName;
-        _taskName = taskName;
-        _taskExecutionId = taskExecutionId;
-        _maxStatusReasonLength = maxStatusReasonLength;
-
-        if (listUpdateMode != ListUpdateMode.SingleItemCommit)
-            _uncommittedItems = new List<IListBlockItem<TItem>>();
-
-        _completed = false;
         _hasHeader = true;
     }
 
@@ -102,9 +95,8 @@ public class ListBlockContextBase<TItem, THeader>
 
     #region .: Protected Properties :.
 
-    protected long BlockExecutionId { get; set; }
-    protected ListUpdateMode ListUpdateMode { get; set; }
-    protected int UncommittedThreshold { get; set; }
+    protected ListUpdateMode ListUpdateMode { get; }
+    protected int UncommittedThreshold { get; }
 
     #endregion .: Protected Properties :.
 
@@ -126,41 +118,27 @@ public class ListBlockContextBase<TItem, THeader>
 
     protected ListBlock<TItem, THeader> _blockWithHeader;
 
-    public int ForcedBlockQueueId { get; }
-
     #endregion .: Public Propeties :.
 
 
     #region .: Protected Methods :.
 
-    protected bool disposed;
+    protected bool _disposed;
 
     protected virtual void Dispose(bool disposing)
     {
-        if (disposed)
+        if (_disposed)
             return;
 
-        if (disposing) Task.Run(() => CommitUncommittedItemsAsync());
+        if (disposing) CommitUncommittedItemsAsync().WaitAndUnwrapException();
 
-        disposed = true;
+        _disposed = true;
     }
 
     protected void ValidateBlockIsActive()
     {
         if (_completed)
             throw new ExecutionException("The block has been marked as completed");
-    }
-
-    protected async Task SetStatusAsFailedAsync()
-    {
-        var request = new BlockExecutionChangeStatusRequest(new TaskId(_applicationName, _taskName),
-            _taskExecutionId,
-            BlockType.List,
-            BlockExecutionId,
-            BlockExecutionStatus.Failed);
-
-        var actionRequest = _listBlockRepository.ChangeStatusAsync;
-        await RetryService.InvokeWithRetryAsync(actionRequest, request).ConfigureAwait(false);
     }
 
     protected async Task UpdateItemStatusAsync(IListBlockItem<TItem> item)
@@ -181,9 +159,8 @@ public class ListBlockContextBase<TItem, THeader>
 
     protected async Task CommitAsync(long listBlockId, IListBlockItem<TItem> item)
     {
-        var singleUpdateRequest = new SingleUpdateRequest
+        var singleUpdateRequest = new SingleUpdateRequest(CurrentTaskId)
         {
-            TaskId = new TaskId(_applicationName, _taskName),
             ListBlockId = listBlockId,
             ListBlockItem = Convert(item)
         };
@@ -194,30 +171,22 @@ public class ListBlockContextBase<TItem, THeader>
 
     protected void AddToUncommittedItems(IListBlockItem<TItem> item)
     {
-        _uncommittedListSemaphore.Wait();
-        try
+        _uncommittedListSemaphore.Wrap(() =>
         {
             _uncommittedItems.Add(item);
-        }
-        finally
-        {
-            _uncommittedListSemaphore.Release();
-        }
+        });
     }
 
     protected async Task AddAndCommitIfUncommittedCountReachedAsync(IListBlockItem<TItem> item)
     {
-        await _uncommittedListSemaphore.WaitAsync().ConfigureAwait(false);
-        try
+        await _uncommittedListSemaphore.WrapAsync(async () =>
         {
             _uncommittedItems.Add(item);
             if (_uncommittedItems.Count == UncommittedThreshold)
                 await CommitUncommittedItemsAsync().ConfigureAwait(false);
-        }
-        finally
-        {
-            _uncommittedListSemaphore.Release();
-        }
+
+        }).ConfigureAwait(false);
+        
     }
 
     protected async Task CommitUncommittedItemsAsync()
@@ -231,9 +200,8 @@ public class ListBlockContextBase<TItem, THeader>
 
         if (listToCommit != null && listToCommit.Any())
         {
-            var batchUpdateRequest = new BatchUpdateRequest
+            var batchUpdateRequest = new BatchUpdateRequest(CurrentTaskId)
             {
-                TaskId = new TaskId(_applicationName, _taskName),
                 ListBlockId = ListBlockId,
                 ListBlockItems = Convert(listToCommit)
             };
@@ -316,31 +284,27 @@ public class ListBlockContextBase<TItem, THeader>
         if (statuses.Length == 0)
             statuses = new[] { ItemStatus.All };
 
-        await _getItemsSemaphore.WaitAsync().ConfigureAwait(false);
-        try
+        return await _getItemsSemaphore.WrapAsync(async () =>
         {
             if (_headerlessBlock.Items == null || !_headerlessBlock.Items.Any())
             {
                 var protoListBlockItems = await _listBlockRepository
-                    .GetListBlockItemsAsync(new TaskId(_applicationName, _taskName), ListBlockId).ConfigureAwait(false);
+                  .GetListBlockItemsAsync(CurrentTaskId, ListBlockId).ConfigureAwait(false);
                 _headerlessBlock.Items = Convert(protoListBlockItems);
 
                 foreach (var item in _headerlessBlock.Items)
                     ((ListBlockItem<TItem>)item).SetParentContext(ItemCompletedAsync, ItemFailedAsync,
-                        DiscardItemAsync);
+                      DiscardItemAsync);
             }
 
             if (statuses.Any(x => x == ItemStatus.All))
                 return _headerlessBlock.Items.Where(x =>
-                    x.Status == ItemStatus.Failed || x.Status == ItemStatus.Pending ||
-                    x.Status == ItemStatus.Discarded || x.Status == ItemStatus.Completed).ToList();
+                  x.Status == ItemStatus.Failed || x.Status == ItemStatus.Pending ||
+                  x.Status == ItemStatus.Discarded || x.Status == ItemStatus.Completed).ToList();
 
             return _headerlessBlock.Items.Where(x => statuses.Contains(x.Status)).ToList();
-        }
-        finally
-        {
-            _getItemsSemaphore.Release();
-        }
+        }).ConfigureAwait(false);
+
     }
 
     private async Task<IEnumerable<IListBlockItem<TItem>>> GetItemsFromBlockWithHeaderAsync(
@@ -348,14 +312,12 @@ public class ListBlockContextBase<TItem, THeader>
     {
         if (statuses.Length == 0)
             statuses = new[] { ItemStatus.All };
-
-        await _getItemsSemaphore.WaitAsync().ConfigureAwait(false);
-        try
+        return await _getItemsSemaphore.WrapAsync(async () =>
         {
             if (_blockWithHeader.Items == null || !_blockWithHeader.Items.Any())
             {
                 var protoListBlockItems = await _listBlockRepository
-                    .GetListBlockItemsAsync(new TaskId(_applicationName, _taskName), ListBlockId).ConfigureAwait(false);
+                    .GetListBlockItemsAsync(CurrentTaskId, ListBlockId).ConfigureAwait(false);
                 _blockWithHeader.Items = Convert(protoListBlockItems);
 
                 foreach (var item in _blockWithHeader.Items)
@@ -369,11 +331,8 @@ public class ListBlockContextBase<TItem, THeader>
                     x.Status == ItemStatus.Discarded || x.Status == ItemStatus.Completed).ToList();
 
             return _blockWithHeader.Items.Where(x => statuses.Contains(x.Status)).ToList();
-        }
-        finally
-        {
-            _getItemsSemaphore.Release();
-        }
+        }).ConfigureAwait(false);
+
     }
 
     #endregion .: Private/Protected Methods :.
@@ -383,21 +342,22 @@ public class ListBlockContextBase<TItem, THeader>
 
     public async Task FillItemsAsync()
     {
-        await _getItemsSemaphore.WaitAsync().ConfigureAwait(false);
-        try
-        {
-            var protoListBlockItems = await _listBlockRepository
-                .GetListBlockItemsAsync(new TaskId(_applicationName, _taskName), ListBlockId).ConfigureAwait(false);
-            var listBlockItems = Convert(protoListBlockItems);
-            SetItems(listBlockItems);
+        await _getItemsSemaphore.WrapAsync(async () =>
+       {
+           var protoListBlockItems = await _listBlockRepository
+                         .GetListBlockItemsAsync(CurrentTaskId, ListBlockId).ConfigureAwait(false);
+           var listBlockItems = Convert(protoListBlockItems);
+           SetItems(listBlockItems);
 
-            foreach (var item in listBlockItems)
-                ((ListBlockItem<TItem>)item).SetParentContext(ItemCompletedAsync, ItemFailedAsync, DiscardItemAsync);
-        }
-        finally
-        {
-            _getItemsSemaphore.Release();
-        }
+           foreach (var item in listBlockItems)
+               ((ListBlockItem<TItem>)item).SetParentContext(ItemCompletedAsync, ItemFailedAsync, DiscardItemAsync);
+       }).ConfigureAwait(false);
+
+    }
+
+    public IEnumerable<IListBlockItem<TItem>> GetItems(params ItemStatus[] statuses)
+    {
+        return GetItemsAsync(statuses).WaitAndUnwrapException();
     }
 
     public async Task<IEnumerable<IListBlockItem<TItem>>> GetItemsAsync(params ItemStatus[] statuses)
@@ -413,6 +373,7 @@ public class ListBlockContextBase<TItem, THeader>
         ValidateBlockIsActive();
         item.Status = ItemStatus.Completed;
         await UpdateItemStatusAsync(item).ConfigureAwait(false);
+        GC.Collect();
     }
 
     public async Task ItemFailedAsync(IListBlockItem<TItem> item, string reason, int? step = null)
@@ -438,97 +399,61 @@ public class ListBlockContextBase<TItem, THeader>
         await UpdateItemStatusAsync(item).ConfigureAwait(false);
     }
 
-    public async Task StartAsync()
+    protected override BlockType BlockType => BlockType.List;
+
+    public override async Task StartAsync()
     {
         ValidateBlockIsActive();
-        var request = new BlockExecutionChangeStatusRequest(new TaskId(_applicationName, _taskName),
-            _taskExecutionId,
-            BlockType.List,
-            BlockExecutionId,
-            BlockExecutionStatus.Started);
-
-        var actionRequest = _listBlockRepository.ChangeStatusAsync;
-        await RetryService.InvokeWithRetryAsync(actionRequest, request).ConfigureAwait(false);
+        await base.StartAsync().ConfigureAwait(false);
     }
 
-    public async Task CompleteAsync()
+    public override async Task CompleteAsync()
     {
         ValidateBlockIsActive();
-        await _uncommittedListSemaphore.WaitAsync().ConfigureAwait(false);
-        try
+         await _uncommittedListSemaphore.WrapAsync(async () =>
         {
             await CommitUncommittedItemsAsync().ConfigureAwait(false);
-        }
-        finally
-        {
-            _uncommittedListSemaphore.Release();
-        }
+        }).ConfigureAwait(false);
+      
 
-        var status = BlockExecutionStatus.Completed;
-        if ((await GetItemsAsync(ItemStatus.Failed, ItemStatus.Pending).ConfigureAwait(false)).Any())
-            status = BlockExecutionStatus.Failed;
-
-        var request = new BlockExecutionChangeStatusRequest(new TaskId(_applicationName, _taskName),
-            _taskExecutionId,
-            BlockType.List,
-            BlockExecutionId,
-            status);
-
-        var actionRequest = _listBlockRepository.ChangeStatusAsync;
-        await RetryService.InvokeWithRetryAsync(actionRequest, request).ConfigureAwait(false);
+        var status = (await GetItemsAsync(ItemStatus.Failed, ItemStatus.Pending).ConfigureAwait(false)).Any()
+            ? BlockExecutionStatus.Failed
+            : BlockExecutionStatus.Completed;
+        await ChangeBlockStatus(status).ConfigureAwait(false);
     }
 
-    public async Task FailedAsync()
+    public override async Task FailedAsync()
     {
         ValidateBlockIsActive();
-
-        await _uncommittedListSemaphore.WaitAsync().ConfigureAwait(false);
-        try
+        await _uncommittedListSemaphore.WrapAsync(async () =>
         {
             await CommitUncommittedItemsAsync().ConfigureAwait(false);
-        }
-        finally
-        {
-            _uncommittedListSemaphore.Release();
-        }
-
-        await SetStatusAsFailedAsync().ConfigureAwait(false);
+        }).ConfigureAwait(false);
+      
     }
 
-    public async Task FailedAsync(string message)
+    protected override Func<BlockExecutionChangeStatusRequest, Task> ChangeStatusFunc =>
+        _listBlockRepository.ChangeStatusAsync;
+
+    protected override string GetFailedErrorMessage(string message)
     {
-        await FailedAsync().ConfigureAwait(false);
-
-        var errorMessage = string.Format("BlockId {0} Error: {1}", ListBlockId, message);
-        var errorRequest = new TaskExecutionErrorRequest
-        {
-            TaskId = new TaskId(_applicationName, _taskName),
-            TaskExecutionId = _taskExecutionId,
-            TreatTaskAsFailed = false,
-            Error = errorMessage
-        };
-        await _taskExecutionRepository.ErrorAsync(errorRequest).ConfigureAwait(false);
+        return $"BlockId {ListBlockId} Error: {message}";
     }
 
-    public async Task<IEnumerable<TItem>> GetItemValuesAsync(params ItemStatus[] statuses)
+    public override async Task CompleteAsync(int itemsProcessed)
     {
-        if (statuses.Length == 0)
-            statuses = new[] { ItemStatus.All };
-
-        return (await GetItemsAsync(statuses).ConfigureAwait(false)).Select(x => x.Value);
+        await Task.CompletedTask;
+        throw new NotImplementedException();
     }
+
 
     public async Task FlushAsync()
     {
-        await _uncommittedListSemaphore.WaitAsync().ConfigureAwait(false);
-        try
+        await _uncommittedListSemaphore.WrapAsync(async () =>
         {
             await CommitUncommittedItemsAsync().ConfigureAwait(false);
-        }
-        finally
-        {
-            _uncommittedListSemaphore.Release();
-        }
+        }).ConfigureAwait(false);
+      
     }
 
     public void Dispose()

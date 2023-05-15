@@ -7,6 +7,7 @@ using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
+using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_RangeBlockRepository;
@@ -32,17 +33,17 @@ public class When_GetLastDateRangeBlock : TestBase
 
     public When_GetLastDateRangeBlock(IBlocksHelper blocksHelper, IRangeBlockRepository rangeBlockRepository,
         IExecutionsHelper executionsHelper, IClientHelper clientHelper, ILogger<When_GetLastDateRangeBlock> logger,
-        ITaskRepository taskRepository)
+        ITaskRepository taskRepository) : base(executionsHelper)
     {
         _blocksHelper = blocksHelper;
         _clientHelper = clientHelper;
         _logger = logger;
         _rangeBlockRepository = rangeBlockRepository;
-        _blocksHelper.DeleteBlocks(TestConstants.ApplicationName);
+        _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
         _executionsHelper = executionsHelper;
-        _executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+        _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
 
-        _taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
         _executionsHelper.InsertUnlimitedExecutionToken(_taskDefinitionId);
 
         taskRepository.ClearCache();
@@ -89,17 +90,20 @@ public class When_GetLastDateRangeBlock : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_OrderByLastCreated_ThenReturnLastCreated()
     {
-        // ARRANGE
-        InsertBlocks();
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertBlocks();
 
-        // ACT
-        var sut = CreateSut();
-        var block = await sut.GetLastRangeBlockAsync(CreateRequest(LastBlockOrder.LastCreated));
+            // ACT
+            var sut = CreateSut();
+            var block = await sut.GetLastRangeBlockAsync(CreateRequest(LastBlockOrder.LastCreated));
 
-        // ASSERT
-        Assert.Equal(_block5, block.RangeBlockId);
-        AssertSimilarDates(_baseDateTime.AddMinutes(-60), block.RangeBeginAsDateTime());
-        AssertSimilarDates(_baseDateTime.AddMinutes(-70), block.RangeEndAsDateTime());
+            // ASSERT
+            Assert.Equal(_block5, block.RangeBlockId);
+            AssertSimilarDates(_baseDateTime.AddMinutes(-60), block.RangeBeginAsDateTime());
+            AssertSimilarDates(_baseDateTime.AddMinutes(-70), block.RangeEndAsDateTime());
+        });
     }
 
     [Fact]
@@ -107,17 +111,20 @@ public class When_GetLastDateRangeBlock : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_OrderByMaxFromDate_ThenReturnBlockWithMaxFromDate()
     {
-        // ARRANGE
-        InsertBlocks();
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertBlocks();
 
-        // ACT
-        var sut = CreateSut();
-        var block = await sut.GetLastRangeBlockAsync(CreateRequest(LastBlockOrder.MaxRangeStartValue));
+            // ACT
+            var sut = CreateSut();
+            var block = await sut.GetLastRangeBlockAsync(CreateRequest(LastBlockOrder.MaxRangeStartValue));
 
-        // ASSERT
-        Assert.Equal(_block2, block.RangeBlockId);
-        AssertSimilarDates(_baseDateTime.AddMinutes(-10), block.RangeBeginAsDateTime());
-        AssertSimilarDates(_baseDateTime.AddMinutes(-40), block.RangeEndAsDateTime());
+            // ASSERT
+            Assert.Equal(_block2, block.RangeBlockId);
+            AssertSimilarDates(_baseDateTime.AddMinutes(-10), block.RangeBeginAsDateTime());
+            AssertSimilarDates(_baseDateTime.AddMinutes(-40), block.RangeEndAsDateTime());
+        });
     }
 
     [Fact]
@@ -125,22 +132,25 @@ public class When_GetLastDateRangeBlock : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_OrderByMaxToDate_ThenReturnBlockWithMaxToDate()
     {
-        // ARRANGE
-        InsertBlocks();
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertBlocks();
 
-        // ACT
-        var sut = CreateSut();
-        var block = await sut.GetLastRangeBlockAsync(CreateRequest(LastBlockOrder.MaxRangeEndValue));
+            // ACT
+            var sut = CreateSut();
+            var block = await sut.GetLastRangeBlockAsync(CreateRequest(LastBlockOrder.MaxRangeEndValue));
 
-        // ASSERT
-        Assert.Equal(_block1, block.RangeBlockId);
-        AssertSimilarDates(_baseDateTime.AddMinutes(-20), block.RangeBeginAsDateTime());
-        AssertSimilarDates(_baseDateTime.AddMinutes(-30), block.RangeEndAsDateTime());
+            // ASSERT
+            Assert.Equal(_block1, block.RangeBlockId);
+            AssertSimilarDates(_baseDateTime.AddMinutes(-20), block.RangeBeginAsDateTime());
+            AssertSimilarDates(_baseDateTime.AddMinutes(-30), block.RangeEndAsDateTime());
+        });
     }
 
     private LastBlockRequest CreateRequest(LastBlockOrder lastBlockOrder)
     {
-        var request = new LastBlockRequest(new TaskId(TestConstants.ApplicationName, TestConstants.TaskName),
+        var request = new LastBlockRequest(CurrentTaskId,
             BlockType.DateRange);
         request.LastBlockOrder = lastBlockOrder;
 

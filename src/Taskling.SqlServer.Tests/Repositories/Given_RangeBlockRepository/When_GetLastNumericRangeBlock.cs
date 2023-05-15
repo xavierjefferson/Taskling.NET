@@ -6,13 +6,14 @@ using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
+using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_RangeBlockRepository;
 
 [Collection(TestConstants.CollectionName)]
-public class When_GetLastNumericRangeBlock
+public class When_GetLastNumericRangeBlock : TestBase
 {
     private readonly IBlocksHelper _blocksHelper;
     private readonly IClientHelper _clientHelper;
@@ -32,17 +33,17 @@ public class When_GetLastNumericRangeBlock
 
     public When_GetLastNumericRangeBlock(ITestOutputHelper output, IBlocksHelper blocksHelper,
         IExecutionsHelper executionsHelper, IClientHelper clientHelper, IRangeBlockRepository rangeBlockRepository,
-        ITaskRepository taskRepository)
+        ITaskRepository taskRepository) : base(executionsHelper)
     {
         this.output = output;
         _blocksHelper = blocksHelper;
         _clientHelper = clientHelper;
-        _blocksHelper.DeleteBlocks(TestConstants.ApplicationName);
+        _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
         _executionsHelper = executionsHelper;
         _rangeBlockRepository = rangeBlockRepository;
-        _executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+        _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
 
-        _taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
         _executionsHelper.InsertUnlimitedExecutionToken(_taskDefinitionId);
 
         taskRepository.ClearCache();
@@ -84,17 +85,20 @@ public class When_GetLastNumericRangeBlock
     [Trait("Area", "Blocks")]
     public async Task If_OrderByLastCreated_ThenReturnLastCreatedAsync()
     {
-        // ARRANGE
-        InsertBlocks();
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertBlocks();
 
-        // ACT
-        var sut = CreateSut();
-        var block = await sut.GetLastRangeBlockAsync(CreateRequest(LastBlockOrder.LastCreated));
+            // ACT
+            var sut = CreateSut();
+            var block = await sut.GetLastRangeBlockAsync(CreateRequest(LastBlockOrder.LastCreated));
 
-        // ASSERT
-        Assert.Equal(_block5, block.RangeBlockId);
-        Assert.Equal(600, block.RangeBeginAsInt());
-        Assert.Equal(700, block.RangeEndAsInt());
+            // ASSERT
+            Assert.Equal(_block5, block.RangeBlockId);
+            Assert.Equal(600, block.RangeBeginAsInt());
+            Assert.Equal(700, block.RangeEndAsInt());
+        });
     }
 
     [Fact]
@@ -102,17 +106,20 @@ public class When_GetLastNumericRangeBlock
     [Trait("Area", "Blocks")]
     public async Task If_OrderByMaxFromNumber_ThenReturnBlockWithMaxFromNumber()
     {
-        // ARRANGE
-        InsertBlocks();
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertBlocks();
 
-        // ACT
-        var sut = CreateSut();
-        var block = await sut.GetLastRangeBlockAsync(CreateRequest(LastBlockOrder.MaxRangeStartValue));
+            // ACT
+            var sut = CreateSut();
+            var block = await sut.GetLastRangeBlockAsync(CreateRequest(LastBlockOrder.MaxRangeStartValue));
 
-        // ASSERT
-        Assert.Equal(_block1, block.RangeBlockId);
-        Assert.Equal(1000, block.RangeBeginAsInt());
-        Assert.Equal(1100, block.RangeEndAsInt());
+            // ASSERT
+            Assert.Equal(_block1, block.RangeBlockId);
+            Assert.Equal(1000, block.RangeBeginAsInt());
+            Assert.Equal(1100, block.RangeEndAsInt());
+        });
     }
 
     [Fact]
@@ -120,22 +127,25 @@ public class When_GetLastNumericRangeBlock
     [Trait("Area", "Blocks")]
     public async Task If_OrderByMaxToNumber_ThenReturnBlockWithMaxToNumber()
     {
-        // ARRANGE
-        InsertBlocks();
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertBlocks();
 
-        // ACT
-        var sut = CreateSut();
-        var block = await sut.GetLastRangeBlockAsync(CreateRequest(LastBlockOrder.MaxRangeEndValue));
+            // ACT
+            var sut = CreateSut();
+            var block = await sut.GetLastRangeBlockAsync(CreateRequest(LastBlockOrder.MaxRangeEndValue));
 
-        // ASSERT
-        Assert.Equal(_block2, block.RangeBlockId);
-        Assert.Equal(900, block.RangeBeginAsInt());
-        Assert.Equal(1200, block.RangeEndAsInt());
+            // ASSERT
+            Assert.Equal(_block2, block.RangeBlockId);
+            Assert.Equal(900, block.RangeBeginAsInt());
+            Assert.Equal(1200, block.RangeEndAsInt());
+        });
     }
 
     private LastBlockRequest CreateRequest(LastBlockOrder lastBlockOrder)
     {
-        var request = new LastBlockRequest(new TaskId(TestConstants.ApplicationName, TestConstants.TaskName),
+        var request = new LastBlockRequest(CurrentTaskId,
             BlockType.NumericRange);
         request.LastBlockOrder = lastBlockOrder;
 

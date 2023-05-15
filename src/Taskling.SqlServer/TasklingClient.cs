@@ -193,42 +193,35 @@ public class TasklingClient : ITasklingClient
     //        _cleanUpService = new CleanUpService(_configuration, customDependencies.CleanUpRepository,
     //            customDependencies.TaskExecutionRepository);
     //}
-
-    public ITaskExecutionContext CreateTaskExecutionContext(string applicationName,
-        string taskName)
+    public ITaskExecutionContext CreateTaskExecutionContext(string applicationName, string taskName)
     {
-        LoadConnectionSettings(applicationName, taskName);
+        return CreateTaskExecutionContext(new TaskId(applicationName, taskName));
+    }
+
+    public ITaskExecutionContext CreateTaskExecutionContext(TaskId taskId)
+    {
+        LoadConnectionSettings(taskId);
 
         var taskExecutionContext = _serviceProvider.GetRequiredService<ITaskExecutionContext>();
-        //new TaskExecutionContext(_tasklingConfigurationFactory,
-        //    _taskExecutionRepository,
-        //    _criticalSectionRepository,
-        //    _blockFactory,
-        //    _rangeBlockRepository,
-        //    _listBlockRepository,
-        //    _objectBlockRepository,
-        //    _cleanUpService,
-        //    applicationName,
-        //    taskName,
-        //    LoadTaskExecutionOptions(applicationName, taskName));
-        taskExecutionContext.SetOptions(applicationName,
-            taskName,
-            LoadTaskExecutionOptions(applicationName, taskName), _taskConfigurationRepository);
+        taskExecutionContext.SetOptions(taskId,
+            LoadTaskExecutionOptions(taskId), _taskConfigurationRepository);
         return taskExecutionContext;
     }
 
-    private void LoadConnectionSettings(string applicationName, string taskName)
+
+    private void LoadConnectionSettings(TaskId taskId)
     {
-        var taskConfiguration = _taskConfigurationRepository.GetTaskConfiguration(applicationName, taskName);
+        var taskConfiguration = _taskConfigurationRepository.GetTaskConfiguration(taskId);
         var connectionSettings = new ClientConnectionSettings(taskConfiguration.DatabaseConnectionString,
             TimeSpan.FromSeconds(taskConfiguration.DatabaseTimeoutSeconds));
 
-        _connectionStore.SetConnection(new TaskId(applicationName, taskName), connectionSettings);
+        _connectionStore.SetConnection(taskId, connectionSettings);
     }
 
-    private TaskExecutionOptions LoadTaskExecutionOptions(string applicationName, string taskName)
+
+    private TaskExecutionOptions LoadTaskExecutionOptions(TaskId taskId)
     {
-        var taskConfiguration = _taskConfigurationRepository.GetTaskConfiguration(applicationName, taskName);
+        var taskConfiguration = _taskConfigurationRepository.GetTaskConfiguration(taskId);
 
         var executionOptions = new TaskExecutionOptions();
         executionOptions.TaskDeathMode =

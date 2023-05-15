@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Taskling.Exceptions;
+using Taskling.InfrastructureContracts;
 
 namespace Taskling.Configuration;
 
@@ -16,17 +17,17 @@ public class TaskConfigurationRepository : ITaskConfigurationRepository
         _taskConfigurations = new Dictionary<string, TaskConfiguration>();
     }
 
-    public TaskConfiguration GetTaskConfiguration(string applicationName, string taskName)
+    public TaskConfiguration GetTaskConfiguration(TaskId taskId)
     {
-        if (string.IsNullOrEmpty(applicationName))
+        if (string.IsNullOrEmpty(taskId.ApplicationName))
             throw new TaskConfigurationException("Cannot load a TaskConfiguration, ApplicationName is null or empty");
 
-        if (string.IsNullOrEmpty(taskName))
+        if (string.IsNullOrEmpty(taskId.TaskName))
             throw new TaskConfigurationException("Cannot load a TaskConfiguration, TaskName is null or empty");
 
         lock (_cacheSync)
         {
-            var key = GetCacheKey(applicationName, taskName);
+            var key = GetCacheKey(taskId);
             var loadFromConfigFile = false;
             if (!_taskConfigurations.ContainsKey(key))
                 loadFromConfigFile = true;
@@ -35,9 +36,8 @@ public class TaskConfigurationRepository : ITaskConfigurationRepository
 
             if (loadFromConfigFile)
             {
-                var configuration = LoadConfiguration(applicationName, taskName);
-                configuration.ApplicationName = applicationName;
-                configuration.TaskName = taskName;
+                var configuration = LoadConfiguration(taskId);
+                //configuration.TaskId = taskId;
                 configuration.DateLoaded = DateTime.UtcNow;
 
                 if (!_taskConfigurations.ContainsKey(key))
@@ -50,31 +50,26 @@ public class TaskConfigurationRepository : ITaskConfigurationRepository
         }
     }
 
-    private string GetCacheKey(string applicationName, string taskName)
+
+    private string GetCacheKey(TaskId taskId)
     {
-        return applicationName + "::" + taskName;
+        return taskId.GetUniqueKey();
     }
 
-    private TaskConfiguration LoadConfiguration(string applicationName, string taskName)
+    private TaskConfiguration LoadConfiguration(TaskId taskId)
     {
-        var configString = FindKey(applicationName, taskName);
-        var taskConfiguration = ParseConfig(configString, applicationName, taskName);
+        var configString = FindKey(taskId);
+        var taskConfiguration = ParseConfig(configString, taskId);
 
         return taskConfiguration;
     }
 
-    private TaskConfiguration ParseConfig(ConfigurationOptions configurationOptions, string applicationName,
-        string taskName)
+    private TaskConfiguration ParseConfig(ConfigurationOptions configurationOptions, TaskId taskId)
     {
         var databaseConnString =
             configurationOptions.DB ?? throw new ArgumentNullException(nameof(ConfigurationOptions.DB));
-
-
-        var taskConfiguration = new TaskConfiguration();
-        taskConfiguration.SetDefaultValues(applicationName,
-            taskName,
-            databaseConnString);
-
+        var taskConfiguration = new TaskConfiguration(taskId);
+        taskConfiguration.SetDefaultValues(databaseConnString);
 
         taskConfiguration.ConcurrencyLimit = configurationOptions.CON;
         taskConfiguration.DatabaseTimeoutSeconds = configurationOptions.TO;
@@ -101,8 +96,8 @@ public class TaskConfigurationRepository : ITaskConfigurationRepository
     }
 
 
-    private ConfigurationOptions FindKey(string applicationName, string taskName)
+    private ConfigurationOptions FindKey(TaskId taskId)
     {
-        return _configurationReader.GetTaskConfigurationString(applicationName, taskName);
+        return _configurationReader.GetTaskConfigurationString(taskId);
     }
 }

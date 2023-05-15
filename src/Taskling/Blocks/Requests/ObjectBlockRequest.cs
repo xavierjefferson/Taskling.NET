@@ -1,11 +1,12 @@
 ﻿using Taskling.Blocks.Common;
+using Taskling.InfrastructureContracts;
 
 namespace Taskling.Blocks.Requests;
 
 public class ObjectBlockRequest<T> : BlockRequest
 {
     public ObjectBlockRequest(T objectData,
-        int compressionThreshold)
+        int compressionThreshold, TaskId taskId) : base(taskId)
     {
         BlockType = BlockType.Object;
         Object = objectData;

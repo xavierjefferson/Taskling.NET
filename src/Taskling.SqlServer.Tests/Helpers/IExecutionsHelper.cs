@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using Taskling.InfrastructureContracts;
+using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Taskling.SqlServer.Tokens.Executions;
 
 namespace Taskling.SqlServer.Tests.Helpers;
@@ -12,12 +14,13 @@ public interface IExecutionsHelper
     DateTime GetLastKeepAlive(int taskDefinitionId);
     GetLastEventResponse GetLastEvent(int taskDefinitionId);
     int InsertTask(string applicationName, string taskName);
+    int InsertTask(TaskId taskId);
     void InsertUnlimitedExecutionToken(int taskDefinitionId);
     void InsertUnavailableExecutionToken(int taskDefinitionId);
     void InsertAvailableExecutionToken(int taskDefinitionId, int count = 1);
-    void InsertExecutionToken(int taskDefinitionId, List<Execinfo> tokens);
-    ExecutionTokenList GetExecutionTokens(string applicationName, string taskName);
-    ExecutionTokenStatus GetExecutionTokenStatus(string applicationName, string taskName);
+    void InsertExecutionToken(int taskDefinitionId, ExecInfoList tokens);
+    ExecutionTokenList GetExecutionTokens(TaskId taskId);
+    ExecutionTokenStatus GetExecutionTokenStatus(TaskId taskId);
     int InsertKeepAliveTaskExecution(int taskDefinitionId);
 
     int InsertKeepAliveTaskExecution(int taskDefinitionId, TimeSpan keepAliveInterval,
@@ -41,5 +44,6 @@ public interface IExecutionsHelper
     void InsertAvailableCriticalSectionToken(int taskDefinitionId, int taskExecutionId);
     int GetQueueCount(int taskExecutionId);
     void InsertIntoCriticalSectionQueue(int taskDefinitionId, int queueIndex, int taskExecutionId);
-    int GetCriticalSectionTokenStatus(string applicationName, string taskName);
+    int GetCriticalSectionTokenStatus(TaskId taskId);
+    TaskId CurrentTaskId { get; }
 }

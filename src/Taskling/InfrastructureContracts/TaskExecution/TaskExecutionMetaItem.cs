@@ -9,5 +9,5 @@ public class TaskExecutionMetaItem
     public DateTime? CompletedAt { get; set; }
     public TaskExecutionStatus Status { get; set; }
     public string Header { get; set; }
-    public string ReferenceValue { get; set; }
+    public Guid ReferenceValue { get; set; }
 }

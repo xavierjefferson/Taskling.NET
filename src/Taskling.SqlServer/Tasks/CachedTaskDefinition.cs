@@ -4,6 +4,6 @@ namespace Taskling.SqlServer.Tasks;
 
 internal class CachedTaskDefinition
 {
-    public TaskDefinition TaskDefinition { get; set; }
+    public TaskDefinition? TaskDefinition { get; set; }
     public DateTime CachedAt { get; set; }
 }

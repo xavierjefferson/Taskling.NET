@@ -1,6 +1,8 @@
-﻿namespace Taskling.Configuration;
+﻿using Taskling.InfrastructureContracts;
+
+namespace Taskling.Configuration;
 
 public interface ITaskConfigurationRepository
 {
-    TaskConfiguration GetTaskConfiguration(string applicationName, string taskName);
+    TaskConfiguration GetTaskConfiguration(TaskId taskId);
 }

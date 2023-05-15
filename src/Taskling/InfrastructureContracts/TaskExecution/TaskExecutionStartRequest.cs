@@ -24,7 +24,7 @@ public class TaskExecutionStartRequest : RequestBase
     public TimeSpan? OverrideThreshold { get; set; }
     public TimeSpan? KeepAliveInterval { get; set; }
     public TimeSpan? KeepAliveDeathThreshold { get; set; }
-    public string ReferenceValue { get; set; }
+    public Guid ReferenceValue { get; set; }
     public int ConcurrencyLimit { get; set; }
     public int FailedTaskRetryLimit { get; set; }
     public int DeadTaskRetryLimit { get; set; }

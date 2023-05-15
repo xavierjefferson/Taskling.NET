@@ -22,9 +22,8 @@ public class TaskRepository : DbOperationsService, ITaskRepository
 
     public async Task<TaskDefinition> EnsureTaskDefinitionAsync(TaskId taskId)
     {
-        await GetTaskSemaphore.WaitAsync().ConfigureAwait(false);
 
-        try
+        return await GetTaskSemaphore.WrapAsync(async () =>
         {
             var taskDefinition = await GetTaskAsync(taskId).ConfigureAwait(false);
             if (taskDefinition != null)
@@ -33,29 +32,42 @@ public class TaskRepository : DbOperationsService, ITaskRepository
             }
             else
             {
+                async Task<TaskDefinition> insertFunc()
+                {
+                    taskDefinition = await GetTaskAsync(taskId).ConfigureAwait(false);
+                    if (taskDefinition != null) return taskDefinition;
+
+                    return await InsertNewTaskAsync(taskId).ConfigureAwait(false);
+                }
+
                 // wait a random amount of time in case two threads or two instances of this repository 
                 // independently belive that the task doesn't exist
                 await Task.Delay(new Random(Guid.NewGuid().GetHashCode()).Next(2000)).ConfigureAwait(false);
-                using (var transactionScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
-                {
-                    try
-                    {
-                        taskDefinition = await GetTaskAsync(taskId).ConfigureAwait(false);
-                        if (taskDefinition != null) return taskDefinition;
 
-                        return await InsertNewTaskAsync(taskId).ConfigureAwait(false);
-                    }
-                    finally
+                if (System.Transactions.Transaction.Current == null)
+                {
+                    using (var transactionScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
                     {
-                        transactionScope.Complete();
+                        try
+                        {
+                            return await insertFunc();
+                        }
+                        finally
+                        {
+                            transactionScope.Complete();
+                        }
                     }
                 }
+                else
+                {
+                    return await insertFunc();
+                }
+
             }
-        }
-        finally
-        {
-            GetTaskSemaphore.Release();
-        }
+
+
+
+        }).ConfigureAwait(false);
     }
 
     public async Task<DateTime> GetLastTaskCleanUpTimeAsync(TaskId taskId)
@@ -64,9 +76,9 @@ public class TaskRepository : DbOperationsService, ITaskRepository
         {
             using (var dbContext = await GetDbContextAsync(taskId))
             {
-                var tuple = await GetTaskDefinitionsByTaskIdAsync(taskId, dbContext)
-                    .Select(i => new { i.LastCleaned }).FirstOrDefaultAsync().ConfigureAwait(false);
-                return tuple == null ? DateTime.MinValue : tuple.LastCleaned ?? DateTime.MinValue;
+                var lastCleaned = await GetTaskDefinitionsByTaskIdAsync(taskId, dbContext)
+                    .Select(i => i.LastCleaned).FirstOrDefaultAsync().ConfigureAwait(false);
+                return lastCleaned ?? DateTime.MinValue;
             }
         });
     }
@@ -77,31 +89,22 @@ public class TaskRepository : DbOperationsService, ITaskRepository
         {
             using (var dbContext = await GetDbContextAsync(taskId))
             {
-                var taskDefinitions = await GetTaskDefinitionsByTaskIdAsync(taskId, dbContext)
-                    .ToListAsync()
+                var taskDefinition = await GetTaskDefinitionsByTaskIdAsync(taskId, dbContext)
+                    .FirstOrDefaultAsync()
                     .ConfigureAwait(false);
-                foreach (var taskDefinition in taskDefinitions)
+                if (taskDefinition != null)
                 {
                     taskDefinition.LastCleaned = DateTime.UtcNow;
                     dbContext.TaskDefinitions.Update(taskDefinition);
+                    await dbContext.SaveChangesAsync();
                 }
-
-                await dbContext.SaveChangesAsync();
             }
         });
     }
 
     public void ClearCache()
     {
-        CacheSemaphore.Wait();
-        try
-        {
-            CachedTaskDefinitions.Clear();
-        }
-        finally
-        {
-            CacheSemaphore.Release();
-        }
+        CacheSemaphore.Wrap(() => { CachedTaskDefinitions.Clear(); });
     }
 
     private static IQueryable<Models.TaskDefinition> GetTaskDefinitionsByTaskIdAsync(TaskId taskId,
@@ -116,12 +119,11 @@ public class TaskRepository : DbOperationsService, ITaskRepository
         return await GetCachedDefinitionAsync(taskId).ConfigureAwait(false);
     }
 
-    private async Task<TaskDefinition> GetCachedDefinitionAsync(TaskId taskId)
+    private async Task<TaskDefinition?> GetCachedDefinitionAsync(TaskId taskId)
     {
-        await CacheSemaphore.WaitAsync().ConfigureAwait(false);
-        try
+        return await CacheSemaphore.WrapAsync(async () =>
         {
-            var key = taskId.ApplicationName + "::" + taskId.TaskName;
+            var key = taskId.GetUniqueKey();
 
             if (CachedTaskDefinitions.ContainsKey(key))
             {
@@ -135,29 +137,19 @@ public class TaskRepository : DbOperationsService, ITaskRepository
                 CacheTaskDefinition(key, task);
                 return task;
             }
-        }
-        finally
-        {
-            CacheSemaphore.Release();
-        }
 
-        return null;
+            return null;
+        });
     }
 
     private async Task<TaskDefinition?> LoadTaskAsync(TaskId taskId)
     {
         using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
         {
-            var tuple = await GetTaskDefinitionsByTaskIdAsync(taskId, dbContext)
-                .Select(i => new { i.TaskDefinitionId }).FirstOrDefaultAsync().ConfigureAwait(false);
-            if (tuple != null)
-                return new TaskDefinition
-                {
-                    TaskDefinitionId = tuple.TaskDefinitionId
-                };
+            return await GetTaskDefinitionsByTaskIdAsync(taskId, dbContext)
+                .Select(i => new TaskDefinition { TaskDefinitionId = i.TaskDefinitionId }).FirstOrDefaultAsync()
+                .ConfigureAwait(false);
         }
-
-        return null;
     }
 
     private void CacheTaskDefinition(string taskKey, TaskDefinition taskDefinition)
@@ -181,7 +173,7 @@ public class TaskRepository : DbOperationsService, ITaskRepository
         using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
         {
             var taskDefinition = new Models.TaskDefinition
-                { ApplicationName = taskId.ApplicationName, TaskName = taskId.TaskName };
+            { ApplicationName = taskId.ApplicationName, TaskName = taskId.TaskName };
             await dbContext.TaskDefinitions.AddAsync(taskDefinition);
             await dbContext.SaveChangesAsync();
 
@@ -191,17 +183,10 @@ public class TaskRepository : DbOperationsService, ITaskRepository
                 TaskDefinitionId = taskDefinition.TaskDefinitionId
             };
 
-            var key = taskId.ApplicationName + "::" + taskId.TaskName;
+            var key = taskId.GetUniqueKey();
 
-            await CacheSemaphore.WaitAsync().ConfigureAwait(false);
-            try
-            {
-                CacheTaskDefinition(key, task);
-            }
-            finally
-            {
-                CacheSemaphore.Release();
-            }
+            CacheSemaphore.Wrap(() => { CacheTaskDefinition(key, task); });
+
 
             return task;
         }

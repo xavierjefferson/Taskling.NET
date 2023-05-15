@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Nito.AsyncEx.Synchronous;
 using Taskling.Contexts;
+using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.TaskExecution;
 
@@ -12,8 +13,7 @@ public class ListBlockContext<TItem, THeader> : ListBlockContextBase<TItem, THea
 {
     public ListBlockContext(IListBlockRepository listBlockRepository,
         ITaskExecutionRepository taskExecutionRepository,
-        string applicationName,
-        string taskName,
+        TaskId taskId,
         int taskExecutionId,
         ListUpdateMode listUpdateMode,
         int uncommittedThreshold,
@@ -23,8 +23,7 @@ public class ListBlockContext<TItem, THeader> : ListBlockContextBase<TItem, THea
         int forcedBlockQueueId = 0)
         : base(listBlockRepository,
             taskExecutionRepository,
-            applicationName,
-            taskName,
+            taskId,
             taskExecutionId,
             listUpdateMode,
             uncommittedThreshold,
@@ -38,23 +37,5 @@ public class ListBlockContext<TItem, THeader> : ListBlockContextBase<TItem, THea
 
     public IListBlock<TItem, THeader> Block => _blockWithHeader;
 
-    public IEnumerable<IListBlockItem<TItem>> GetItems(params ItemStatus[] statuses)
-    {
-        return GetItemsAsync(statuses).WaitAndUnwrapException();
-    }
-
-    public void Complete()
-    {
-        CompleteAsync().WaitAndUnwrapException();
-    }
-
-    public void Failed(string toString)
-    {
-        FailedAsync(toString).WaitAndUnwrapException();
-    }
-
-    public void Start()
-    {
-        StartAsync().WaitAndUnwrapException();
-    }
+ 
 }

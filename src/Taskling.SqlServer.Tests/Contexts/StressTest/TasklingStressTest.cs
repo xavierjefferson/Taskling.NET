@@ -2,12 +2,14 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Taskling.Blocks.ListBlocks;
+using Taskling.InfrastructureContracts;
 using Taskling.SqlServer.Tests.Helpers;
+using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.StressTest;
 
-public class TasklingStressTest
+public class TasklingStressTest:TestBase
 {
     private readonly IClientHelper _clientHelper;
     private readonly IExecutionsHelper _executionsHelper;
@@ -20,7 +22,7 @@ public class TasklingStressTest
 
     private readonly Random _random = new();
 
-    public TasklingStressTest(IExecutionsHelper executionsHelper, IClientHelper clientHelper)
+    public TasklingStressTest(IExecutionsHelper executionsHelper, IClientHelper clientHelper) : base(executionsHelper)
     {
         _executionsHelper = executionsHelper;
         _clientHelper = clientHelper;
@@ -40,20 +42,20 @@ public class TasklingStressTest
 
     private void CreateTasksAndExecutionTokens()
     {
-        _executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+        _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
         foreach (var process in _processes)
         {
-            var drSecondaryId = _executionsHelper.InsertTask(TestConstants.ApplicationName, "DR_" + process);
-            var nrSecondaryId = _executionsHelper.InsertTask(TestConstants.ApplicationName, "NR_" + process);
-            var lsucSecondaryId = _executionsHelper.InsertTask(TestConstants.ApplicationName, "LSUC_" + process);
-            var lpcSecondaryId = _executionsHelper.InsertTask(TestConstants.ApplicationName, "LPC_" + process);
-            var lbcSecondaryId = _executionsHelper.InsertTask(TestConstants.ApplicationName, "LBC_" + process);
+            var drSecondaryId = _executionsHelper.InsertTask(CurrentTaskId.ApplicationName, "DR_" + process);
+            var nrSecondaryId = _executionsHelper.InsertTask(CurrentTaskId.ApplicationName, "NR_" + process);
+            var lsucSecondaryId = _executionsHelper.InsertTask(CurrentTaskId.ApplicationName, "LSUC_" + process);
+            var lpcSecondaryId = _executionsHelper.InsertTask(CurrentTaskId.ApplicationName, "LPC_" + process);
+            var lbcSecondaryId = _executionsHelper.InsertTask(CurrentTaskId.ApplicationName, "LBC_" + process);
 
-            var ovdrSecondaryId = _executionsHelper.InsertTask(TestConstants.ApplicationName, "OV_DR_" + process);
-            var ovnrSecondaryId = _executionsHelper.InsertTask(TestConstants.ApplicationName, "OV_NR_" + process);
-            var ovlsucSecondaryId = _executionsHelper.InsertTask(TestConstants.ApplicationName, "OV_LSUC_" + process);
-            var ovlpcSecondaryId = _executionsHelper.InsertTask(TestConstants.ApplicationName, "OV_LPC_" + process);
-            var ovlbcSecondaryId = _executionsHelper.InsertTask(TestConstants.ApplicationName, "OV_LBC_" + process);
+            var ovdrSecondaryId = _executionsHelper.InsertTask(CurrentTaskId.ApplicationName, "OV_DR_" + process);
+            var ovnrSecondaryId = _executionsHelper.InsertTask(CurrentTaskId.ApplicationName, "OV_NR_" + process);
+            var ovlsucSecondaryId = _executionsHelper.InsertTask(CurrentTaskId.ApplicationName, "OV_LSUC_" + process);
+            var ovlpcSecondaryId = _executionsHelper.InsertTask(CurrentTaskId.ApplicationName, "OV_LPC_" + process);
+            var ovlbcSecondaryId = _executionsHelper.InsertTask(CurrentTaskId.ApplicationName, "OV_LBC_" + process);
 
             _executionsHelper.InsertAvailableExecutionToken(drSecondaryId);
             _executionsHelper.InsertAvailableExecutionToken(nrSecondaryId);
@@ -114,7 +116,7 @@ public class TasklingStressTest
     {
         var taskName = "DR_" + _processes[_random.Next(25)];
         Console.WriteLine(taskName);
-        using (var executionContext = _clientHelper.GetExecutionContext(taskName,
+        using (var executionContext = _clientHelper.GetExecutionContext(new TaskId(CurrentTaskId.ApplicationName, taskName),
                    _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             var startedOk = await executionContext.TryStartAsync();
@@ -146,7 +148,7 @@ public class TasklingStressTest
     {
         var taskName = "NR_" + _processes[_random.Next(25)];
         Console.WriteLine(taskName);
-        using (var executionContext = _clientHelper.GetExecutionContext(taskName,
+        using (var executionContext = _clientHelper.GetExecutionContext(new TaskId(CurrentTaskId.ApplicationName, taskName),
                    _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             var startedOk = await executionContext.TryStartAsync();
@@ -176,7 +178,7 @@ public class TasklingStressTest
     {
         var taskName = "LSUC_" + _processes[_random.Next(25)];
         Console.WriteLine(taskName);
-        using (var executionContext = _clientHelper.GetExecutionContext(taskName,
+        using (var executionContext = _clientHelper.GetExecutionContext(new TaskId(CurrentTaskId.ApplicationName, taskName),
                    _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             var startedOk = await executionContext.TryStartAsync();
@@ -208,7 +210,7 @@ public class TasklingStressTest
     {
         var taskName = "LPC_" + _processes[_random.Next(25)];
         Console.WriteLine(taskName);
-        using (var executionContext = _clientHelper.GetExecutionContext(taskName,
+        using (var executionContext = _clientHelper.GetExecutionContext(new TaskId(CurrentTaskId.ApplicationName, taskName),
                    _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             var startedOk = await executionContext.TryStartAsync();
@@ -240,7 +242,7 @@ public class TasklingStressTest
     {
         var taskName = "LBC_" + _processes[_random.Next(25)];
         Console.WriteLine(taskName);
-        using (var executionContext = _clientHelper.GetExecutionContext(taskName,
+        using (var executionContext = _clientHelper.GetExecutionContext(new TaskId(CurrentTaskId.ApplicationName, taskName),
                    _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             var startedOk = await executionContext.TryStartAsync();
@@ -273,7 +275,7 @@ public class TasklingStressTest
     {
         var taskName = "OV_DR_" + _processes[_random.Next(25)];
         Console.WriteLine(taskName);
-        using (var executionContext = _clientHelper.GetExecutionContext(taskName,
+        using (var executionContext = _clientHelper.GetExecutionContext(new TaskId(CurrentTaskId.ApplicationName, taskName),
                    _clientHelper.GetDefaultTaskConfigurationWithTimePeriodOverrideAndReprocessing()))
         {
             var startedOk = await executionContext.TryStartAsync();
@@ -305,7 +307,7 @@ public class TasklingStressTest
     {
         var taskName = "OV_NR_" + _processes[_random.Next(25)];
         Console.WriteLine(taskName);
-        using (var executionContext = _clientHelper.GetExecutionContext(taskName,
+        using (var executionContext = _clientHelper.GetExecutionContext(new TaskId(CurrentTaskId.ApplicationName, taskName),
                    _clientHelper.GetDefaultTaskConfigurationWithTimePeriodOverrideAndReprocessing()))
         {
             var startedOk = await executionContext.TryStartAsync();
@@ -335,7 +337,7 @@ public class TasklingStressTest
     {
         var taskName = "OV_LSUC_" + _processes[_random.Next(25)];
         Console.WriteLine(taskName);
-        using (var executionContext = _clientHelper.GetExecutionContext(taskName,
+        using (var executionContext = _clientHelper.GetExecutionContext(new TaskId(CurrentTaskId.ApplicationName, taskName),
                    _clientHelper.GetDefaultTaskConfigurationWithTimePeriodOverrideAndReprocessing()))
         {
             var startedOk = await executionContext.TryStartAsync();
@@ -367,7 +369,7 @@ public class TasklingStressTest
     {
         var taskName = "OV_LPC_" + _processes[_random.Next(25)];
         Console.WriteLine(taskName);
-        using (var executionContext = _clientHelper.GetExecutionContext(taskName,
+        using (var executionContext = _clientHelper.GetExecutionContext(new TaskId(CurrentTaskId.ApplicationName, taskName),
                    _clientHelper.GetDefaultTaskConfigurationWithTimePeriodOverrideAndReprocessing()))
         {
             var startedOk = await executionContext.TryStartAsync();
@@ -399,7 +401,7 @@ public class TasklingStressTest
     {
         var taskName = "OV_LBC_" + _processes[_random.Next(25)];
         Console.WriteLine(taskName);
-        using (var executionContext = _clientHelper.GetExecutionContext(taskName,
+        using (var executionContext = _clientHelper.GetExecutionContext(new TaskId(CurrentTaskId.ApplicationName, taskName),
                    _clientHelper.GetDefaultTaskConfigurationWithTimePeriodOverrideAndReprocessing()))
         {
             var startedOk = await executionContext.TryStartAsync();

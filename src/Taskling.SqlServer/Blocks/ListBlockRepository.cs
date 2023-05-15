@@ -83,42 +83,19 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
         });
     }
 
-    //private async Task UpdateListBlockItemAsync(List<SingleUpdateRequest> singeUpdateRequest)
-    //{
-    //    try
-    //    {
-    //        using (var dbContext = await GetDbContextAsync(singeUpdateRequest.TaskId))
-    //        {
-    //            var listBlockItems = await dbContext.ListBlockItems.Where(i =>
-    //                    i.BlockId == singeUpdateRequest.ListBlockId &&
-    //                    i.ListBlockItemId == singeUpdateRequest.ListBlockItem.ListBlockItemId)
-    //                .ToListAsync().ConfigureAwait(false);
-    //            foreach (var listBlockItem in listBlockItems)
-    //            {
-    //                listBlockItem.Status = (int)singeUpdateRequest.ListBlockItem.Status;
-    //                listBlockItem.StatusReason = singeUpdateRequest.ListBlockItem.StatusReason;
-    //                listBlockItem.Step = singeUpdateRequest.ListBlockItem.Step;
-    //                dbContext.ListBlockItems.Update(listBlockItem);
-    //            }
 
-    //            await dbContext.SaveChangesAsync().ConfigureAwait(false);
-    //        }
-    //    }
-    //    catch (SqlException sqlEx)
-    //    {
-    //        if (TransientErrorDetector.IsTransient(sqlEx))
-    //            throw new TransientException("A transient exception has occurred", sqlEx);
-
-    //        throw;
-    //    }
-    //}
     public async Task UpdateListBlockItemAsync(SingleUpdateRequest singeUpdateRequest)
     {
-        await BatchUpdateListBlockItemsAsync(new BatchUpdateRequest
+        await RetryHelper.WithRetryAsync(async () =>
         {
-            ListBlockId = singeUpdateRequest.ListBlockId,
-            ListBlockItems = new List<ProtoListBlockItem> { singeUpdateRequest.ListBlockItem },
-            TaskId = singeUpdateRequest.TaskId
+            using (var dbContext = await GetDbContextAsync(singeUpdateRequest.TaskId))
+            {
+                UpdateListBlockItems(dbContext, new List<ProtoListBlockItem>
+                {
+                    singeUpdateRequest.ListBlockItem
+                });
+                await dbContext.SaveChangesAsync().ConfigureAwait(false);
+            }
         });
     }
 
@@ -128,57 +105,8 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
         {
             using (var dbContext = await GetDbContextAsync(batchUpdateRequest.TaskId))
             {
-                //List<EntityEntry<ListBlockItem>> list = new List<EntityEntry<ListBlockItem>>();
-                //foreach (var m in batchUpdateRequest.ListBlockItems)
-                //{
-                //    var exampleEntity = dbContext.ListBlockItems.Attach(new ListBlockItem() { ListBlockItemId = m.ListBlockItemId });
-
-
-                //        exampleEntity.Entity.Status = (int) m.Status;
-                //        exampleEntity.Property(i => i.Status).IsModified = true;
-                //        exampleEntity.Entity.StatusReason = m.StatusReason;
-                //        exampleEntity.Property(i => i.StatusReason).IsModified = true;
-                //        exampleEntity.Entity.Step =m.Step;
-                //        exampleEntity.Property(i => i.Step).IsModified = true;
-                //        list.Add(exampleEntity);
-                //        //taskDefinition.UserCsStatus = 1;
-
-
-                //    //dbContext.TaskDefinitions.Update(taskDefinition);
-                //    //await dbContext.SaveChangesAsync().ConfigureAwait(false);
-                //    //exampleEntity.Entity.HoldLockTaskExecutionId = taskExecutionId;
-                //    //exampleEntity.Property(i => i.HoldLockTaskExecutionId).IsModified = true;
-
-                //    exampleEntity.State = EntityState.Detached;
-                //}
-                //await dbContext.SaveChangesAsync();
-                //foreach (var item in list)
-                //{
-                //    item.State = EntityState.Detached;
-                // }
-
-                var listBlockItemIds = batchUpdateRequest.ListBlockItems.Select(i => i.ListBlockItemId).ToList();
-                var listBlockItems = await dbContext.ListBlockItems
-                    .Where(i => i.BlockId == batchUpdateRequest.ListBlockId)
-                    .Where(i => listBlockItemIds.Contains(i.ListBlockItemId)).ToListAsync().ConfigureAwait(false);
-                if (listBlockItems.Any())
-                {
-                    foreach (var item in batchUpdateRequest.ListBlockItems)
-                    {
-                        var listBlockItem = listBlockItems.FirstOrDefault(i =>
-                            i.ListBlockItemId == item.ListBlockItemId && i.BlockId == batchUpdateRequest.ListBlockId);
-                        if (listBlockItem != null)
-                        {
-                            var singeUpdateRequest = item;
-                            listBlockItem.Status = (int)singeUpdateRequest.Status;
-                            listBlockItem.StatusReason = singeUpdateRequest.StatusReason;
-                            listBlockItem.Step = singeUpdateRequest.Step;
-                            dbContext.ListBlockItems.Update(listBlockItem);
-                        }
-                    }
-
-                    await dbContext.SaveChangesAsync().ConfigureAwait(false);
-                }
+                 UpdateListBlockItems(dbContext, batchUpdateRequest.ListBlockItems);
+                await dbContext.SaveChangesAsync().ConfigureAwait(false);
             }
         });
     }
@@ -212,5 +140,23 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
                 return null;
             }
         });
+    }
+
+    private static void UpdateListBlockItems(TasklingDbContext dbContext, IList<ProtoListBlockItem> listBlockItems)
+    {
+        foreach (var listBlockItem in listBlockItems)
+        {
+            var exampleEntity = dbContext.ListBlockItems.Attach(new ListBlockItem
+                { ListBlockItemId = listBlockItem.ListBlockItemId });
+
+            exampleEntity.Entity.Status = (int)listBlockItem.Status;
+            exampleEntity.Property(i => i.Status).IsModified = true;
+
+            exampleEntity.Entity.StatusReason = listBlockItem.StatusReason;
+            exampleEntity.Property(i => i.StatusReason).IsModified = true;
+
+            exampleEntity.Entity.Step = listBlockItem.Step;
+            exampleEntity.Property(i => i.Step).IsModified = true;
+        }
     }
 }

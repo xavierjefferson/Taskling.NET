@@ -11,7 +11,7 @@ public class LastBlockRequest
         BlockType = blockType;
     }
 
-    public TaskId TaskId { get; set; }
+    public TaskId TaskId { get; }
     public BlockType BlockType { get; set; }
     public LastBlockOrder LastBlockOrder { get; set; }
 }

@@ -1,4 +1,6 @@
-﻿namespace Taskling.InfrastructureContracts;
+﻿using System;
+
+namespace Taskling.InfrastructureContracts;
 
 public class TaskId
 {
@@ -8,8 +10,13 @@ public class TaskId
         TaskName = taskName;
     }
 
-    public string ApplicationName { get; set; }
-    public string TaskName { get; set; }
+    public string ApplicationName { get; }
+    public string TaskName { get; }
+
+    public string GetUniqueKey()
+    {
+        return ApplicationName + "::" + TaskName;
+    }
 
     public override bool Equals(object obj)
     {
@@ -26,17 +33,6 @@ public class TaskId
 
     public override int GetHashCode()
     {
-        unchecked // Overflow is fine, just wrap
-        {
-            var hash = 17;
-
-            if (ApplicationName != null)
-                hash = hash * 23 + ApplicationName.GetHashCode();
-
-            if (TaskName != null)
-                hash = hash * 23 + TaskName.GetHashCode();
-
-            return hash;
-        }
+        return HashCode.Combine(ApplicationName, TaskName);
     }
 }

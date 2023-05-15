@@ -9,6 +9,7 @@ using Taskling.Contexts;
 using Taskling.Events;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
+using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_ObjectBlockContext;
@@ -24,16 +25,16 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
 
     public When_GetObjectBlocksFromExecutionContext(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper,
         IClientHelper clientHelper, ILogger<When_GetObjectBlocksFromExecutionContext> logger,
-        ITaskRepository taskRepository)
+        ITaskRepository taskRepository) : base(executionsHelper)
     {
         _blocksHelper = blocksHelper;
         _clientHelper = clientHelper;
         _logger = logger;
-        _blocksHelper.DeleteBlocks(TestConstants.ApplicationName);
+        _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
         _executionsHelper = executionsHelper;
-        _executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+        _executionsHelper.DeleteRecordsOfApplication(this.CurrentTaskId.ApplicationName);
 
-        _taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
         _executionsHelper.InsertAvailableExecutionToken(_taskDefinitionId);
     }
 
@@ -42,7 +43,8 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_NumberOfBlocksAndStatusesOfBlockExecutionsCorrectAtEveryStep()
     {
-        // ARRANGE
+        await InSemaphoreAsync(async ()=>{
+// ARRANGE
         // ACT and // ASSERT
         bool startedOk;
         using (var executionContext = CreateTaskExecutionContext())
@@ -52,17 +54,17 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
             if (startedOk)
             {
                 var blocks = await executionContext.GetObjectBlocksAsync<string>(x => x.WithObject("Testing1"));
-                Assert.Equal(1, _blocksHelper.GetBlockCount(TestConstants.ApplicationName, TestConstants.TaskName));
+                Assert.Equal(1, _blocksHelper.GetBlockCount(CurrentTaskId));
                 var expectedNotStartedCount = 1;
                 var expectedCompletedCount = 0;
                 Assert.Equal(expectedNotStartedCount,
-                    _blocksHelper.GetBlockExecutionCountByStatus(TestConstants.ApplicationName, TestConstants.TaskName,
+                    _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
                         BlockExecutionStatus.NotStarted));
                 Assert.Equal(0,
-                    _blocksHelper.GetBlockExecutionCountByStatus(TestConstants.ApplicationName, TestConstants.TaskName,
+                    _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
                         BlockExecutionStatus.Started));
                 Assert.Equal(expectedCompletedCount,
-                    _blocksHelper.GetBlockExecutionCountByStatus(TestConstants.ApplicationName, TestConstants.TaskName,
+                    _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
                         BlockExecutionStatus.Completed));
 
                 foreach (var block in blocks)
@@ -70,30 +72,28 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
                     await block.StartAsync();
                     expectedNotStartedCount--;
                     Assert.Equal(expectedNotStartedCount,
-                        _blocksHelper.GetBlockExecutionCountByStatus(TestConstants.ApplicationName,
-                            TestConstants.TaskName, BlockExecutionStatus.NotStarted));
+                        _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId, BlockExecutionStatus.NotStarted));
                     Assert.Equal(1,
-                        _blocksHelper.GetBlockExecutionCountByStatus(TestConstants.ApplicationName,
-                            TestConstants.TaskName, BlockExecutionStatus.Started));
+                        _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId, BlockExecutionStatus.Started));
 
 
                     // processing here
                     await block.CompleteAsync();
                     expectedCompletedCount++;
                     Assert.Equal(expectedCompletedCount,
-                        _blocksHelper.GetBlockExecutionCountByStatus(TestConstants.ApplicationName,
-                            TestConstants.TaskName, BlockExecutionStatus.Completed));
+                        _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId, BlockExecutionStatus.Completed));
                 }
             }
         }
-    }
+    });}
 
     [Fact]
     [Trait("Speed", "Fast")]
     [Trait("Area", "Blocks")]
     public async Task If_NoBlockNeeded_ThenEmptyListAndEventPersisted()
     {
-        // ARRANGE
+        await InSemaphoreAsync(async ()=>{
+// ARRANGE
         // ACT and // ASSERT
         bool startedOk;
         using (var executionContext = CreateTaskExecutionContext())
@@ -103,21 +103,22 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
             if (startedOk)
             {
                 var rangeBlocks = await executionContext.GetObjectBlocksAsync<string>(x => x.WithNoNewBlocks());
-                Assert.Equal(0, _blocksHelper.GetBlockCount(TestConstants.ApplicationName, TestConstants.TaskName));
+                Assert.Equal(0, _blocksHelper.GetBlockCount(CurrentTaskId));
 
                 var lastEvent = _executionsHelper.GetLastEvent(_taskDefinitionId);
                 Assert.Equal(EventType.CheckPoint, lastEvent.EventType);
                 Assert.Equal("No values for generate the block. Emtpy Block context returned.", lastEvent.Message);
             }
         }
-    }
+    });}
 
     [Fact]
     [Trait("Speed", "Fast")]
     [Trait("Area", "Blocks")]
     public async Task If_ComplexObjectStored_ThenRetrievedOk()
     {
-        // ARRANGE
+        await InSemaphoreAsync(async ()=>{
+// ARRANGE
         // ACT and // ASSERT
         bool startedOk;
         using (var executionContext = CreateTaskExecutionContext())
@@ -149,7 +150,7 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
                 Assert.Null(block.Block.Object.SomeOtherData.Notes[2]);
             }
         }
-    }
+    });}
 
     [Fact]
     [Trait("Speed", "Fast")]
@@ -158,39 +159,43 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
     {
         var longList = GetLargeListOfStrings();
 
-        // ARRANGE
-        // ACT and // ASSERT
-        bool startedOk;
-        using (var executionContext = CreateTaskExecutionContext())
+        await InSemaphoreAsync(async () =>
         {
-            startedOk = await executionContext.TryStartAsync();
-            Assert.True(startedOk);
-            if (startedOk)
+// ARRANGE
+            // ACT and // ASSERT
+            bool startedOk;
+            using (var executionContext = CreateTaskExecutionContext())
             {
-                var myObject = new MyComplexClass
+                startedOk = await executionContext.TryStartAsync();
+                Assert.True(startedOk);
+                if (startedOk)
                 {
-                    Id = 10,
-                    Name = "Rupert",
-                    DateOfBirth = new DateTime(1955, 1, 1),
-                    SomeOtherData = new MyOtherComplexClass
+                    var myObject = new MyComplexClass
                     {
-                        Value = 12.6m,
-                        Notes = longList
-                    }
-                };
+                        Id = 10,
+                        Name = "Rupert",
+                        DateOfBirth = new DateTime(1955, 1, 1),
+                        SomeOtherData = new MyOtherComplexClass
+                        {
+                            Value = 12.6m,
+                            Notes = longList
+                        }
+                    };
 
-                var block = (await executionContext.GetObjectBlocksAsync<MyComplexClass>(x => x.WithObject(myObject)))
-                    .First();
-                Assert.Equal(myObject.Id, block.Block.Object.Id);
-                Assert.Equal(myObject.Name, block.Block.Object.Name);
-                AssertSimilarDates(myObject.DateOfBirth, block.Block.Object.DateOfBirth);
-                Assert.Equal(myObject.SomeOtherData.Value, block.Block.Object.SomeOtherData.Value);
-                Assert.Equal(myObject.SomeOtherData.Notes.Count, block.Block.Object.SomeOtherData.Notes.Count);
+                    var block =
+                        (await executionContext.GetObjectBlocksAsync<MyComplexClass>(x => x.WithObject(myObject)))
+                        .First();
+                    Assert.Equal(myObject.Id, block.Block.Object.Id);
+                    Assert.Equal(myObject.Name, block.Block.Object.Name);
+                    AssertSimilarDates(myObject.DateOfBirth, block.Block.Object.DateOfBirth);
+                    Assert.Equal(myObject.SomeOtherData.Value, block.Block.Object.SomeOtherData.Value);
+                    Assert.Equal(myObject.SomeOtherData.Notes.Count, block.Block.Object.SomeOtherData.Notes.Count);
 
-                for (var i = 0; i < myObject.SomeOtherData.Notes.Count; i++)
-                    Assert.Equal(myObject.SomeOtherData.Notes[i], block.Block.Object.SomeOtherData.Notes[i]);
+                    for (var i = 0; i < myObject.SomeOtherData.Notes.Count; i++)
+                        Assert.Equal(myObject.SomeOtherData.Notes[i], block.Block.Object.SomeOtherData.Notes[i]);
+                }
             }
-        }
+        });
     }
 
     private List<string> GetLargeListOfStrings()
@@ -208,14 +213,15 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_PreviousBlock_ThenLastBlockHasCorrectObjectValue()
     {
-        // ARRANGE
+        await InSemaphoreAsync(async ()=>{
+// ARRANGE
         // Create previous blocks
         using (var executionContext = CreateTaskExecutionContext())
         {
             var startedOk = await executionContext.TryStartAsync();
             if (startedOk)
             {
-                var blocks = await executionContext.GetObjectBlocksAsync<string>(x => x.WithObject("Testing123"));
+                var blocks = await executionContext.GetObjectBlocksAsync<string>(x => x.WithObject(CurrentTaskId.TaskName));
 
                 foreach (var block in blocks)
                 {
@@ -227,7 +233,7 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
 
         var expectedLastBlock = new ObjectBlock<string>
         {
-            Object = "Testing123"
+            Object = CurrentTaskId.TaskName
         };
 
         // ACT
@@ -240,14 +246,15 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
 
         // ASSERT
         Assert.Equal(expectedLastBlock.Object, lastBlock.Object);
-    }
+    });}
 
     [Fact]
     [Trait("Speed", "Fast")]
     [Trait("Area", "Blocks")]
     public async Task If_NoPreviousBlock_ThenLastBlockIsNull()
     {
-        // ARRANGE
+        await InSemaphoreAsync(async ()=>{
+// ARRANGE
         // all previous blocks were deleted in TestInitialize
 
         // ACT
@@ -260,14 +267,15 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
 
         // ASSERT
         Assert.Null(lastBlock);
-    }
+    });}
 
     [Fact]
     [Trait("Speed", "Fast")]
     [Trait("Area", "Blocks")]
     public async Task If_PreviousBlockIsPhantom_ThenLastBlockIsNotThePhantom()
     {
-        // ARRANGE
+        await InSemaphoreAsync(async ()=>{
+// ARRANGE
         // Create previous blocks
         using (var executionContext = CreateTaskExecutionContext())
         {
@@ -284,7 +292,7 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
             }
         }
 
-        _blocksHelper.InsertPhantomObjectBlock(TestConstants.ApplicationName, TestConstants.TaskName);
+        _blocksHelper.InsertPhantomObjectBlock(CurrentTaskId);
 
         // ACT
         IObjectBlock<string> lastBlock = null;
@@ -296,19 +304,20 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
 
         // ASSERT
         Assert.Equal("Testing987", lastBlock.Object);
-    }
+    });}
 
     [Fact]
     [Trait("Speed", "Fast")]
     [Trait("Area", "Blocks")]
     public async Task If_PreviousExecutionHadOneFailedBlockAndMultipleOkOnes_ThenBringBackTheFailedBlockWhenRequested()
     {
-        // ARRANGE
-        var referenceValue = Guid.NewGuid().ToString();
+        await InSemaphoreAsync(async ()=>{
+// ARRANGE
+        var referenceValue = Guid.NewGuid();
 
         // ACT and // ASSERT
         bool startedOk;
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+        using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
                    _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             startedOk = await executionContext.TryStartAsync(referenceValue);
@@ -337,7 +346,7 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
             }
         }
 
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+        using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
                    _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             startedOk = await executionContext.TryStartAsync();
@@ -351,19 +360,20 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
                 Assert.Equal(3, blocks.Count);
             }
         }
-    }
+    });}
 
     [Fact]
     [Trait("Speed", "Fast")]
     [Trait("Area", "Blocks")]
     public async Task If_PreviousExecutionHadOneFailedBlockAndMultipleOkOnes_ThenBringBackAllBlocksWhenRequested()
     {
-        // ARRANGE
-        var referenceValue = Guid.NewGuid().ToString();
+        await InSemaphoreAsync(async ()=>{
+// ARRANGE
+        var referenceValue = Guid.NewGuid();
 
         // ACT and // ASSERT
         bool startedOk;
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+        using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
                    _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             startedOk = await executionContext.TryStartAsync(referenceValue);
@@ -392,7 +402,7 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
             }
         }
 
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+        using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
                    _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
         {
             startedOk = await executionContext.TryStartAsync();
@@ -406,14 +416,15 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
                 Assert.Equal(5, blocks.Count);
             }
         }
-    }
+    });}
 
     [Fact]
     [Trait("Speed", "Fast")]
     [Trait("Area", "Blocks")]
     public async Task If_WithPreviousDeadBlocks_ThenReprocessOk()
     {
-        // ARRANGE
+        await InSemaphoreAsync(async ()=>{
+// ARRANGE
         await CreateFailedObjectBlockTaskAsync();
         await CreateDeadObjectBlockTaskAsync();
 
@@ -440,19 +451,19 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
 
                     counter++;
                     Assert.Equal(counter,
-                        _blocksHelper.GetBlockExecutionCountByStatus(TestConstants.ApplicationName,
-                            TestConstants.TaskName, BlockExecutionStatus.Completed));
+                        _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId, BlockExecutionStatus.Completed));
                 }
             }
         }
-    }
+    });}
 
     [Fact]
     [Trait("Speed", "Fast")]
     [Trait("Area", "Blocks")]
     public async Task If_AsDateRangeWithOverridenConfiguration_ThenOverridenValuesAreUsed()
     {
-        // ARRANGE
+        await InSemaphoreAsync(async ()=>{
+// ARRANGE
         await CreateFailedObjectBlockTaskAsync();
         await CreateDeadObjectBlockTaskAsync();
 
@@ -476,14 +487,15 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
                 Assert.Contains(blocks, x => x.Block.Object == "TestingYHN");
             }
         }
-    }
+    });}
 
     [Fact]
     [Trait("Speed", "Fast")]
     [Trait("Area", "Blocks")]
     public async Task If_WithNoOverridenConfiguration_ThenConfigurationValuesAreUsed()
     {
-        // ARRANGE
+        await InSemaphoreAsync(async ()=>{
+// ARRANGE
         await CreateFailedObjectBlockTaskAsync();
         await CreateDeadObjectBlockTaskAsync();
 
@@ -500,76 +512,81 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
                 Assert.True(blocks.First().Block.Object == "Testing YUI");
             }
         }
-    }
+    });}
 
     [Fact]
     [Trait("Speed", "Fast")]
     [Trait("Area", "Blocks")]
     public async Task If_ForceBlock_ThenBlockGetsReprocessedAndDequeued()
     {
-        // ARRANGE
-        var fromDate = DateTime.UtcNow.AddHours(-12);
-        var toDate = DateTime.UtcNow;
-
-        // create a block
-        bool startedOk;
-        using (var executionContext = CreateTaskExecutionContext())
+        await InSemaphoreAsync(async () =>
         {
-            startedOk = await executionContext.TryStartAsync();
-            if (startedOk)
+// ARRANGE
+            var fromDate = DateTime.UtcNow.AddHours(-12);
+            var toDate = DateTime.UtcNow;
+
+            // create a block
+            bool startedOk;
+            using (var executionContext = CreateTaskExecutionContext())
             {
-                var blocks = await executionContext.GetObjectBlocksAsync<string>(x => x.WithObject("Testing Hello"));
-                foreach (var block in blocks)
+                startedOk = await executionContext.TryStartAsync();
+                if (startedOk)
                 {
-                    await block.StartAsync();
-                    await block.CompleteAsync();
+                    var blocks =
+                        await executionContext.GetObjectBlocksAsync<string>(x => x.WithObject("Testing Hello"));
+                    foreach (var block in blocks)
+                    {
+                        await block.StartAsync();
+                        await block.CompleteAsync();
+                    }
                 }
             }
-        }
 
-        // add this processed block to the forced queue
-        var lastBlockId = _blocksHelper.GetLastBlockId(TestConstants.ApplicationName, TestConstants.TaskName);
-        _blocksHelper.EnqueueForcedBlock(lastBlockId);
+            // add this processed block to the forced queue
+            var lastBlockId = _blocksHelper.GetLastBlockId(CurrentTaskId);
+            _blocksHelper.EnqueueForcedBlock(lastBlockId);
 
-        // ACT - reprocess the forced block
-        using (var executionContext = CreateTaskExecutionContext())
-        {
-            startedOk = await executionContext.TryStartAsync();
-            if (startedOk)
+            // ACT - reprocess the forced block
+            using (var executionContext = CreateTaskExecutionContext())
             {
-                var blocks = await executionContext.GetObjectBlocksAsync<string>(x => x.WithObject("Testing Goodbye"));
-                Assert.Equal(2, blocks.Count);
-                Assert.Equal("Testing Hello", blocks[0].Block.Object);
-                Assert.Equal("Testing Goodbye", blocks[1].Block.Object);
-                foreach (var block in blocks)
+                startedOk = await executionContext.TryStartAsync();
+                if (startedOk)
                 {
-                    await block.StartAsync();
-                    await block.CompleteAsync();
+                    var blocks =
+                        await executionContext.GetObjectBlocksAsync<string>(x => x.WithObject("Testing Goodbye"));
+                    Assert.Equal(2, blocks.Count);
+                    Assert.Equal("Testing Hello", blocks[0].Block.Object);
+                    Assert.Equal("Testing Goodbye", blocks[1].Block.Object);
+                    foreach (var block in blocks)
+                    {
+                        await block.StartAsync();
+                        await block.CompleteAsync();
+                    }
                 }
             }
-        }
 
-        // The forced block will have been dequeued so it should not be processed again
-        using (var executionContext = CreateTaskExecutionContext())
-        {
-            startedOk = await executionContext.TryStartAsync();
-            if (startedOk)
+            // The forced block will have been dequeued so it should not be processed again
+            using (var executionContext = CreateTaskExecutionContext())
             {
-                var blocks = await executionContext.GetObjectBlocksAsync<string>(x => x.WithNoNewBlocks());
-                Assert.Equal(0, blocks.Count);
+                startedOk = await executionContext.TryStartAsync();
+                if (startedOk)
+                {
+                    var blocks = await executionContext.GetObjectBlocksAsync<string>(x => x.WithNoNewBlocks());
+                    Assert.Equal(0, blocks.Count);
+                }
             }
-        }
+        });
     }
 
     private ITaskExecutionContext CreateTaskExecutionContext()
     {
-        return _clientHelper.GetExecutionContext(TestConstants.TaskName,
+        return _clientHelper.GetExecutionContext(CurrentTaskId,
             _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing());
     }
 
     private ITaskExecutionContext CreateTaskExecutionContextWithNoReprocessing()
     {
-        return _clientHelper.GetExecutionContext(TestConstants.TaskName,
+        return _clientHelper.GetExecutionContext(CurrentTaskId,
             _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndNoReprocessing());
     }
 

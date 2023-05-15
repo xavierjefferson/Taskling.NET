@@ -5,9 +5,10 @@ using Taskling.Contexts;
 
 namespace Taskling.Blocks.ListBlocks;
 
+ 
 public class ListBlock<T> : IListBlock<T>
 {
-    private ListBlockContext<T> _parentContext;
+    private IListBlockContext<T> _parentContext;
 
     public ListBlock()
     {
@@ -30,13 +31,13 @@ public class ListBlock<T> : IListBlock<T>
 
     internal void SetParentContext(IListBlockContext<T> parentContext)
     {
-        _parentContext = (ListBlockContext<T>)parentContext;
+        _parentContext = parentContext;
     }
 }
 
 public class ListBlock<TItem, THeader> : IListBlock<TItem, THeader>
 {
-    private ListBlockContext<TItem, THeader> _parentContext;
+    private IListBlockContext<TItem, THeader> _parentContext;
 
     public ListBlock()
     {
@@ -58,6 +59,6 @@ public class ListBlock<TItem, THeader> : IListBlock<TItem, THeader>
 
     internal void SetParentContext(IListBlockContext<TItem, THeader> parentContext)
     {
-        _parentContext = (ListBlockContext<TItem, THeader>)parentContext;
+        _parentContext =  parentContext;
     }
 }

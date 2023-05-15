@@ -11,6 +11,6 @@ public class BlockExecution
     public int Attempt { get; set; }
     public int? ItemsCount { get; set; }
     public int BlockExecutionStatus { get; set; }
-    public virtual Block Block { get; set; }
-    public virtual TaskExecution TaskExecution { get; set; }
+    public virtual Block? Block { get; set; }
+    public virtual TaskExecution? TaskExecution { get; set; }
 }

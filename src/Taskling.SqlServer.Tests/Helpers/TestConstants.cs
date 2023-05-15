@@ -5,8 +5,7 @@ namespace Taskling.SqlServer.Tests.Helpers;
 
 internal class TestConstants
 {
-    internal const string ApplicationName = "MyTestApplication";
-    internal const string TaskName = "MyTestTask";
+ 
     public const string CollectionName = "DefaultCollection";
     internal static TimeSpan QueryTimeout = new(0, 1, 0);
     public static readonly ConnectionTypeEnum ConnectionType = ConnectionTypeEnum.MySql;

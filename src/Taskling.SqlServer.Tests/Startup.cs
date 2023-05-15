@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Logging;
 using Taskling.SqlServer.AncilliaryServices;
 using Taskling.SqlServer.Tests.Helpers;
+using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using TransactionScopeRetryHelper;
 using TransactionScopeRetryHelper.MicrosoftDataSqlClient;
 using TransactionScopeRetryHelper.MySqlClient;
@@ -23,7 +24,6 @@ public class Startup
     {
         RetryHelper.Extensions.AddMicrosoftDataSqlClient().AddMySqlClient().AddSystemDataSqlClient();
 
-      
         services.AddSingleton<IDbContextFactoryEx, DbContextFactoryEx>();
         services.AddLogging(configure =>
         {

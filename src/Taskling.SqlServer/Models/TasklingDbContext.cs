@@ -149,7 +149,7 @@ public partial class TasklingDbContext : DbContext
 
             entity.Property(e => e.LastKeepAlive);
 
-            entity.Property(e => e.ReferenceValue).HasMaxLength(200);
+            entity.Property(e => e.ReferenceValue).IsRequired();
 
             entity.Property(e => e.ServerName)
                 .IsRequired()

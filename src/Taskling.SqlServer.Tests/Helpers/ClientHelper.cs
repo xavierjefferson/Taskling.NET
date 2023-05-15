@@ -1,6 +1,7 @@
 ﻿using System;
 using Microsoft.Extensions.Logging;
 using Taskling.Contexts;
+using Taskling.InfrastructureContracts;
 
 namespace Taskling.SqlServer.Tests.Helpers;
 
@@ -25,10 +26,11 @@ public class ClientHelper : IClientHelper
             maxBlocksToGenerate);
     }
 
-    public ITaskExecutionContext GetExecutionContext(string taskName, ConfigurationOptions configurationOptions)
+    public ITaskExecutionContext GetExecutionContext(TaskId taskId,
+        ConfigurationOptions configurationOptions)
     {
         var client = CreateClient(configurationOptions);
-        return client.CreateTaskExecutionContext(TestConstants.ApplicationName, taskName);
+        return client.CreateTaskExecutionContext(taskId);
     }
 
 

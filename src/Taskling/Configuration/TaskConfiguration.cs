@@ -1,11 +1,15 @@
 ﻿using System;
+using Taskling.InfrastructureContracts;
 
 namespace Taskling.Configuration;
 
 public class TaskConfiguration
 {
-    public string ApplicationName { get; set; }
-    public string TaskName { get; set; }
+    public TaskConfiguration(TaskId taskId)
+    {
+        TaskId = taskId;
+    }
+
     public int DatabaseTimeoutSeconds { get; set; }
     public string DatabaseConnectionString { get; set; }
 
@@ -38,13 +42,11 @@ public class TaskConfiguration
     public int MaxBlocksToGenerate { get; set; }
     public int MaxLengthForNonCompressedData { get; set; }
     public int MaxStatusReason { get; set; }
-
+    public TaskId TaskId { get; }
     public DateTime DateLoaded { get; set; }
 
-    public void SetDefaultValues(string applicationName, string taskName, string databaseConnString)
+    public void SetDefaultValues(string databaseConnString)
     {
-        ApplicationName = applicationName;
-        TaskName = taskName;
         DatabaseConnectionString = databaseConnString;
         DatabaseTimeoutSeconds = 120;
         Enabled = true;

@@ -8,6 +8,7 @@ using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.Serialization;
 using Taskling.SqlServer.Tests.Helpers;
+using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_ListBlockRepository;
@@ -33,17 +34,17 @@ public class When_GetLastListBlock : TestBase
 
     public When_GetLastListBlock(IBlocksHelper blocksHelper, IListBlockRepository listBlockRepository,
         IExecutionsHelper executionsHelper, IClientHelper clientHelper, ILogger<When_GetLastListBlock> logger,
-        ITaskRepository taskRepository)
+        ITaskRepository taskRepository) : base(executionsHelper)
     {
         _blocksHelper = blocksHelper;
         _clientHelper = clientHelper;
         _listBlockRepository = listBlockRepository;
-        _blocksHelper.DeleteBlocks(TestConstants.ApplicationName);
+        _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
         _executionsHelper = executionsHelper;
         _logger = logger;
-        _executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+        _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
 
-        _taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
         _executionsHelper.InsertUnlimitedExecutionToken(_taskDefinitionId);
 
         taskRepository.ClearCache();
@@ -94,24 +95,28 @@ public class When_GetLastListBlock : TestBase
     [Trait("Area", "Blocks")]
     public async Task ThenReturnLastCreated()
     {
-        // ARRANGE
-        InsertBlocks();
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertBlocks();
 
-        // ACT
-        var sut = _listBlockRepository;
-        var block = await sut.GetLastListBlockAsync(CreateRequest());
+            // ACT
+            var sut = _listBlockRepository;
+            var block = await sut.GetLastListBlockAsync(CreateRequest());
 
-        // ASSERT
-        Assert.Equal(_block5, block.ListBlockId);
-        AssertSimilarDates(new DateTime(2016, 1, 1).AddMinutes(-60),
-            JsonGenericSerializer.Deserialize<DateRange>(block.Header).FromDate);
-        AssertSimilarDates(new DateTime(2016, 1, 1), JsonGenericSerializer.Deserialize<DateRange>(block.Header).ToDate);
+            // ASSERT
+            Assert.Equal(_block5, block.ListBlockId);
+            AssertSimilarDates(new DateTime(2016, 1, 1).AddMinutes(-60),
+                JsonGenericSerializer.Deserialize<DateRange>(block.Header).FromDate);
+            AssertSimilarDates(new DateTime(2016, 1, 1),
+                JsonGenericSerializer.Deserialize<DateRange>(block.Header).ToDate);
+        });
     }
 
 
     private LastBlockRequest CreateRequest()
     {
-        var request = new LastBlockRequest(new TaskId(TestConstants.ApplicationName, TestConstants.TaskName),
+        var request = new LastBlockRequest(CurrentTaskId,
             BlockType.Object);
         request.LastBlockOrder = LastBlockOrder.LastCreated;
 

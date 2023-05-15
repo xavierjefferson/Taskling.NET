@@ -41,7 +41,7 @@ public static class TasklingServiceCollectionExtensions
 
         services.AddScoped<IBlockFactory, BlockFactory>();
         services.AddScoped<ICleanUpService, CleanUpService>();
-
+        services.AddMemoryCache();
         services.AddSingleton<IConnectionStore, ConnectionStore>();
         return services;
     }

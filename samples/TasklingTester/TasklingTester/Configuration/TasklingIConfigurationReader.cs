@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Taskling;
 using Taskling.Configuration;
+using Taskling.InfrastructureContracts;
 
 namespace TasklingTester.Configuration;
 
@@ -15,9 +16,9 @@ public class TasklingIConfigurationReader : IConfigurationReader
         _configWrapper = _section.Get<ConfigWrapper>();
     }
 
-    public ConfigurationOptions GetTaskConfigurationString(string applicationName, string taskName)
+    public ConfigurationOptions GetTaskConfigurationString(TaskId taskId)
     {
-        var key = applicationName + "::" + taskName;
+        var key = taskId.GetUniqueKey();
         var configString = _configWrapper.TaskConfigurations[key];
 
         return configString;

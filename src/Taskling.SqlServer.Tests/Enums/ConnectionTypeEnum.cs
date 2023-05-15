@@ -4,5 +4,6 @@ public enum ConnectionTypeEnum
 {
     SqlServer,
     MySql,
-    Sqlite
+    Sqlite,
+    InMemory
 }

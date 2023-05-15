@@ -13,11 +13,10 @@ using Xunit;
 namespace Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 
 [Collection(TestConstants.CollectionName)]
-public class When_FindDeadBlocks
+public class When_FindDeadBlocks : TestBase
 {
     private readonly IBlockRepository _blockRepository;
     private readonly IBlocksHelper _blocksHelper;
-    private readonly IClientHelper _clientHelper;
 
     private readonly IExecutionsHelper _executionsHelper;
     private readonly ILogger<When_FindDeadBlocks> _logger;
@@ -33,18 +32,18 @@ public class When_FindDeadBlocks
     private int _taskExecution1;
 
     public When_FindDeadBlocks(IBlockRepository blockRepository, IBlocksHelper blocksHelper,
-        IExecutionsHelper executionsHelper, IClientHelper clientHelper, ILogger<When_FindDeadBlocks> logger,
-        ITaskRepository taskRepository)
+        IExecutionsHelper executionsHelper, ILogger<When_FindDeadBlocks> logger,
+        ITaskRepository taskRepository) : base(executionsHelper)
     {
         _blockRepository = blockRepository;
         _blocksHelper = blocksHelper;
-        _clientHelper = clientHelper;
-        _blocksHelper.DeleteBlocks(TestConstants.ApplicationName);
+        _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
         _executionsHelper = executionsHelper;
         _logger = logger;
-        _executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
 
-        _taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
+
+        _taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
         _executionsHelper.InsertAvailableExecutionToken(_taskDefinitionId);
 
         taskRepository.ClearCache();
@@ -196,7 +195,7 @@ public class When_FindDeadBlocks
     private FindDeadBlocksRequest CreateDeadBlockRequest(BlockType blockType, TaskDeathMode taskDeathMode,
         int blockCountLimit, int attemptLimit, int fromMinutesBack)
     {
-        return new FindDeadBlocksRequest(new TaskId(TestConstants.ApplicationName, TestConstants.TaskName),
+        return new FindDeadBlocksRequest(CurrentTaskId,
             1,
             blockType,
             DateTime.UtcNow.AddMinutes(fromMinutesBack),
@@ -214,20 +213,23 @@ public class When_FindDeadBlocks
     public async Task
         When_OverrideModeAndDateRange_DeadTasksInTargetPeriodAndLessThanBlockCountLimit_ThenReturnAllDeadBlocks()
     {
-        // ARRANGE
-        InsertDateRangeTestData(TaskDeathMode.Override);
-        var blockCountLimit = 5;
-        var request = CreateDeadBlockRequest(BlockType.DateRange, TaskDeathMode.Override, blockCountLimit);
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertDateRangeTestData(TaskDeathMode.Override);
+            var blockCountLimit = 5;
+            var request = CreateDeadBlockRequest(BlockType.DateRange, TaskDeathMode.Override, blockCountLimit);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
 
-        // ASSERT
-        Assert.Equal(3, deadBlocks.Count);
-        Assert.Contains(deadBlocks, x => x.RangeBlockId == _block2);
-        Assert.Contains(deadBlocks, x => x.RangeBlockId == _block3);
-        Assert.Contains(deadBlocks, x => x.RangeBlockId == _block5);
+            // ASSERT
+            Assert.Equal(3, deadBlocks.Count);
+            Assert.Contains(deadBlocks, x => x.RangeBlockId == _block2);
+            Assert.Contains(deadBlocks, x => x.RangeBlockId == _block3);
+            Assert.Contains(deadBlocks, x => x.RangeBlockId == _block5);
+        });
     }
 
     [Fact]
@@ -235,17 +237,20 @@ public class When_FindDeadBlocks
     [Trait("Area", "Blocks")]
     public async Task When_OverrideModeAndDateRange_DeadTasksOutsideTargetPeriod_ThenReturnNoBlocks()
     {
-        // ARRANGE
-        InsertDateRangeTestData(TaskDeathMode.Override);
-        var blockCountLimit = 5;
-        var request = CreateDeadBlockRequest(BlockType.DateRange, TaskDeathMode.Override, blockCountLimit, 3, -100);
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertDateRangeTestData(TaskDeathMode.Override);
+            var blockCountLimit = 5;
+            var request = CreateDeadBlockRequest(BlockType.DateRange, TaskDeathMode.Override, blockCountLimit, 3, -100);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
 
-        // ASSERT
-        Assert.Equal(0, deadBlocks.Count);
+            // ASSERT
+            Assert.Equal(0, deadBlocks.Count);
+        });
     }
 
     [Fact]
@@ -254,18 +259,21 @@ public class When_FindDeadBlocks
     public async Task
         When_OverrideModeAndDateRange_DeadTasksInTargetPeriodAndMoreThanBlockCountLimit_ThenReturnOldestDeadBlocksUpToLimit()
     {
-        // ARRANGE
-        InsertDateRangeTestData(TaskDeathMode.Override);
-        var blockCountLimit = 1;
-        var request = CreateDeadBlockRequest(BlockType.DateRange, TaskDeathMode.Override, blockCountLimit);
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertDateRangeTestData(TaskDeathMode.Override);
+            var blockCountLimit = 1;
+            var request = CreateDeadBlockRequest(BlockType.DateRange, TaskDeathMode.Override, blockCountLimit);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
 
-        // ASSERT
-        Assert.Equal(1, deadBlocks.Count);
-        Assert.Contains(deadBlocks, x => x.RangeBlockId == _block5);
+            // ASSERT
+            Assert.Equal(1, deadBlocks.Count);
+            Assert.Contains(deadBlocks, x => x.RangeBlockId == _block5);
+        });
     }
 
     [Fact]
@@ -274,21 +282,24 @@ public class When_FindDeadBlocks
     public async Task
         When_OverrideModeAndDateRange_SomeDeadTasksHaveReachedRetryLimit_ThenReturnOnlyDeadBlocksNotAtLimit()
     {
-        // ARRANGE
-        InsertDateRangeTestData(TaskDeathMode.Override);
-        var blockCountLimit = 5;
-        var retryLimit = 2;
-        var request = CreateDeadBlockRequest(BlockType.DateRange, TaskDeathMode.Override, blockCountLimit, retryLimit,
-            -300);
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertDateRangeTestData(TaskDeathMode.Override);
+            var blockCountLimit = 5;
+            var retryLimit = 2;
+            var request = CreateDeadBlockRequest(BlockType.DateRange, TaskDeathMode.Override, blockCountLimit, retryLimit,
+                -300);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
 
-        // ASSERT
-        Assert.Equal(2, deadBlocks.Count);
-        Assert.Contains(deadBlocks, x => x.RangeBlockId == _block2);
-        Assert.Contains(deadBlocks, x => x.RangeBlockId == _block3);
+            // ASSERT
+            Assert.Equal(2, deadBlocks.Count);
+            Assert.Contains(deadBlocks, x => x.RangeBlockId == _block2);
+            Assert.Contains(deadBlocks, x => x.RangeBlockId == _block3);
+        });
     }
 
     [Fact]
@@ -297,22 +308,25 @@ public class When_FindDeadBlocks
     public async Task
         When_KeepAliveModeAndDateRange_DeadTasksPassedKeepAliveLimitPeriodAndLessThanBlockCountLimit_ThenReturnAllDeadBlocks()
     {
-        // ARRANGE
-        InsertDateRangeTestData(TaskDeathMode.KeepAlive);
-        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertDateRangeTestData(TaskDeathMode.KeepAlive);
+            _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
 
-        var blockCountLimit = 5;
-        var request = CreateDeadBlockRequest(BlockType.DateRange, TaskDeathMode.KeepAlive, blockCountLimit);
+            var blockCountLimit = 5;
+            var request = CreateDeadBlockRequest(BlockType.DateRange, TaskDeathMode.KeepAlive, blockCountLimit);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
 
-        // ASSERT
-        Assert.Equal(3, deadBlocks.Count);
-        Assert.Contains(deadBlocks, x => x.RangeBlockId == _block2);
-        Assert.Contains(deadBlocks, x => x.RangeBlockId == _block3);
-        Assert.Contains(deadBlocks, x => x.RangeBlockId == _block5);
+            // ASSERT
+            Assert.Equal(3, deadBlocks.Count);
+            Assert.Contains(deadBlocks, x => x.RangeBlockId == _block2);
+            Assert.Contains(deadBlocks, x => x.RangeBlockId == _block3);
+            Assert.Contains(deadBlocks, x => x.RangeBlockId == _block5);
+        });
     }
 
     [Fact]
@@ -321,21 +335,24 @@ public class When_FindDeadBlocks
     public async Task
         When_KeepAliveModeAndDateRange_DeadTasksPassedKeepAliveLimitAndGreaterThanBlockCountLimit_ThenReturnOldestDeadBlocksUpToLimit()
     {
-        // ARRANGE
-        InsertDateRangeTestData(TaskDeathMode.KeepAlive);
-        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertDateRangeTestData(TaskDeathMode.KeepAlive);
+            _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
 
-        var blockCountLimit = 2;
-        var request = CreateDeadBlockRequest(BlockType.DateRange, TaskDeathMode.KeepAlive, blockCountLimit);
+            var blockCountLimit = 2;
+            var request = CreateDeadBlockRequest(BlockType.DateRange, TaskDeathMode.KeepAlive, blockCountLimit);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
 
-        // ASSERT
-        Assert.Equal(2, deadBlocks.Count);
-        Assert.Contains(deadBlocks, x => x.RangeBlockId == _block3);
-        Assert.Contains(deadBlocks, x => x.RangeBlockId == _block5);
+            // ASSERT
+            Assert.Equal(2, deadBlocks.Count);
+            Assert.Contains(deadBlocks, x => x.RangeBlockId == _block3);
+            Assert.Contains(deadBlocks, x => x.RangeBlockId == _block5);
+        });
     }
 
     [Fact]
@@ -343,19 +360,22 @@ public class When_FindDeadBlocks
     [Trait("Area", "Blocks")]
     public async Task When_KeepAliveModeAndDateRange_DeadTasksNotPassedKeepAliveLimitInTargetPeriod_ThenReturnNoBlocks()
     {
-        // ARRANGE
-        InsertDateRangeTestData(TaskDeathMode.KeepAlive);
-        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-2));
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertDateRangeTestData(TaskDeathMode.KeepAlive);
+            _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-2));
 
-        var blockCountLimit = 5;
-        var request = CreateDeadBlockRequest(BlockType.DateRange, TaskDeathMode.KeepAlive, blockCountLimit);
+            var blockCountLimit = 5;
+            var request = CreateDeadBlockRequest(BlockType.DateRange, TaskDeathMode.KeepAlive, blockCountLimit);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
 
-        // ASSERT
-        Assert.Equal(0, deadBlocks.Count);
+            // ASSERT
+            Assert.Equal(0, deadBlocks.Count);
+        });
     }
 
     [Fact]
@@ -364,19 +384,23 @@ public class When_FindDeadBlocks
     public async Task
         When_KeepAliveModeAndDateRange_DeadTasksPassedKeepAliveLimitButAreOutsideTargetPeriod_ThenReturnNoBlocks()
     {
-        // ARRANGE
-        InsertDateRangeTestData(TaskDeathMode.KeepAlive);
-        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-50));
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertDateRangeTestData(TaskDeathMode.KeepAlive);
+            _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-50));
 
-        var blockCountLimit = 5;
-        var request = CreateDeadBlockRequest(BlockType.DateRange, TaskDeathMode.KeepAlive, blockCountLimit, 3, -100);
+            var blockCountLimit = 5;
+            var request =
+                CreateDeadBlockRequest(BlockType.DateRange, TaskDeathMode.KeepAlive, blockCountLimit, 3, -100);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
 
-        // ASSERT
-        Assert.Equal(0, deadBlocks.Count);
+            // ASSERT
+            Assert.Equal(0, deadBlocks.Count);
+        });
     }
 
     #endregion .: Date Range Blocks :.
@@ -389,20 +413,23 @@ public class When_FindDeadBlocks
     public async Task
         When_OverrideModeAndNumericRange_DeadTasksInTargetPeriodAndLessThanBlockCountLimit_ThenReturnAllDeadBlocks()
     {
-        // ARRANGE
-        InsertNumericRangeTestData(TaskDeathMode.Override);
-        var blockCountLimit = 5;
-        var request = CreateDeadBlockRequest(BlockType.NumericRange, TaskDeathMode.Override, blockCountLimit);
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertNumericRangeTestData(TaskDeathMode.Override);
+            var blockCountLimit = 5;
+            var request = CreateDeadBlockRequest(BlockType.NumericRange, TaskDeathMode.Override, blockCountLimit);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
 
-        // ASSERT
-        Assert.Equal(3, deadBlocks.Count);
-        Assert.Contains(deadBlocks, x => x.RangeBlockId == _block2);
-        Assert.Contains(deadBlocks, x => x.RangeBlockId == _block3);
-        Assert.Contains(deadBlocks, x => x.RangeBlockId == _block5);
+            // ASSERT
+            Assert.Equal(3, deadBlocks.Count);
+            Assert.Contains(deadBlocks, x => x.RangeBlockId == _block2);
+            Assert.Contains(deadBlocks, x => x.RangeBlockId == _block3);
+            Assert.Contains(deadBlocks, x => x.RangeBlockId == _block5);
+        });
     }
 
     [Fact]
@@ -410,17 +437,20 @@ public class When_FindDeadBlocks
     [Trait("Area", "Blocks")]
     public async Task When_OverrideModeAndNumericRange_DeadTasksOutsideTargetPeriod_ThenReturnNoBlocks()
     {
-        // ARRANGE
-        InsertNumericRangeTestData(TaskDeathMode.Override);
-        var blockCountLimit = 5;
-        var request = CreateDeadBlockRequest(BlockType.NumericRange, TaskDeathMode.Override, blockCountLimit, 3, -100);
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertNumericRangeTestData(TaskDeathMode.Override);
+            var blockCountLimit = 5;
+            var request = CreateDeadBlockRequest(BlockType.NumericRange, TaskDeathMode.Override, blockCountLimit, 3, -100);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
 
-        // ASSERT
-        Assert.Equal(0, deadBlocks.Count);
+            // ASSERT
+            Assert.Equal(0, deadBlocks.Count);
+        });
     }
 
     [Fact]
@@ -429,18 +459,21 @@ public class When_FindDeadBlocks
     public async Task
         When_OverrideModeAndNumericRange_DeadTasksInTargetPeriodAndMoreThanBlockCountLimit_ThenReturnOldestDeadBlocksUpToLimit()
     {
-        // ARRANGE
-        InsertNumericRangeTestData(TaskDeathMode.Override);
-        var blockCountLimit = 1;
-        var request = CreateDeadBlockRequest(BlockType.NumericRange, TaskDeathMode.Override, blockCountLimit);
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertNumericRangeTestData(TaskDeathMode.Override);
+            var blockCountLimit = 1;
+            var request = CreateDeadBlockRequest(BlockType.NumericRange, TaskDeathMode.Override, blockCountLimit);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
 
-        // ASSERT
-        Assert.Equal(1, deadBlocks.Count);
-        Assert.Contains(deadBlocks, x => x.RangeBlockId == _block2);
+            // ASSERT
+            Assert.Equal(1, deadBlocks.Count);
+            Assert.Contains(deadBlocks, x => x.RangeBlockId == _block2);
+        });
     }
 
     [Fact]
@@ -449,21 +482,24 @@ public class When_FindDeadBlocks
     public async Task
         When_OverrideModeAndNumericRange_SomeDeadTasksHaveReachedRetryLimit_ThenReturnOnlyDeadBlocksNotAtLimit()
     {
-        // ARRANGE
-        InsertNumericRangeTestData(TaskDeathMode.Override);
-        var blockCountLimit = 5;
-        var retryLimit = 2;
-        var request = CreateDeadBlockRequest(BlockType.NumericRange, TaskDeathMode.Override, blockCountLimit,
-            retryLimit, -300);
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertNumericRangeTestData(TaskDeathMode.Override);
+            var blockCountLimit = 5;
+            var retryLimit = 2;
+            var request = CreateDeadBlockRequest(BlockType.NumericRange, TaskDeathMode.Override, blockCountLimit,
+                retryLimit, -300);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
 
-        // ASSERT
-        Assert.Equal(2, deadBlocks.Count);
-        Assert.Contains(deadBlocks, x => x.RangeBlockId == _block2);
-        Assert.Contains(deadBlocks, x => x.RangeBlockId == _block3);
+            // ASSERT
+            Assert.Equal(2, deadBlocks.Count);
+            Assert.Contains(deadBlocks, x => x.RangeBlockId == _block2);
+            Assert.Contains(deadBlocks, x => x.RangeBlockId == _block3);
+        });
     }
 
     [Fact]
@@ -472,22 +508,25 @@ public class When_FindDeadBlocks
     public async Task
         When_KeepAliveModeAndNumericRange_DeadTasksPassedKeepAliveLimitPeriodAndLessThanBlockCountLimit_ThenReturnAllDeadBlocks()
     {
-        // ARRANGE
-        InsertNumericRangeTestData(TaskDeathMode.KeepAlive);
-        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertNumericRangeTestData(TaskDeathMode.KeepAlive);
+            _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
 
-        var blockCountLimit = 5;
-        var request = CreateDeadBlockRequest(BlockType.NumericRange, TaskDeathMode.KeepAlive, blockCountLimit);
+            var blockCountLimit = 5;
+            var request = CreateDeadBlockRequest(BlockType.NumericRange, TaskDeathMode.KeepAlive, blockCountLimit);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
 
-        // ASSERT
-        Assert.Equal(3, deadBlocks.Count);
-        Assert.Contains(deadBlocks, x => x.RangeBlockId == _block2);
-        Assert.Contains(deadBlocks, x => x.RangeBlockId == _block3);
-        Assert.Contains(deadBlocks, x => x.RangeBlockId == _block5);
+            // ASSERT
+            Assert.Equal(3, deadBlocks.Count);
+            Assert.Contains(deadBlocks, x => x.RangeBlockId == _block2);
+            Assert.Contains(deadBlocks, x => x.RangeBlockId == _block3);
+            Assert.Contains(deadBlocks, x => x.RangeBlockId == _block5);
+        });
     }
 
     [Fact]
@@ -496,21 +535,24 @@ public class When_FindDeadBlocks
     public async Task
         When_KeepAliveModeAndNumericRange_DeadTasksPassedKeepAliveLimitAndGreaterThanBlockCountLimit_ThenReturnOldestDeadBlocksUpToLimit()
     {
-        // ARRANGE
-        InsertNumericRangeTestData(TaskDeathMode.KeepAlive);
-        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertNumericRangeTestData(TaskDeathMode.KeepAlive);
+            _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
 
-        var blockCountLimit = 2;
-        var request = CreateDeadBlockRequest(BlockType.NumericRange, TaskDeathMode.KeepAlive, blockCountLimit);
+            var blockCountLimit = 2;
+            var request = CreateDeadBlockRequest(BlockType.NumericRange, TaskDeathMode.KeepAlive, blockCountLimit);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
 
-        // ASSERT
-        Assert.Equal(2, deadBlocks.Count);
-        Assert.Contains(deadBlocks, x => x.RangeBlockId == _block2);
-        Assert.Contains(deadBlocks, x => x.RangeBlockId == _block3);
+            // ASSERT
+            Assert.Equal(2, deadBlocks.Count);
+            Assert.Contains(deadBlocks, x => x.RangeBlockId == _block2);
+            Assert.Contains(deadBlocks, x => x.RangeBlockId == _block3);
+        });
     }
 
     [Fact]
@@ -519,19 +561,22 @@ public class When_FindDeadBlocks
     public async Task
         When_KeepAliveModeAndNumericRange_DeadTasksNotPassedKeepAliveLimitInTargetPeriod_ThenReturnNoBlocks()
     {
-        // ARRANGE
-        InsertNumericRangeTestData(TaskDeathMode.KeepAlive);
-        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-2));
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertNumericRangeTestData(TaskDeathMode.KeepAlive);
+            _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-2));
 
-        var blockCountLimit = 5;
-        var request = CreateDeadBlockRequest(BlockType.NumericRange, TaskDeathMode.KeepAlive, blockCountLimit);
+            var blockCountLimit = 5;
+            var request = CreateDeadBlockRequest(BlockType.NumericRange, TaskDeathMode.KeepAlive, blockCountLimit);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
 
-        // ASSERT
-        Assert.Equal(0, deadBlocks.Count);
+            // ASSERT
+            Assert.Equal(0, deadBlocks.Count);
+        });
     }
 
     [Fact]
@@ -540,19 +585,23 @@ public class When_FindDeadBlocks
     public async Task
         When_KeepAliveModeAndNumericRange_DeadTasksPassedKeepAliveLimitButAreOutsideTargetPeriod_ThenReturnNoBlocks()
     {
-        // ARRANGE
-        InsertNumericRangeTestData(TaskDeathMode.KeepAlive);
-        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-50));
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertNumericRangeTestData(TaskDeathMode.KeepAlive);
+            _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-50));
 
-        var blockCountLimit = 5;
-        var request = CreateDeadBlockRequest(BlockType.NumericRange, TaskDeathMode.KeepAlive, blockCountLimit, 3, -100);
+            var blockCountLimit = 5;
+            var request = CreateDeadBlockRequest(BlockType.NumericRange, TaskDeathMode.KeepAlive, blockCountLimit, 3,
+                -100);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadRangeBlocksAsync(request);
 
-        // ASSERT
-        Assert.Equal(0, deadBlocks.Count);
+            // ASSERT
+            Assert.Equal(0, deadBlocks.Count);
+        });
     }
 
     #endregion .: Date Range Blocks :.
@@ -565,20 +614,23 @@ public class When_FindDeadBlocks
     public async Task
         When_OverrideModeAndList_DeadTasksInTargetPeriodAndLessThanBlockCountLimit_ThenReturnAllDeadBlocks()
     {
-        // ARRANGE
-        InsertListTestData(TaskDeathMode.Override);
-        var blockCountLimit = 5;
-        var request = CreateDeadBlockRequest(BlockType.List, TaskDeathMode.Override, blockCountLimit);
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertListTestData(TaskDeathMode.Override);
+            var blockCountLimit = 5;
+            var request = CreateDeadBlockRequest(BlockType.List, TaskDeathMode.Override, blockCountLimit);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadListBlocksAsync(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadListBlocksAsync(request);
 
-        // ASSERT
-        Assert.Equal(3, deadBlocks.Count);
-        Assert.Contains(deadBlocks, x => x.ListBlockId == _block2);
-        Assert.Contains(deadBlocks, x => x.ListBlockId == _block3);
-        Assert.Contains(deadBlocks, x => x.ListBlockId == _block5);
+            // ASSERT
+            Assert.Equal(3, deadBlocks.Count);
+            Assert.Contains(deadBlocks, x => x.ListBlockId == _block2);
+            Assert.Contains(deadBlocks, x => x.ListBlockId == _block3);
+            Assert.Contains(deadBlocks, x => x.ListBlockId == _block5);
+        });
     }
 
     [Fact]
@@ -586,17 +638,20 @@ public class When_FindDeadBlocks
     [Trait("Area", "Blocks")]
     public async Task When_OverrideModeAndList_DeadTasksOutsideTargetPeriod_ThenReturnNoBlocks()
     {
-        // ARRANGE
-        InsertListTestData(TaskDeathMode.Override);
-        var blockCountLimit = 5;
-        var request = CreateDeadBlockRequest(BlockType.List, TaskDeathMode.Override, blockCountLimit, 3, -100);
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertListTestData(TaskDeathMode.Override);
+            var blockCountLimit = 5;
+            var request = CreateDeadBlockRequest(BlockType.List, TaskDeathMode.Override, blockCountLimit, 3, -100);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadListBlocksAsync(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadListBlocksAsync(request);
 
-        // ASSERT
-        Assert.Equal(0, deadBlocks.Count);
+            // ASSERT
+            Assert.Equal(0, deadBlocks.Count);
+        });
     }
 
     [Fact]
@@ -605,18 +660,21 @@ public class When_FindDeadBlocks
     public async Task
         When_OverrideModeAndList_DeadTasksInTargetPeriodAndMoreThanBlockCountLimit_ThenReturnOldestDeadBlocksUpToLimit()
     {
-        // ARRANGE
-        InsertListTestData(TaskDeathMode.Override);
-        var blockCountLimit = 1;
-        var request = CreateDeadBlockRequest(BlockType.List, TaskDeathMode.Override, blockCountLimit);
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertListTestData(TaskDeathMode.Override);
+            var blockCountLimit = 1;
+            var request = CreateDeadBlockRequest(BlockType.List, TaskDeathMode.Override, blockCountLimit);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadListBlocksAsync(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadListBlocksAsync(request);
 
-        // ASSERT
-        Assert.Equal(1, deadBlocks.Count);
-        Assert.Contains(deadBlocks, x => x.ListBlockId == _block5);
+            // ASSERT
+            Assert.Equal(1, deadBlocks.Count);
+            Assert.Contains(deadBlocks, x => x.ListBlockId == _block5);
+        });
     }
 
     [Fact]
@@ -624,21 +682,24 @@ public class When_FindDeadBlocks
     [Trait("Area", "Blocks")]
     public async Task When_OverrideModeAndList_SomeDeadTasksHaveReachedRetryLimit_ThenReturnOnlyDeadBlocksNotAtLimit()
     {
-        // ARRANGE
-        InsertListTestData(TaskDeathMode.Override);
-        var blockCountLimit = 5;
-        var attemptLimit = 2;
-        var request =
-            CreateDeadBlockRequest(BlockType.List, TaskDeathMode.Override, blockCountLimit, attemptLimit, -300);
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertListTestData(TaskDeathMode.Override);
+            var blockCountLimit = 5;
+            var attemptLimit = 2;
+            var request =
+                CreateDeadBlockRequest(BlockType.List, TaskDeathMode.Override, blockCountLimit, attemptLimit, -300);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadListBlocksAsync(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadListBlocksAsync(request);
 
-        // ASSERT
-        Assert.Equal(2, deadBlocks.Count);
-        Assert.Contains(deadBlocks, x => x.ListBlockId == _block2);
-        Assert.Contains(deadBlocks, x => x.ListBlockId == _block3);
+            // ASSERT
+            Assert.Equal(2, deadBlocks.Count);
+            Assert.Contains(deadBlocks, x => x.ListBlockId == _block2);
+            Assert.Contains(deadBlocks, x => x.ListBlockId == _block3);
+        });
     }
 
     [Fact]
@@ -647,22 +708,25 @@ public class When_FindDeadBlocks
     public async Task
         When_KeepAliveModeAndList_DeadTasksPassedKeepAliveLimitPeriodAndLessThanBlockCountLimit_ThenReturnAllDeadBlocks()
     {
-        // ARRANGE
-        InsertListTestData(TaskDeathMode.KeepAlive);
-        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertListTestData(TaskDeathMode.KeepAlive);
+            _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
 
-        var blockCountLimit = 5;
-        var request = CreateDeadBlockRequest(BlockType.List, TaskDeathMode.KeepAlive, blockCountLimit);
+            var blockCountLimit = 5;
+            var request = CreateDeadBlockRequest(BlockType.List, TaskDeathMode.KeepAlive, blockCountLimit);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadListBlocksAsync(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadListBlocksAsync(request);
 
-        // ASSERT
-        Assert.Equal(3, deadBlocks.Count);
-        Assert.Contains(deadBlocks, x => x.ListBlockId == _block2);
-        Assert.Contains(deadBlocks, x => x.ListBlockId == _block3);
-        Assert.Contains(deadBlocks, x => x.ListBlockId == _block5);
+            // ASSERT
+            Assert.Equal(3, deadBlocks.Count);
+            Assert.Contains(deadBlocks, x => x.ListBlockId == _block2);
+            Assert.Contains(deadBlocks, x => x.ListBlockId == _block3);
+            Assert.Contains(deadBlocks, x => x.ListBlockId == _block5);
+        });
     }
 
     [Fact]
@@ -671,21 +735,24 @@ public class When_FindDeadBlocks
     public async Task
         When_KeepAliveModeAndList_DeadTasksPassedKeepAliveLimitAndGreaterThanBlockCountLimit_ThenReturnOldestDeadBlocksUpToLimit()
     {
-        // ARRANGE
-        InsertListTestData(TaskDeathMode.KeepAlive);
-        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertListTestData(TaskDeathMode.KeepAlive);
+            _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
 
-        var blockCountLimit = 2;
-        var request = CreateDeadBlockRequest(BlockType.List, TaskDeathMode.KeepAlive, blockCountLimit);
+            var blockCountLimit = 2;
+            var request = CreateDeadBlockRequest(BlockType.List, TaskDeathMode.KeepAlive, blockCountLimit);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadListBlocksAsync(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadListBlocksAsync(request);
 
-        // ASSERT
-        Assert.Equal(2, deadBlocks.Count);
-        Assert.Contains(deadBlocks, x => x.ListBlockId == _block3);
-        Assert.Contains(deadBlocks, x => x.ListBlockId == _block5);
+            // ASSERT
+            Assert.Equal(2, deadBlocks.Count);
+            Assert.Contains(deadBlocks, x => x.ListBlockId == _block3);
+            Assert.Contains(deadBlocks, x => x.ListBlockId == _block5);
+        });
     }
 
     [Fact]
@@ -693,19 +760,22 @@ public class When_FindDeadBlocks
     [Trait("Area", "Blocks")]
     public async Task When_KeepAliveModeAndList_DeadTasksNotPassedKeepAliveLimitInTargetPeriod_ThenReturnNoBlocks()
     {
-        // ARRANGE
-        InsertListTestData(TaskDeathMode.KeepAlive);
-        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-2));
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertListTestData(TaskDeathMode.KeepAlive);
+            _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-2));
 
-        var blockCountLimit = 5;
-        var request = CreateDeadBlockRequest(BlockType.List, TaskDeathMode.KeepAlive, blockCountLimit);
+            var blockCountLimit = 5;
+            var request = CreateDeadBlockRequest(BlockType.List, TaskDeathMode.KeepAlive, blockCountLimit);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadListBlocksAsync(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadListBlocksAsync(request);
 
-        // ASSERT
-        Assert.Equal(0, deadBlocks.Count);
+            // ASSERT
+            Assert.Equal(0, deadBlocks.Count);
+        });
     }
 
     [Fact]
@@ -714,19 +784,22 @@ public class When_FindDeadBlocks
     public async Task
         When_KeepAliveModeAndList_DeadTasksPassedKeepAliveLimitButAreOutsideTargetPeriod_ThenReturnNoBlocks()
     {
-        // ARRANGE
-        InsertListTestData(TaskDeathMode.KeepAlive);
-        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-50));
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertListTestData(TaskDeathMode.KeepAlive);
+            _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-50));
 
-        var blockCountLimit = 5;
-        var request = CreateDeadBlockRequest(BlockType.List, TaskDeathMode.KeepAlive, blockCountLimit, 3, -100);
+            var blockCountLimit = 5;
+            var request = CreateDeadBlockRequest(BlockType.List, TaskDeathMode.KeepAlive, blockCountLimit, 3, -100);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadListBlocksAsync(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadListBlocksAsync(request);
 
-        // ASSERT
-        Assert.Equal(0, deadBlocks.Count);
+            // ASSERT
+            Assert.Equal(0, deadBlocks.Count);
+        });
     }
 
     #endregion .: List Blocks :.
@@ -739,20 +812,24 @@ public class When_FindDeadBlocks
     public async Task
         When_OverrideModeAndObject_DeadTasksInTargetPeriodAndLessThanBlockCountLimit_ThenReturnAllDeadBlocks()
     {
-        // ARRANGE
-        InsertObjectTestData(TaskDeathMode.Override);
-        var blockCountLimit = 5;
-        var request = CreateDeadBlockRequest(BlockType.Object, TaskDeathMode.Override, blockCountLimit);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadObjectBlocksAsync<string>(request);
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertObjectTestData(TaskDeathMode.Override);
+            var blockCountLimit = 5;
+            var request = CreateDeadBlockRequest(BlockType.Object, TaskDeathMode.Override, blockCountLimit);
 
-        // ASSERT
-        Assert.Equal(3, deadBlocks.Count);
-        Assert.Contains(deadBlocks, x => x.ObjectBlockId == _block2);
-        Assert.Contains(deadBlocks, x => x.ObjectBlockId == _block3);
-        Assert.Contains(deadBlocks, x => x.ObjectBlockId == _block5);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadObjectBlocksAsync<string>(request);
+
+            // ASSERT
+            Assert.Equal(3, deadBlocks.Count);
+            Assert.Contains(deadBlocks, x => x.ObjectBlockId == _block2);
+            Assert.Contains(deadBlocks, x => x.ObjectBlockId == _block3);
+            Assert.Contains(deadBlocks, x => x.ObjectBlockId == _block5);
+        });
     }
 
     [Fact]
@@ -760,17 +837,20 @@ public class When_FindDeadBlocks
     [Trait("Area", "Blocks")]
     public async Task When_OverrideModeAndObject_DeadTasksOutsideTargetPeriod_ThenReturnNoBlocks()
     {
-        // ARRANGE
-        InsertObjectTestData(TaskDeathMode.Override);
-        var blockCountLimit = 5;
-        var request = CreateDeadBlockRequest(BlockType.Object, TaskDeathMode.Override, blockCountLimit, 3, -100);
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertObjectTestData(TaskDeathMode.Override);
+            var blockCountLimit = 5;
+            var request = CreateDeadBlockRequest(BlockType.Object, TaskDeathMode.Override, blockCountLimit, 3, -100);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadObjectBlocksAsync<string>(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadObjectBlocksAsync<string>(request);
 
-        // ASSERT
-        Assert.Equal(0, deadBlocks.Count);
+            // ASSERT
+            Assert.Equal(0, deadBlocks.Count);
+        });
     }
 
     [Fact]
@@ -779,18 +859,21 @@ public class When_FindDeadBlocks
     public async Task
         When_OverrideModeAndObject_DeadTasksInTargetPeriodAndMoreThanBlockCountLimit_ThenReturnOldestDeadBlocksUpToLimit()
     {
-        // ARRANGE
-        InsertObjectTestData(TaskDeathMode.Override);
-        var blockCountLimit = 1;
-        var request = CreateDeadBlockRequest(BlockType.Object, TaskDeathMode.Override, blockCountLimit);
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertObjectTestData(TaskDeathMode.Override);
+            var blockCountLimit = 1;
+            var request = CreateDeadBlockRequest(BlockType.Object, TaskDeathMode.Override, blockCountLimit);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadObjectBlocksAsync<string>(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadObjectBlocksAsync<string>(request);
 
-        // ASSERT
-        Assert.Equal(1, deadBlocks.Count);
-        Assert.Contains(deadBlocks, x => x.ObjectBlockId == _block5);
+            // ASSERT
+            Assert.Equal(1, deadBlocks.Count);
+            Assert.Contains(deadBlocks, x => x.ObjectBlockId == _block5);
+        });
     }
 
     [Fact]
@@ -798,21 +881,24 @@ public class When_FindDeadBlocks
     [Trait("Area", "Blocks")]
     public async Task When_OverrideModeAndObject_SomeDeadTasksHaveReachedRetryLimit_ThenReturnOnlyDeadBlocksNotAtLimit()
     {
-        // ARRANGE
-        InsertObjectTestData(TaskDeathMode.Override);
-        var blockCountLimit = 5;
-        var attemptLimit = 2;
-        var request = CreateDeadBlockRequest(BlockType.Object, TaskDeathMode.Override, blockCountLimit, attemptLimit,
-            -300);
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertObjectTestData(TaskDeathMode.Override);
+            var blockCountLimit = 5;
+            var attemptLimit = 2;
+            var request = CreateDeadBlockRequest(BlockType.Object, TaskDeathMode.Override, blockCountLimit, attemptLimit,
+                -300);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadObjectBlocksAsync<string>(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadObjectBlocksAsync<string>(request);
 
-        // ASSERT
-        Assert.Equal(2, deadBlocks.Count);
-        Assert.Contains(deadBlocks, x => x.ObjectBlockId == _block2);
-        Assert.Contains(deadBlocks, x => x.ObjectBlockId == _block3);
+            // ASSERT
+            Assert.Equal(2, deadBlocks.Count);
+            Assert.Contains(deadBlocks, x => x.ObjectBlockId == _block2);
+            Assert.Contains(deadBlocks, x => x.ObjectBlockId == _block3);
+        });
     }
 
     [Fact]
@@ -821,22 +907,25 @@ public class When_FindDeadBlocks
     public async Task
         When_KeepAliveModeAndObject_DeadTasksPassedKeepAliveLimitPeriodAndLessThanBlockCountLimit_ThenReturnAllDeadBlocks()
     {
-        // ARRANGE
-        InsertObjectTestData(TaskDeathMode.KeepAlive);
-        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertObjectTestData(TaskDeathMode.KeepAlive);
+            _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
 
-        var blockCountLimit = 5;
-        var request = CreateDeadBlockRequest(BlockType.Object, TaskDeathMode.KeepAlive, blockCountLimit);
+            var blockCountLimit = 5;
+            var request = CreateDeadBlockRequest(BlockType.Object, TaskDeathMode.KeepAlive, blockCountLimit);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadObjectBlocksAsync<string>(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadObjectBlocksAsync<string>(request);
 
-        // ASSERT
-        Assert.Equal(3, deadBlocks.Count);
-        Assert.Contains(deadBlocks, x => x.ObjectBlockId == _block2);
-        Assert.Contains(deadBlocks, x => x.ObjectBlockId == _block3);
-        Assert.Contains(deadBlocks, x => x.ObjectBlockId == _block5);
+            // ASSERT
+            Assert.Equal(3, deadBlocks.Count);
+            Assert.Contains(deadBlocks, x => x.ObjectBlockId == _block2);
+            Assert.Contains(deadBlocks, x => x.ObjectBlockId == _block3);
+            Assert.Contains(deadBlocks, x => x.ObjectBlockId == _block5);
+        });
     }
 
     [Fact]
@@ -845,21 +934,24 @@ public class When_FindDeadBlocks
     public async Task
         When_KeepAliveModeAndObject_DeadTasksPassedKeepAliveLimitAndGreaterThanBlockCountLimit_ThenReturnOldestDeadBlocksUpToLimit()
     {
-        // ARRANGE
-        InsertObjectTestData(TaskDeathMode.KeepAlive);
-        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertObjectTestData(TaskDeathMode.KeepAlive);
+            _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-250));
 
-        var blockCountLimit = 2;
-        var request = CreateDeadBlockRequest(BlockType.Object, TaskDeathMode.KeepAlive, blockCountLimit);
+            var blockCountLimit = 2;
+            var request = CreateDeadBlockRequest(BlockType.Object, TaskDeathMode.KeepAlive, blockCountLimit);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadObjectBlocksAsync<string>(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadObjectBlocksAsync<string>(request);
 
-        // ASSERT
-        Assert.Equal(2, deadBlocks.Count);
-        Assert.Contains(deadBlocks, x => x.ObjectBlockId == _block3);
-        Assert.Contains(deadBlocks, x => x.ObjectBlockId == _block5);
+            // ASSERT
+            Assert.Equal(2, deadBlocks.Count);
+            Assert.Contains(deadBlocks, x => x.ObjectBlockId == _block3);
+            Assert.Contains(deadBlocks, x => x.ObjectBlockId == _block5);
+        });
     }
 
     [Fact]
@@ -867,19 +959,22 @@ public class When_FindDeadBlocks
     [Trait("Area", "Blocks")]
     public async Task When_KeepAliveModeAndObject_DeadTasksNotPassedKeepAliveLimitInTargetPeriod_ThenReturnNoBlocks()
     {
-        // ARRANGE
-        InsertObjectTestData(TaskDeathMode.KeepAlive);
-        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-2));
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertObjectTestData(TaskDeathMode.KeepAlive);
+            _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-2));
 
-        var blockCountLimit = 5;
-        var request = CreateDeadBlockRequest(BlockType.Object, TaskDeathMode.KeepAlive, blockCountLimit);
+            var blockCountLimit = 5;
+            var request = CreateDeadBlockRequest(BlockType.Object, TaskDeathMode.KeepAlive, blockCountLimit);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadObjectBlocksAsync<string>(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadObjectBlocksAsync<string>(request);
 
-        // ASSERT
-        Assert.Equal(0, deadBlocks.Count);
+            // ASSERT
+            Assert.Equal(0, deadBlocks.Count);
+        });
     }
 
     [Fact]
@@ -888,19 +983,22 @@ public class When_FindDeadBlocks
     public async Task
         When_KeepAliveModeAndObject_DeadTasksPassedKeepAliveLimitButAreOutsideTargetPeriod_ThenReturnNoBlocks()
     {
-        // ARRANGE
-        InsertObjectTestData(TaskDeathMode.KeepAlive);
-        _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-50));
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertObjectTestData(TaskDeathMode.KeepAlive);
+            _executionsHelper.SetKeepAlive(_taskExecution1, DateTime.UtcNow.AddMinutes(-50));
 
-        var blockCountLimit = 5;
-        var request = CreateDeadBlockRequest(BlockType.Object, TaskDeathMode.KeepAlive, blockCountLimit, 3, -100);
+            var blockCountLimit = 5;
+            var request = CreateDeadBlockRequest(BlockType.Object, TaskDeathMode.KeepAlive, blockCountLimit, 3, -100);
 
-        // ACT
-        var sut = CreateSut();
-        var deadBlocks = await sut.FindDeadObjectBlocksAsync<string>(request);
+            // ACT
+            var sut = CreateSut();
+            var deadBlocks = await sut.FindDeadObjectBlocksAsync<string>(request);
 
-        // ASSERT
-        Assert.Equal(0, deadBlocks.Count);
+            // ASSERT
+            Assert.Equal(0, deadBlocks.Count);
+        });
     }
 
     #endregion .: Object Blocks :.

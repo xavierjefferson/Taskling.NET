@@ -1,11 +1,12 @@
 ﻿using System;
 using Taskling.Blocks.Common;
+using Taskling.InfrastructureContracts;
 
 namespace Taskling.Blocks.Requests;
 
 public class DateRangeBlockRequest : BlockRequest
 {
-    public DateRangeBlockRequest()
+    public DateRangeBlockRequest(TaskId taskId) : base(taskId)
     {
         BlockType = BlockType.DateRange;
     }

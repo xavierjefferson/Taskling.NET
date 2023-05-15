@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx.Synchronous;
@@ -33,6 +34,7 @@ namespace Taskling.ExecutionContext;
 
 public class TaskExecutionContext : ITaskExecutionContext
 {
+   
     #region .: Public Properties :.
 
     public IList<IDateRangeBlockContext> GetDateRangeBlocks(
@@ -82,19 +84,14 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     #region .: Constructors and disposal :.
 
-    public void SetOptions(string applicationName,
-        string taskName,
+    public void SetOptions(TaskId taskId,
         TaskExecutionOptions taskExecutionOptions, ITaskConfigurationRepository taskConfigurationRepository)
     {
         _taskConfigurationRepository = taskConfigurationRepository;
-        _taskExecutionInstance = new TaskExecutionInstance();
-        _taskExecutionInstance.ApplicationName = applicationName;
-        _taskExecutionInstance.TaskName = taskName;
-
+        _taskExecutionInstance = new TaskExecutionInstance(taskId);
         _taskExecutionOptions = taskExecutionOptions;
-
         _executionHasFailed = false;
-        _taskConfiguration = taskConfigurationRepository.GetTaskConfiguration(applicationName, taskName);
+        _taskConfiguration = taskConfigurationRepository.GetTaskConfiguration(taskId);
     }
 
     public bool TryStart()
@@ -129,16 +126,7 @@ public class TaskExecutionContext : ITaskExecutionContext
         _cleanUpService = cleanUpService ?? throw new ArgumentNullException(nameof(cleanUpService));
 
         _logger = logger;
-
-        //_taskExecutionInstance = new TaskExecutionInstance();
-        //_taskExecutionInstance.ApplicationName = applicationName;
-        //_taskExecutionInstance.TaskName = taskName;
-
-        //_taskExecutionOptions = taskExecutionOptions;
-
-        //_executionHasFailed = false;
-
-        //_taskConfiguration = _configuration.GetTaskConfiguration(applicationName, taskName);
+    
     }
 
     ~TaskExecutionContext()
@@ -148,8 +136,10 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     public void Dispose()
     {
+
         Dispose(true);
         GC.SuppressFinalize(this);
+       
     }
 
     protected bool disposed;
@@ -174,10 +164,10 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     public async Task<bool> TryStartAsync()
     {
-        return await TryStartAsync(null).ConfigureAwait(false);
+        return await TryStartAsync(Guid.Empty).ConfigureAwait(false);
     }
 
-    public async Task<bool> TryStartAsync(string referenceValue)
+    public async Task<bool> TryStartAsync(Guid referenceValue)
     {
         _logger.LogDebug($"Entered {nameof(TryStartAsync)}");
         try
@@ -228,7 +218,7 @@ public class TaskExecutionContext : ITaskExecutionContext
         return await TryStartAsync().ConfigureAwait(false);
     }
 
-    public async Task<bool> TryStartAsync<TExecutionHeader>(TExecutionHeader executionHeader, string referenceValue)
+    public async Task<bool> TryStartAsync<TExecutionHeader>(TExecutionHeader executionHeader, Guid referenceValue)
     {
         _taskExecutionHeader = executionHeader;
         return await TryStartAsync(referenceValue).ConfigureAwait(false);
@@ -247,7 +237,7 @@ public class TaskExecutionContext : ITaskExecutionContext
                     _keepAliveDaemon.Stop();
 
                 var completeRequest = new TaskExecutionCompleteRequest(
-                    new TaskId(_taskExecutionInstance.ApplicationName, _taskExecutionInstance.TaskName),
+                    _taskExecutionInstance.TaskId,
                     _taskExecutionInstance.TaskExecutionId,
                     _taskExecutionInstance.ExecutionTokenId);
                 completeRequest.Failed = _executionHasFailed;
@@ -268,9 +258,8 @@ public class TaskExecutionContext : ITaskExecutionContext
         if (!IsExecutionContextActive)
             throw new ExecutionException(NotActiveMessage);
 
-        var request = new TaskExecutionCheckpointRequest
+        var request = new TaskExecutionCheckpointRequest(_taskExecutionInstance.TaskId)
         {
-            TaskId = new TaskId(_taskExecutionInstance.ApplicationName, _taskExecutionInstance.TaskName),
             TaskExecutionId = _taskExecutionInstance.TaskExecutionId,
             Message = checkpointMessage
         };
@@ -284,9 +273,8 @@ public class TaskExecutionContext : ITaskExecutionContext
 
         _executionHasFailed = treatTaskAsFailed;
 
-        var request = new TaskExecutionErrorRequest
+        var request = new TaskExecutionErrorRequest(_taskExecutionInstance.TaskId)
         {
-            TaskId = new TaskId(_taskExecutionInstance.ApplicationName, _taskExecutionInstance.TaskName),
             TaskExecutionId = _taskExecutionInstance.TaskExecutionId,
             Error = errorMessage,
             TreatTaskAsFailed = treatTaskAsFailed
@@ -556,7 +544,7 @@ public class TaskExecutionContext : ITaskExecutionContext
             throw new ExecutionException(NotActiveMessage);
 
         var request = new LastBlockRequest(
-            new TaskId(_taskExecutionInstance.ApplicationName, _taskExecutionInstance.TaskName),
+            _taskExecutionInstance.TaskId,
             BlockType.DateRange);
         request.LastBlockOrder = lastBlockOrder;
 
@@ -569,7 +557,7 @@ public class TaskExecutionContext : ITaskExecutionContext
             throw new ExecutionException(NotActiveMessage);
 
         var request = new LastBlockRequest(
-            new TaskId(_taskExecutionInstance.ApplicationName, _taskExecutionInstance.TaskName),
+            _taskExecutionInstance.TaskId,
             BlockType.NumericRange);
         request.LastBlockOrder = lastBlockOrder;
 
@@ -587,7 +575,7 @@ public class TaskExecutionContext : ITaskExecutionContext
             throw new ExecutionException(NotActiveMessage);
 
         var request = new LastBlockRequest(
-            new TaskId(_taskExecutionInstance.ApplicationName, _taskExecutionInstance.TaskName),
+            _taskExecutionInstance.TaskId,
             BlockType.List);
 
         return await _blockFactory.GetLastListBlockAsync<T>(request).ConfigureAwait(false);
@@ -599,7 +587,7 @@ public class TaskExecutionContext : ITaskExecutionContext
             throw new ExecutionException(NotActiveMessage);
 
         var request = new LastBlockRequest(
-            new TaskId(_taskExecutionInstance.ApplicationName, _taskExecutionInstance.TaskName),
+            _taskExecutionInstance.TaskId,
             BlockType.List);
 
         return await _blockFactory.GetLastListBlockAsync<TItem, THeader>(request).ConfigureAwait(false);
@@ -611,7 +599,7 @@ public class TaskExecutionContext : ITaskExecutionContext
             throw new ExecutionException(NotActiveMessage);
 
         var request = new LastBlockRequest(
-            new TaskId(_taskExecutionInstance.ApplicationName, _taskExecutionInstance.TaskName),
+            _taskExecutionInstance.TaskId,
             BlockType.Object);
 
         return await _objectBlockRepository.GetLastObjectBlockAsync<T>(request).ConfigureAwait(false);
@@ -712,14 +700,14 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     private void CleanUpOldData()
     {
-        _cleanUpService.CleanOldData(_taskExecutionInstance.ApplicationName, _taskExecutionInstance.TaskName,
+        _cleanUpService.CleanOldData(_taskExecutionInstance.TaskId,
             _taskExecutionInstance.TaskExecutionId, _taskConfigurationRepository);
     }
 
-    private TaskExecutionStartRequest CreateStartRequest(string referenceValue)
+    private TaskExecutionStartRequest CreateStartRequest(Guid referenceValue)
     {
         var startRequest = new TaskExecutionStartRequest(
-            new TaskId(_taskExecutionInstance.ApplicationName, _taskExecutionInstance.TaskName),
+            _taskExecutionInstance.TaskId,
             _taskExecutionOptions.TaskDeathMode,
             _taskExecutionOptions.ConcurrencyLimit,
             _taskConfiguration.FailedTaskRetryLimit,
@@ -740,7 +728,7 @@ public class TaskExecutionContext : ITaskExecutionContext
         startRequest.TasklingVersion = version;
     }
 
-    private void SetStartRequestValues(TaskExecutionStartRequest startRequest, string referenceValue)
+    private void SetStartRequestValues(TaskExecutionStartRequest startRequest, Guid referenceValue)
     {
         if (_taskExecutionOptions.TaskDeathMode == TaskDeathMode.KeepAlive)
         {
@@ -774,9 +762,8 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     private void StartKeepAlive()
     {
-        var keepAliveRequest = new SendKeepAliveRequest
+        var keepAliveRequest = new SendKeepAliveRequest(_taskExecutionInstance.TaskId)
         {
-            TaskId = new TaskId(_taskExecutionInstance.ApplicationName, _taskExecutionInstance.TaskName),
             TaskExecutionId = _taskExecutionInstance.TaskExecutionId,
             ExecutionTokenId = _taskExecutionInstance.ExecutionTokenId
         };
@@ -787,9 +774,7 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     private DateRangeBlockRequest ConvertToDateRangeBlockRequest(IBlockSettings settings)
     {
-        var request = new DateRangeBlockRequest();
-        request.ApplicationName = _taskExecutionInstance.ApplicationName;
-        request.TaskName = _taskExecutionInstance.TaskName;
+        var request = new DateRangeBlockRequest(_taskExecutionInstance.TaskId);
         request.TaskExecutionId = _taskExecutionInstance.TaskExecutionId;
         request.TaskDeathMode = _taskExecutionOptions.TaskDeathMode;
 
@@ -811,9 +796,7 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     private NumericRangeBlockRequest ConvertToNumericRangeBlockRequest(IBlockSettings settings)
     {
-        var request = new NumericRangeBlockRequest();
-        request.ApplicationName = _taskExecutionInstance.ApplicationName;
-        request.TaskName = _taskExecutionInstance.TaskName;
+        var request = new NumericRangeBlockRequest(_taskExecutionInstance.TaskId);
         request.TaskExecutionId = _taskExecutionInstance.TaskExecutionId;
         request.TaskDeathMode = _taskExecutionOptions.TaskDeathMode;
 
@@ -835,9 +818,9 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     private ListBlockRequest ConvertToListBlockRequest(IBlockSettings settings)
     {
-        var request = new ListBlockRequest();
-        request.ApplicationName = _taskExecutionInstance.ApplicationName;
-        request.TaskName = _taskExecutionInstance.TaskName;
+        var request = new ListBlockRequest(_taskExecutionInstance.TaskId);
+
+
         request.TaskExecutionId = _taskExecutionInstance.TaskExecutionId;
         request.TaskDeathMode = _taskExecutionOptions.TaskDeathMode;
 
@@ -867,10 +850,8 @@ public class TaskExecutionContext : ITaskExecutionContext
     private ObjectBlockRequest<T> ConvertToObjectBlockRequest<T>(IObjectBlockSettings<T> settings)
     {
         var request = new ObjectBlockRequest<T>(settings.Object,
-            _taskConfiguration.MaxLengthForNonCompressedData);
+            _taskConfiguration.MaxLengthForNonCompressedData, _taskExecutionInstance.TaskId);
 
-        request.ApplicationName = _taskExecutionInstance.ApplicationName;
-        request.TaskName = _taskExecutionInstance.TaskName;
         request.TaskExecutionId = _taskExecutionInstance.TaskExecutionId;
         request.TaskDeathMode = _taskExecutionOptions.TaskDeathMode;
 
@@ -961,8 +942,8 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     private TaskExecutionMetaRequest CreateTaskExecutionMetaRequest(int numberToRetrieve)
     {
-        var request = new TaskExecutionMetaRequest();
-        request.TaskId = new TaskId(_taskExecutionInstance.ApplicationName, _taskExecutionInstance.TaskName);
+        var request = new TaskExecutionMetaRequest(_taskExecutionInstance.TaskId);
+
         request.ExecutionsToRetrieve = numberToRetrieve;
 
         return request;

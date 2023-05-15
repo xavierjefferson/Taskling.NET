@@ -78,7 +78,7 @@ public class FluentBlockSettingsDescriptor : IFluentBlockSettingsDescriptor, IOv
 
     // Reprocess Specific Task
     public ReprocessOption ReprocessOption { get; set; }
-    public string ReferenceValueToReprocess { get; set; }
+    public Guid ReferenceValueToReprocess { get; set; }
 
     public IFluentBlockSettingsDescriptor ReprocessFailedTasks(TimeSpan detectionRange, int retryLimit)
     {
@@ -119,7 +119,7 @@ public class FluentBlockSettingsDescriptor : IFluentBlockSettingsDescriptor, IOv
         return this;
     }
 
-    public IComplete OfExecutionWith(string referenceValue)
+    public IComplete OfExecutionWith(Guid referenceValue)
     {
         ReferenceValueToReprocess = referenceValue;
         return this;

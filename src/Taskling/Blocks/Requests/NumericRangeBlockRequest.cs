@@ -1,10 +1,11 @@
 ﻿using Taskling.Blocks.Common;
+using Taskling.InfrastructureContracts;
 
 namespace Taskling.Blocks.Requests;
 
 public class NumericRangeBlockRequest : BlockRequest
 {
-    public NumericRangeBlockRequest()
+    public NumericRangeBlockRequest(TaskId taskId) : base(taskId)
     {
         BlockType = BlockType.NumericRange;
     }

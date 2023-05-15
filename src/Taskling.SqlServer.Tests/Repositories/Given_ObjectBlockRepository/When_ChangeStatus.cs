@@ -7,12 +7,13 @@ using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
+using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_ObjectBlockRepository;
 
 [Collection(TestConstants.CollectionName)]
-public class When_ChangeStatus
+public class When_ChangeStatus : TestBase
 {
     private readonly IBlocksHelper _blocksHelper;
     private readonly IClientHelper _clientHelper;
@@ -27,17 +28,17 @@ public class When_ChangeStatus
 
     public When_ChangeStatus(IBlocksHelper blocksHelper, IObjectBlockRepository objectBlockRepository,
         IExecutionsHelper executionsHelper, IClientHelper clientHelper, ILogger<When_ChangeStatus> logger,
-        ITaskRepository taskRepository)
+        ITaskRepository taskRepository) : base(executionsHelper)
     {
         _blocksHelper = blocksHelper;
         _clientHelper = clientHelper;
         _objectBlockRepository = objectBlockRepository;
-        _blocksHelper.DeleteBlocks(TestConstants.ApplicationName);
+        _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
         _executionsHelper = executionsHelper;
         _logger = logger;
-        _executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+        _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
 
-        _taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
         _executionsHelper.InsertUnlimitedExecutionToken(_taskDefinitionId);
 
         taskRepository.ClearCache();
@@ -58,25 +59,28 @@ public class When_ChangeStatus
     [Trait("Area", "Blocks")]
     public async Task If_SetStatusOfObjectBlock_ThenItemsCountIsCorrect()
     {
-        // ARRANGE
-        InsertObjectBlock();
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            InsertObjectBlock();
 
-        var request = new BlockExecutionChangeStatusRequest(
-            new TaskId(TestConstants.ApplicationName, TestConstants.TaskName),
-            _taskExecution1,
-            BlockType.Object,
-            _blockExecutionId,
-            BlockExecutionStatus.Completed);
-        request.ItemsProcessed = 10000;
+            var request = new BlockExecutionChangeStatusRequest(
+                CurrentTaskId,
+                _taskExecution1,
+                BlockType.Object,
+                _blockExecutionId,
+                BlockExecutionStatus.Completed);
+            request.ItemsProcessed = 10000;
 
 
-        // ACT
-        var sut = _objectBlockRepository;
-        await sut.ChangeStatusAsync(request);
+            // ACT
+            var sut = _objectBlockRepository;
+            await sut.ChangeStatusAsync(request);
 
-        var itemCount = _blocksHelper.GetBlockExecutionItemCount(_blockExecutionId);
+            var itemCount = _blocksHelper.GetBlockExecutionItemCount(_blockExecutionId);
 
-        // ASSERT
-        Assert.Equal(10000, itemCount);
+            // ASSERT
+            Assert.Equal(10000, itemCount);
+        });
     }
 }

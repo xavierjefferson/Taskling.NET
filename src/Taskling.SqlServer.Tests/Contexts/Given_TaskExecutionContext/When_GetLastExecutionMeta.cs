@@ -1,29 +1,31 @@
-﻿using System.Threading;
+﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
+using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Xunit;
 using TaskExecutionStatus = Taskling.Tasks.TaskExecutionStatus;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_TaskExecutionContext;
 
 [Collection(TestConstants.CollectionName)]
-public class When_GetLastExecutionMeta
+public class When_GetLastExecutionMeta : TestBase
 {
     private readonly IClientHelper _clientHelper;
     private readonly IExecutionsHelper _executionsHelper;
     private readonly int _taskDefinitionId;
 
     public When_GetLastExecutionMeta(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper,
-        IClientHelper clientHelper, ILogger<When_GetLastExecutionMeta> logger, ITaskRepository taskRepository)
+        IClientHelper clientHelper, ILogger<When_GetLastExecutionMeta> logger, ITaskRepository taskRepository) : base(executionsHelper)
     {
         _executionsHelper = executionsHelper;
         _clientHelper = clientHelper;
 
-        executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+        executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
 
-        _taskDefinitionId = executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
+        _taskDefinitionId = executionsHelper.InsertTask(CurrentTaskId);
     }
 
     [Fact]
@@ -31,26 +33,36 @@ public class When_GetLastExecutionMeta
     [Trait("Area", "TaskExecutions")]
     public async Task If_MultipleExecutionsAndGetLastExecutionMeta_ThenReturnLastOne()
     {
-        // ARRANGE
-
-        for (var i = 0; i < 5; i++)
+        await InSemaphoreAsync(async () =>
         {
-            using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
-                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+            // ARRANGE
+            var referenceValues = new[]
             {
-                await executionContext.TryStartAsync("My reference value" + i);
+            Guid.Parse("cfed1331-24cc-4fe0-a308-4f5f88af3df4"),
+            Guid.Parse("eda35fa8-5742-45c0-bab1-7be557445559"),
+            Guid.Parse("785a4118-223b-44c1-8709-0fb4d10ef21c"),
+            Guid.Parse("79d2de63-563d-4464-afde-07506e9cf56d"),
+            Guid.Parse("902f1c0d-100c-407e-a744-c9e09c2e5e69"),
+        };
+            foreach (var referenceValue in referenceValues)
+            {
+                using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
+                           _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+                {
+                    await executionContext.TryStartAsync(referenceValue);
+                }
+
+                Thread.Sleep(200);
             }
 
-            Thread.Sleep(200);
-        }
-
-        // ACT and ASSERT
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
-                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
-        {
-            var executionMeta = await executionContext.GetLastExecutionMetaAsync();
-            Assert.Equal("My reference value4", executionMeta.ReferenceValue);
-        }
+            // ACT and ASSERT
+            using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
+                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+            {
+                var executionMeta = await executionContext.GetLastExecutionMetaAsync();
+                Assert.Equal(referenceValues[4], executionMeta.ReferenceValue);
+            }
+        });
     }
 
     [Fact]
@@ -58,29 +70,39 @@ public class When_GetLastExecutionMeta
     [Trait("Area", "TaskExecutions")]
     public async Task If_MultipleExecutionsAndGetLastExecutionMetas_ThenReturnLastXItems()
     {
-        // ARRANGE
-
-        for (var i = 0; i < 5; i++)
+        await InSemaphoreAsync(async () =>
         {
-            using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
-                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+            // ARRANGE
+            var referenceValues = new[]
             {
-                await executionContext.TryStartAsync("My reference value" + i);
+            Guid.Parse("cfed1331-24cc-4fe0-a308-4f5f88af3df4"),
+            Guid.Parse("eda35fa8-5742-45c0-bab1-7be557445559"),
+            Guid.Parse("785a4118-223b-44c1-8709-0fb4d10ef21c"),
+            Guid.Parse("79d2de63-563d-4464-afde-07506e9cf56d"),
+            Guid.Parse("902f1c0d-100c-407e-a744-c9e09c2e5e69"),
+        };
+            foreach (var referenceValue in referenceValues)
+            {
+                using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
+                           _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+                {
+                    await executionContext.TryStartAsync(referenceValue);
+                }
+
+                Thread.Sleep(200);
             }
 
-            Thread.Sleep(200);
-        }
-
-        // ACT and ASSERT
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
-                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
-        {
-            var executionMetas = await executionContext.GetLastExecutionMetasAsync(3);
-            Assert.Equal(3, executionMetas.Count);
-            Assert.Equal("My reference value4", executionMetas[0].ReferenceValue);
-            Assert.Equal("My reference value3", executionMetas[1].ReferenceValue);
-            Assert.Equal("My reference value2", executionMetas[2].ReferenceValue);
-        }
+            // ACT and ASSERT
+            using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
+                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+            {
+                var executionMetas = await executionContext.GetLastExecutionMetasAsync(3);
+                Assert.Equal(3, executionMetas.Count);
+                Assert.Equal(referenceValues[4], executionMetas[0].ReferenceValue);
+                Assert.Equal(referenceValues[3], executionMetas[1].ReferenceValue);
+                Assert.Equal(referenceValues[2], executionMetas[2].ReferenceValue);
+            }
+        });
     }
 
     [Fact]
@@ -88,15 +110,18 @@ public class When_GetLastExecutionMeta
     [Trait("Area", "TaskExecutions")]
     public async Task If_NoPreviousExecutionsAndGetLastExecutionMeta_ThenReturnNull()
     {
-        // ARRANGE
-
-        // ACT and ASSERT
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
-                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        await InSemaphoreAsync(async () =>
         {
-            var executionMeta = await executionContext.GetLastExecutionMetaAsync();
-            Assert.Null(executionMeta);
-        }
+            // ARRANGE
+
+            // ACT and ASSERT
+            using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
+                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+            {
+                var executionMeta = await executionContext.GetLastExecutionMetaAsync();
+                Assert.Null(executionMeta);
+            }
+        });
     }
 
     [Fact]
@@ -104,32 +129,35 @@ public class When_GetLastExecutionMeta
     [Trait("Area", "TaskExecutions")]
     public async Task If_MultipleExecutionsAndGetLastExecutionMetaWithHeader_ThenReturnLastOne()
     {
-        // ARRANGE
-
-        for (var i = 0; i < 5; i++)
+        await InSemaphoreAsync(async () =>
         {
-            var myHeader = new MyHeader
-            {
-                Name = "Test",
-                Id = i
-            };
+            // ARRANGE
 
-            using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
-                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+            for (var i = 0; i < 5; i++)
             {
-                await executionContext.TryStartAsync(myHeader);
+                var myHeader = new MyHeader
+                {
+                    Name = "Test",
+                    Id = i
+                };
+
+                using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
+                           _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+                {
+                    await executionContext.TryStartAsync(myHeader);
+                }
+
+                Thread.Sleep(200);
             }
 
-            Thread.Sleep(200);
-        }
-
-        // ACT and ASSERT
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
-                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
-        {
-            var executionMeta = await executionContext.GetLastExecutionMetaAsync<MyHeader>();
-            Assert.Equal(4, executionMeta.Header.Id);
-        }
+            // ACT and ASSERT
+            using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
+                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+            {
+                var executionMeta = await executionContext.GetLastExecutionMetaAsync<MyHeader>();
+                Assert.Equal(4, executionMeta.Header.Id);
+            }
+        });
     }
 
     [Fact]
@@ -137,35 +165,38 @@ public class When_GetLastExecutionMeta
     [Trait("Area", "TaskExecutions")]
     public async Task If_MultipleExecutionsAndGetLastExecutionMetasWithHeader_ThenReturnLastXItems()
     {
-        // ARRANGE
-
-        for (var i = 0; i < 5; i++)
+        await InSemaphoreAsync(async () =>
         {
-            var myHeader = new MyHeader
-            {
-                Name = "Test",
-                Id = i
-            };
+            // ARRANGE
 
-            using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
-                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+            for (var i = 0; i < 5; i++)
             {
-                await executionContext.TryStartAsync(myHeader);
+                var myHeader = new MyHeader
+                {
+                    Name = "Test",
+                    Id = i
+                };
+
+                using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
+                           _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+                {
+                    await executionContext.TryStartAsync(myHeader);
+                }
+
+                Thread.Sleep(200);
             }
 
-            Thread.Sleep(200);
-        }
-
-        // ACT and ASSERT
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
-                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
-        {
-            var executionMetas = await executionContext.GetLastExecutionMetasAsync<MyHeader>(3);
-            Assert.Equal(3, executionMetas.Count);
-            Assert.Equal(4, executionMetas[0].Header.Id);
-            Assert.Equal(3, executionMetas[1].Header.Id);
-            Assert.Equal(2, executionMetas[2].Header.Id);
-        }
+            // ACT and ASSERT
+            using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
+                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+            {
+                var executionMetas = await executionContext.GetLastExecutionMetasAsync<MyHeader>(3);
+                Assert.Equal(3, executionMetas.Count);
+                Assert.Equal(4, executionMetas[0].Header.Id);
+                Assert.Equal(3, executionMetas[1].Header.Id);
+                Assert.Equal(2, executionMetas[2].Header.Id);
+            }
+        });
     }
 
     [Fact]
@@ -173,16 +204,19 @@ public class When_GetLastExecutionMeta
     [Trait("Area", "TaskExecutions")]
     public async Task If_NoPreviousExecutionsAndGetLastExecutionMetaWithHeader_ThenReturnNull()
     {
-        // ARRANGE
-        // ACT
-
-        // ASSERT
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
-                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        await InSemaphoreAsync(async () =>
         {
-            var executionMeta = await executionContext.GetLastExecutionMetaAsync<MyHeader>();
-            Assert.Null(executionMeta);
-        }
+            // ARRANGE
+            // ACT
+
+            // ASSERT
+            using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
+                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+            {
+                var executionMeta = await executionContext.GetLastExecutionMetaAsync<MyHeader>();
+                Assert.Null(executionMeta);
+            }
+        });
     }
 
     [Fact]
@@ -190,23 +224,26 @@ public class When_GetLastExecutionMeta
     [Trait("Area", "TaskExecutions")]
     public async Task If_LastExecutionCompleted_ThenReturnStatusIsCompleted()
     {
-        // ARRANGE
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
-                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        await InSemaphoreAsync(async () =>
         {
-            await executionContext.TryStartAsync();
-        }
+            // ARRANGE
+            using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
+                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+            {
+                await executionContext.TryStartAsync();
+            }
 
-        Thread.Sleep(200);
+            Thread.Sleep(200);
 
 
-        // ACT and ASSERT
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
-                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
-        {
-            var executionMeta = await executionContext.GetLastExecutionMetaAsync();
-            Assert.Equal(TaskExecutionStatus.Completed, executionMeta.Status);
-        }
+            // ACT and ASSERT
+            using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
+                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+            {
+                var executionMeta = await executionContext.GetLastExecutionMetaAsync();
+                Assert.Equal(TaskExecutionStatus.Completed, executionMeta.Status);
+            }
+        });
     }
 
     [Fact]
@@ -214,24 +251,27 @@ public class When_GetLastExecutionMeta
     [Trait("Area", "TaskExecutions")]
     public async Task If_LastExecutionFailed_ThenReturnStatusIsFailed()
     {
-        // ARRANGE
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
-                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        await InSemaphoreAsync(async () =>
         {
-            await executionContext.TryStartAsync();
-            await executionContext.ErrorAsync("", true);
-        }
+            // ARRANGE
+            using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
+                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+            {
+                await executionContext.TryStartAsync();
+                await executionContext.ErrorAsync("", true);
+            }
 
-        Thread.Sleep(200);
+            Thread.Sleep(200);
 
 
-        // ACT and ASSERT
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
-                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
-        {
-            var executionMeta = await executionContext.GetLastExecutionMetaAsync();
-            Assert.Equal(TaskExecutionStatus.Failed, executionMeta.Status);
-        }
+            // ACT and ASSERT
+            using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
+                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+            {
+                var executionMeta = await executionContext.GetLastExecutionMetaAsync();
+                Assert.Equal(TaskExecutionStatus.Failed, executionMeta.Status);
+            }
+        });
     }
 
     [Fact]
@@ -239,33 +279,36 @@ public class When_GetLastExecutionMeta
     [Trait("Area", "TaskExecutions")]
     public async Task If_LastExecutionBlocked_ThenReturnStatusIsBlockedAsync()
     {
-        // ARRANGE
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
-                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        await InSemaphoreAsync(async () =>
         {
-            await executionContext.TryStartAsync();
-            Thread.Sleep(200);
-
-            using (var executionContext2 = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+            // ARRANGE
+            using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
                        _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
             {
-                await executionContext2.TryStartAsync();
-                await executionContext2.CompleteAsync();
+                await executionContext.TryStartAsync();
+                Thread.Sleep(200);
+
+                using (var executionContext2 = _clientHelper.GetExecutionContext(CurrentTaskId,
+                           _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+                {
+                    await executionContext2.TryStartAsync();
+                    await executionContext2.CompleteAsync();
+                }
+
+                await executionContext.CompleteAsync();
             }
 
-            await executionContext.CompleteAsync();
-        }
 
+            // ACT and ASSERT
+            using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
+                       _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+            {
+                var executionMeta = await executionContext.GetLastExecutionMetaAsync();
+                Assert.Equal(TaskExecutionStatus.Blocked, executionMeta.Status);
 
-        // ACT and ASSERT
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
-                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
-        {
-            var executionMeta = await executionContext.GetLastExecutionMetaAsync();
-            Assert.Equal(TaskExecutionStatus.Blocked, executionMeta.Status);
-
-            await executionContext.CompleteAsync();
-        }
+                await executionContext.CompleteAsync();
+            }
+        });
     }
 
     [Fact]
@@ -273,20 +316,23 @@ public class When_GetLastExecutionMeta
     [Trait("Area", "TaskExecutions")]
     public async Task If_LastExecutionInProgress_ThenReturnStatusIsInProgress()
     {
-        // ARRANGE, ACT, ASSERT
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
-                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        await InSemaphoreAsync(async () =>
         {
-            await executionContext.TryStartAsync();
-            Thread.Sleep(200);
-
-            using (var executionContext2 = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+            // ARRANGE, ACT, ASSERT
+            using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
                        _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
             {
-                var executionMeta = await executionContext2.GetLastExecutionMetaAsync();
-                Assert.Equal(TaskExecutionStatus.InProgress, executionMeta.Status);
+                await executionContext.TryStartAsync();
+                Thread.Sleep(200);
+
+                using (var executionContext2 = _clientHelper.GetExecutionContext(CurrentTaskId,
+                           _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+                {
+                    var executionMeta = await executionContext2.GetLastExecutionMetaAsync();
+                    Assert.Equal(TaskExecutionStatus.InProgress, executionMeta.Status);
+                }
             }
-        }
+        });
     }
 
     [Fact]
@@ -294,21 +340,24 @@ public class When_GetLastExecutionMeta
     [Trait("Area", "TaskExecutions")]
     public async Task If_LastExecutionDead_ThenReturnStatusIsDead()
     {
-        // ARRANGE, ACT, ASSERT
-        using (var executionContext = _clientHelper.GetExecutionContext(TestConstants.TaskName,
-                   _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+        await InSemaphoreAsync(async () =>
         {
-            await executionContext.TryStartAsync();
-            Thread.Sleep(200);
-            var helper = _executionsHelper;
-            helper.SetLastExecutionAsDead(_taskDefinitionId);
-
-            using (var executionContext2 = _clientHelper.GetExecutionContext(TestConstants.TaskName,
+            // ARRANGE, ACT, ASSERT
+            using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
                        _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
             {
-                var executionMeta = await executionContext2.GetLastExecutionMetaAsync();
-                Assert.Equal(TaskExecutionStatus.Dead, executionMeta.Status);
+                await executionContext.TryStartAsync();
+                Thread.Sleep(200);
+                var helper = _executionsHelper;
+                helper.SetLastExecutionAsDead(_taskDefinitionId);
+
+                using (var executionContext2 = _clientHelper.GetExecutionContext(CurrentTaskId,
+                           _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
+                {
+                    var executionMeta = await executionContext2.GetLastExecutionMetaAsync();
+                    Assert.Equal(TaskExecutionStatus.Dead, executionMeta.Status);
+                }
             }
-        }
+        });
     }
 }

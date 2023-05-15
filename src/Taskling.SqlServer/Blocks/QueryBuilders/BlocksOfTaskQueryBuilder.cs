@@ -63,7 +63,7 @@ public class BlocksOfTaskQueryBuilder
 
     public static async Task<List<BlockQueryItem>> GetBlocksOfTaskQueryItems(TasklingDbContext dbContext,
         int taskDefinitionId,
-        string referenceValue, Expression<Func<BlockQueryItem, bool>> filterExpression)
+        Guid referenceValue, Expression<Func<BlockQueryItem, bool>> filterExpression)
     {
         var leftSide1 = dbContext.BlockExecutions.Include(i => i.Block);
         var query =

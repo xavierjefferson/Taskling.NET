@@ -1,103 +1,49 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using Taskling.Blocks.Common;
+using Taskling.Blocks.RangeBlocks;
 using Taskling.Contexts;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.Retries;
 
 namespace Taskling.Blocks.ObjectBlocks;
 
-public class ObjectBlockContext<T> : IObjectBlockContext<T>
+public class ObjectBlockContext<T> : BlockContextBase, IObjectBlockContext<T>
 {
-    private readonly string _applicationName;
     private readonly IObjectBlockRepository _objectBlockRepository;
-    private readonly int _taskExecutionId;
-    private readonly ITaskExecutionRepository _taskExecutionRepository;
-    private readonly string _taskName;
+
 
     public ObjectBlockContext(IObjectBlockRepository objectBlockRepository,
         ITaskExecutionRepository taskExecutionRepository,
-        string applicationName,
-        string taskName,
+        TaskId taskId,
         int taskExecutionId,
         ObjectBlock<T> block,
         long blockExecutionId,
-        int forcedBlockQueueId = 0)
+        int forcedBlockQueueId = 0) : base(taskId, blockExecutionId, taskExecutionId, taskExecutionRepository,
+        forcedBlockQueueId)
     {
         _objectBlockRepository = objectBlockRepository;
-        _taskExecutionRepository = taskExecutionRepository;
         Block = block;
-        BlockExecutionId = blockExecutionId;
-        ForcedBlockQueueId = forcedBlockQueueId;
-        _applicationName = applicationName;
-        _taskName = taskName;
-        _taskExecutionId = taskExecutionId;
     }
 
-    public long BlockExecutionId { get; }
+
+    protected override Func<BlockExecutionChangeStatusRequest, Task> ChangeStatusFunc =>
+        _objectBlockRepository.ChangeStatusAsync;
+
+
+    protected override BlockType BlockType => BlockType.Object;
+
 
     public IObjectBlock<T> Block { get; }
-    public int ForcedBlockQueueId { get; }
 
-    public async Task StartAsync()
+
+    protected override string GetFailedErrorMessage(string message)
     {
-        var request = new BlockExecutionChangeStatusRequest(new TaskId(_applicationName, _taskName),
-            _taskExecutionId,
-            BlockType.Object,
-            BlockExecutionId,
-            BlockExecutionStatus.Started);
-
-        var actionRequest = _objectBlockRepository.ChangeStatusAsync;
-        await RetryService.InvokeWithRetryAsync(actionRequest, request).ConfigureAwait(false);
+        return $"BlockId {Block.ObjectBlockId} Error: {message}";
     }
 
-    public async Task CompleteAsync()
-    {
-        await CompleteAsync(-1).ConfigureAwait(false);
-    }
 
-    public async Task FailedAsync()
-    {
-        var request = new BlockExecutionChangeStatusRequest(new TaskId(_applicationName, _taskName),
-            _taskExecutionId,
-            BlockType.Object,
-            BlockExecutionId,
-            BlockExecutionStatus.Failed);
-
-        var actionRequest = _objectBlockRepository.ChangeStatusAsync;
-        await RetryService.InvokeWithRetryAsync(actionRequest, request).ConfigureAwait(false);
-    }
-
-    public async Task FailedAsync(string message)
-    {
-        await FailedAsync().ConfigureAwait(false);
-
-        string errorMessage = errorMessage = string.Format("BlockId {0} Error: {1}",
-            Block.ObjectBlockId,
-            message);
-
-        var errorRequest = new TaskExecutionErrorRequest
-        {
-            TaskId = new TaskId(_applicationName, _taskName),
-            TaskExecutionId = _taskExecutionId,
-            TreatTaskAsFailed = false,
-            Error = errorMessage
-        };
-        await _taskExecutionRepository.ErrorAsync(errorRequest).ConfigureAwait(false);
-    }
-
-    public async Task CompleteAsync(int itemsProcessed)
-    {
-        var request = new BlockExecutionChangeStatusRequest(new TaskId(_applicationName, _taskName),
-            _taskExecutionId,
-            BlockType.Object,
-            BlockExecutionId,
-            BlockExecutionStatus.Completed);
-        request.ItemsProcessed = itemsProcessed;
-
-        var actionRequest = _objectBlockRepository.ChangeStatusAsync;
-        await RetryService.InvokeWithRetryAsync(actionRequest, request).ConfigureAwait(false);
-    }
+   
 }

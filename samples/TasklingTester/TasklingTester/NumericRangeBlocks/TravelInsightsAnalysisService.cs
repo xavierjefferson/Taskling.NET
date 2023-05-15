@@ -9,10 +9,10 @@ namespace TasklingTester.NumericRangeBlocks;
 
 public class TravelInsightsAnalysisService
 {
-    private IMyApplicationConfiguration _configuration;
     private readonly ITasklingClient _tasklingClient;
     private readonly IJourneysRepository _travelDataService;
     private readonly ITravelInsightsRepository _travelInsightsService;
+    private IMyApplicationConfiguration _configuration;
 
     public TravelInsightsAnalysisService(ITasklingClient tasklingClient,
         IMyApplicationConfiguration configuration,

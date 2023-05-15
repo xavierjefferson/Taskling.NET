@@ -6,13 +6,14 @@ using Microsoft.Extensions.Logging;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
+using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Taskling.Tasks;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_TaskExecutionService;
 
 [Collection(TestConstants.CollectionName)]
-public class When_TryStart_AsOverrideAfterElaspedTimeMode
+public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
 {
     private readonly IExecutionsHelper _executionsHelper;
     private readonly ILogger<When_TryStart_AsOverrideAfterElaspedTimeMode> _logger;
@@ -20,13 +21,13 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode
 
     public When_TryStart_AsOverrideAfterElaspedTimeMode(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper,
         IClientHelper clientHelper, ILogger<When_TryStart_AsOverrideAfterElaspedTimeMode> logger,
-        ITaskRepository taskRepository, ITaskExecutionRepository taskExecutionRepository)
+        ITaskRepository taskRepository, ITaskExecutionRepository taskExecutionRepository) : base(executionsHelper)
     {
         _executionsHelper = executionsHelper;
         _logger = logger;
         _taskExecutionRepository = taskExecutionRepository;
 
-        _executionsHelper.DeleteRecordsOfApplication(TestConstants.ApplicationName);
+        _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
     }
 
     private ITaskExecutionRepository CreateSut()
@@ -36,7 +37,7 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode
 
     private TaskExecutionStartRequest CreateOverrideStartRequest(int concurrencyLimit = 1)
     {
-        return new TaskExecutionStartRequest(new TaskId(TestConstants.ApplicationName, TestConstants.TaskName),
+        return new TaskExecutionStartRequest(CurrentTaskId,
             TaskDeathMode.Override, concurrencyLimit, 3, 3)
         {
             OverrideThreshold = new TimeSpan(0, 1, 0),
@@ -49,20 +50,23 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode
     [Trait("Area", "ExecutionTokens")]
     public async Task If_TimeOverrideMode_ThenReturnsValidDataValues()
     {
-        // ARRANGE
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
 
-        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
+            var taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
+            _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
-        var startRequest = CreateOverrideStartRequest();
+            var startRequest = CreateOverrideStartRequest();
 
-        // ACT
-        var sut = CreateSut();
-        var response = await sut.StartAsync(startRequest);
+            // ACT
+            var sut = CreateSut();
+            var response = await sut.StartAsync(startRequest);
 
-        // ASSERT
-        Assert.True(response.TaskExecutionId != 0);
-        Assert.True(response.StartedAt > DateTime.MinValue);
+            // ASSERT
+            Assert.True(response.TaskExecutionId != 0);
+            Assert.True(response.StartedAt > DateTime.MinValue);
+        });
     }
 
     [Fact]
@@ -70,20 +74,23 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode
     [Trait("Area", "ExecutionTokens")]
     public async Task If_TimeOverrideMode_OneTaskAndOneTokenAndIsAvailable_ThenIsGranted()
     {
-        // ARRANGE
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
 
-        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
+            var taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
+            _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
-        var startRequest = CreateOverrideStartRequest();
+            var startRequest = CreateOverrideStartRequest();
 
-        // ACT
-        var sut = CreateSut();
-        var response = await sut.StartAsync(startRequest);
+            // ACT
+            var sut = CreateSut();
+            var response = await sut.StartAsync(startRequest);
 
-        // ASSERT
-        Assert.Equal(GrantStatus.Granted, response.GrantStatus);
-        Assert.NotEqual(Guid.Empty, response.ExecutionTokenId);
+            // ASSERT
+            Assert.Equal(GrantStatus.Granted, response.GrantStatus);
+            Assert.NotEqual(Guid.Empty, response.ExecutionTokenId);
+        });
     }
 
     [Fact]
@@ -92,22 +99,25 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode
     public async Task
         If_TimeOverrideMode_TwoConcurrentTasksAndOneTokenAndIsAvailable_ThenIsGrantFirstTaskAndDenyTheOther()
     {
-        // ARRANGE
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
 
-        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
+            var taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
+            _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
-        var firstStartRequest = CreateOverrideStartRequest();
-        var secondStartRequest = CreateOverrideStartRequest();
+            var firstStartRequest = CreateOverrideStartRequest();
+            var secondStartRequest = CreateOverrideStartRequest();
 
-        // ACT
-        var sut = CreateSut();
-        var firstResponse = await sut.StartAsync(firstStartRequest);
-        var secondResponse = await sut.StartAsync(secondStartRequest);
+            // ACT
+            var sut = CreateSut();
+            var firstResponse = await sut.StartAsync(firstStartRequest);
+            var secondResponse = await sut.StartAsync(secondStartRequest);
 
-        // ASSERT
-        Assert.Equal(GrantStatus.Granted, firstResponse.GrantStatus);
-        Assert.Equal(GrantStatus.Denied, secondResponse.GrantStatus);
+            // ASSERT
+            Assert.Equal(GrantStatus.Granted, firstResponse.GrantStatus);
+            Assert.Equal(GrantStatus.Denied, secondResponse.GrantStatus);
+        });
     }
 
     [Fact]
@@ -116,27 +126,30 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode
     public async Task
         If_TimeOverrideMode_TwoSequentialTasksAndOneTokenAndIsAvailable_ThenIsGrantFirstTaskAndThenGrantTheOther()
     {
-        // ARRANGE
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
 
-        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
+            var taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
+            _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
-        var firstStartRequest = CreateOverrideStartRequest();
-        var secondStartRequest = CreateOverrideStartRequest();
+            var firstStartRequest = CreateOverrideStartRequest();
+            var secondStartRequest = CreateOverrideStartRequest();
 
-        // ACT
-        var sut = CreateSut();
-        var firstStartResponse = await sut.StartAsync(firstStartRequest);
-        var firstCompleteRequest = new TaskExecutionCompleteRequest(
-            new TaskId(TestConstants.ApplicationName, TestConstants.TaskName), firstStartResponse.TaskExecutionId,
-            firstStartResponse.ExecutionTokenId);
-        var firstCompleteResponse = await sut.CompleteAsync(firstCompleteRequest);
+            // ACT
+            var sut = CreateSut();
+            var firstStartResponse = await sut.StartAsync(firstStartRequest);
+            var firstCompleteRequest = new TaskExecutionCompleteRequest(
+                CurrentTaskId, firstStartResponse.TaskExecutionId,
+                firstStartResponse.ExecutionTokenId);
+            var firstCompleteResponse = await sut.CompleteAsync(firstCompleteRequest);
 
-        var secondStartResponse = await sut.StartAsync(secondStartRequest);
+            var secondStartResponse = await sut.StartAsync(secondStartRequest);
 
-        // ASSERT
-        Assert.Equal(GrantStatus.Granted, firstStartResponse.GrantStatus);
-        Assert.Equal(GrantStatus.Granted, secondStartResponse.GrantStatus);
+            // ASSERT
+            Assert.Equal(GrantStatus.Granted, firstStartResponse.GrantStatus);
+            Assert.Equal(GrantStatus.Granted, secondStartResponse.GrantStatus);
+        });
     }
 
     [Fact]
@@ -145,32 +158,35 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode
     public async Task
         If_TimeOverrideMode_FiveConcurrentTasksAndFourTokensAndAllAreAvailable_ThenIsGrantFirstFourTasksAndDenyTheOther()
     {
-        // ARRANGE
-        var concurrencyLimit = 4;
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
+            var concurrencyLimit = 4;
 
-        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId, concurrencyLimit);
+            var taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
+            _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId, concurrencyLimit);
 
-        var firstStartRequest = CreateOverrideStartRequest(concurrencyLimit);
-        var secondStartRequest = CreateOverrideStartRequest(concurrencyLimit);
-        var thirdStartRequest = CreateOverrideStartRequest(concurrencyLimit);
-        var fourthStartRequest = CreateOverrideStartRequest(concurrencyLimit);
-        var fifthStartRequest = CreateOverrideStartRequest(concurrencyLimit);
+            var firstStartRequest = CreateOverrideStartRequest(concurrencyLimit);
+            var secondStartRequest = CreateOverrideStartRequest(concurrencyLimit);
+            var thirdStartRequest = CreateOverrideStartRequest(concurrencyLimit);
+            var fourthStartRequest = CreateOverrideStartRequest(concurrencyLimit);
+            var fifthStartRequest = CreateOverrideStartRequest(concurrencyLimit);
 
-        // ACT
-        var sut = CreateSut();
-        var firstResponse = await sut.StartAsync(firstStartRequest);
-        var secondResponse = await sut.StartAsync(secondStartRequest);
-        var thirdResponse = await sut.StartAsync(thirdStartRequest);
-        var fourthResponse = await sut.StartAsync(fourthStartRequest);
-        var fifthResponse = await sut.StartAsync(fifthStartRequest);
+            // ACT
+            var sut = CreateSut();
+            var firstResponse = await sut.StartAsync(firstStartRequest);
+            var secondResponse = await sut.StartAsync(secondStartRequest);
+            var thirdResponse = await sut.StartAsync(thirdStartRequest);
+            var fourthResponse = await sut.StartAsync(fourthStartRequest);
+            var fifthResponse = await sut.StartAsync(fifthStartRequest);
 
-        // ASSERT
-        Assert.Equal(GrantStatus.Granted, firstResponse.GrantStatus);
-        Assert.Equal(GrantStatus.Granted, secondResponse.GrantStatus);
-        Assert.Equal(GrantStatus.Granted, thirdResponse.GrantStatus);
-        Assert.Equal(GrantStatus.Granted, fourthResponse.GrantStatus);
-        Assert.Equal(GrantStatus.Denied, fifthResponse.GrantStatus);
+            // ASSERT
+            Assert.Equal(GrantStatus.Granted, firstResponse.GrantStatus);
+            Assert.Equal(GrantStatus.Granted, secondResponse.GrantStatus);
+            Assert.Equal(GrantStatus.Granted, thirdResponse.GrantStatus);
+            Assert.Equal(GrantStatus.Granted, fourthResponse.GrantStatus);
+            Assert.Equal(GrantStatus.Denied, fifthResponse.GrantStatus);
+        });
     }
 
     [Fact]
@@ -178,33 +194,36 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode
     [Trait("Area", "ExecutionTokens")]
     public void If_TimeOverrideMode_OneToken_MultipleTaskThreads_ThenNoDeadLocksOccur()
     {
-        // ARRANGE
+        InSemaphore(() =>
+        {
+            // ARRANGE
 
-        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
+            var taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
+            _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
-        // ACT
-        var sut = CreateSut();
-        var tasks = new List<Task>();
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
-        tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
+            // ACT
+            var sut = CreateSut();
+            var tasks = new List<Task>();
+            tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
+            tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
+            tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
+            tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
+            tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
+            tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
+            tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
+            tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
+            tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
+            tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
+            tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
+            tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
+            tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
+            tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
+            tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithTimeOverrideModeAsync(sut)));
 
-        Task.WaitAll(tasks.ToArray());
+            Task.WaitAll(tasks.ToArray());
 
-        // ASSERT
+            // ASSERT
+        });
     }
 
     private async Task RequestAndReturnTokenWithTimeOverrideModeAsync(ITaskExecutionRepository sut)
@@ -218,7 +237,7 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode
             if (firstStartResponse.GrantStatus == GrantStatus.Granted)
             {
                 var firstCompleteRequest = new TaskExecutionCompleteRequest(
-                    new TaskId(TestConstants.ApplicationName, TestConstants.TaskName),
+                    CurrentTaskId,
                     firstStartResponse.TaskExecutionId, firstStartResponse.ExecutionTokenId);
                 var firstCompleteResponse = await sut.CompleteAsync(firstCompleteRequest);
             }
@@ -231,28 +250,31 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode
     public async Task
         If_TimeOverrideMode_OneTaskAndOneTokenAndIsUnavailableAndGrantedDateHasPassedElapsedTime_ThenIsGranted()
     {
-        // ARRANGE
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
 
-        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
+            var taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
+            _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
-        var startRequest = CreateOverrideStartRequest();
-        startRequest.OverrideThreshold = new TimeSpan(0, 0, 5);
-        var secondRequest = CreateOverrideStartRequest();
-        secondRequest.OverrideThreshold = new TimeSpan(0, 0, 5);
+            var startRequest = CreateOverrideStartRequest();
+            startRequest.OverrideThreshold = new TimeSpan(0, 0, 5);
+            var secondRequest = CreateOverrideStartRequest();
+            secondRequest.OverrideThreshold = new TimeSpan(0, 0, 5);
 
-        // ACT
-        var sut = CreateSut();
-        var firstResponse = await sut.StartAsync(startRequest);
+            // ACT
+            var sut = CreateSut();
+            var firstResponse = await sut.StartAsync(startRequest);
 
-        Thread.Sleep(6000);
+            Thread.Sleep(6000);
 
-        var secondResponse = await sut.StartAsync(secondRequest);
+            var secondResponse = await sut.StartAsync(secondRequest);
 
-        // ASSERT
-        Assert.Equal(GrantStatus.Granted, firstResponse.GrantStatus);
-        Assert.Equal(GrantStatus.Granted, secondResponse.GrantStatus);
-        Assert.NotEqual(Guid.Empty, secondResponse.ExecutionTokenId);
+            // ASSERT
+            Assert.Equal(GrantStatus.Granted, firstResponse.GrantStatus);
+            Assert.Equal(GrantStatus.Granted, secondResponse.GrantStatus);
+            Assert.NotEqual(Guid.Empty, secondResponse.ExecutionTokenId);
+        });
     }
 
     [Fact]
@@ -261,26 +283,29 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode
     public async Task
         If_TimeOverrideMode_OneTaskAndOneTokenAndIsUnavailableAndKeepAliveHasNotPassedElapsedTime_ThenIsDenied()
     {
-        // ARRANGE
+        await InSemaphoreAsync(async () =>
+        {
+            // ARRANGE
 
-        var taskDefinitionId = _executionsHelper.InsertTask(TestConstants.ApplicationName, TestConstants.TaskName);
-        _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
+            var taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
+            _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
-        var startRequest = CreateOverrideStartRequest();
-        var secondRequest = CreateOverrideStartRequest();
+            var startRequest = CreateOverrideStartRequest();
+            var secondRequest = CreateOverrideStartRequest();
 
-        // ACT
-        var sut = CreateSut();
-        var firstResponse = await sut.StartAsync(startRequest);
+            // ACT
+            var sut = CreateSut();
+            var firstResponse = await sut.StartAsync(startRequest);
 
-        Thread.Sleep(5000);
+            Thread.Sleep(5000);
 
-        var secondResponse = await sut.StartAsync(secondRequest);
+            var secondResponse = await sut.StartAsync(secondRequest);
 
-        // ASSERT
-        Assert.Equal(GrantStatus.Granted, firstResponse.GrantStatus);
-        Assert.NotEqual(Guid.Empty, firstResponse.ExecutionTokenId);
-        Assert.Equal(GrantStatus.Denied, secondResponse.GrantStatus);
-        Assert.Equal(Guid.Empty, secondResponse.ExecutionTokenId);
+            // ASSERT
+            Assert.Equal(GrantStatus.Granted, firstResponse.GrantStatus);
+            Assert.NotEqual(Guid.Empty, firstResponse.ExecutionTokenId);
+            Assert.Equal(GrantStatus.Denied, secondResponse.GrantStatus);
+            Assert.Equal(Guid.Empty, secondResponse.ExecutionTokenId);
+        });
     }
 }

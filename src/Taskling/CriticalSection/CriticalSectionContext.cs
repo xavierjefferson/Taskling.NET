@@ -4,7 +4,6 @@ using Nito.AsyncEx.Synchronous;
 using Taskling.Contexts;
 using Taskling.Exceptions;
 using Taskling.ExecutionContext;
-using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.CriticalSections;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.Tasks;
@@ -71,7 +70,7 @@ public class CriticalSectionContext : ICriticalSectionContext
             throw new ExecutionException("There is no active critical section to complete");
 
         var completeRequest = new CompleteCriticalSectionRequest(
-            new TaskId(_taskExecutionInstance.ApplicationName, _taskExecutionInstance.TaskName),
+            _taskExecutionInstance.TaskId,
             _taskExecutionInstance.TaskExecutionId,
             _criticalSectionType);
 
@@ -119,7 +118,7 @@ public class CriticalSectionContext : ICriticalSectionContext
         _started = true;
 
         var startRequest = new StartCriticalSectionRequest(
-            new TaskId(_taskExecutionInstance.ApplicationName, _taskExecutionInstance.TaskName),
+            _taskExecutionInstance.TaskId,
             _taskExecutionInstance.TaskExecutionId,
             _taskExecutionOptions.TaskDeathMode,
             _criticalSectionType);

@@ -21,29 +21,27 @@ public class CleanUpService : ICleanUpService
         _taskExecutionRepository = taskExecutionRepository;
     }
 
-    public void CleanOldData(string applicationName, string taskName, int taskExecutionId,
+    public void CleanOldData(TaskId taskId, int taskExecutionId,
         ITaskConfigurationRepository taskConfigurationRepository)
     {
         Task.Run(async () =>
-            await StartCleanOldDataAsync(applicationName, taskName, taskExecutionId, taskConfigurationRepository)
+            await StartCleanOldDataAsync(taskId, taskExecutionId, taskConfigurationRepository)
                 .ConfigureAwait(false));
     }
 
-    private async Task StartCleanOldDataAsync(string applicationName, string taskName, int taskExecutionId,
+    private async Task StartCleanOldDataAsync(TaskId taskId, int taskExecutionId,
         ITaskConfigurationRepository taskConfigurationRepository)
     {
-        var checkpoint = new TaskExecutionCheckpointRequest
+        var checkpoint = new TaskExecutionCheckpointRequest(taskId)
         {
-            TaskExecutionId = taskExecutionId,
-            TaskId = new TaskId(applicationName, taskName)
+            TaskExecutionId = taskExecutionId
         };
 
         try
         {
-            var configuration = taskConfigurationRepository.GetTaskConfiguration(applicationName, taskName);
-            var request = new CleanUpRequest
+            var configuration = taskConfigurationRepository.GetTaskConfiguration(taskId);
+            var request = new CleanUpRequest(taskId)
             {
-                TaskId = new TaskId(applicationName, taskName),
                 GeneralDateThreshold = DateTime.UtcNow.AddDays(-1 * configuration.KeepGeneralDataForDays),
                 ListItemDateThreshold = DateTime.UtcNow.AddDays(-1 * configuration.KeepListItemsForDays),
                 TimeSinceLastCleaningThreashold = new TimeSpan(configuration.MinimumCleanUpIntervalHours, 0, 0)

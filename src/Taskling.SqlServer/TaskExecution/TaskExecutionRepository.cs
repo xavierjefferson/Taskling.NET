@@ -283,7 +283,7 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
     }
 
     private async Task<int> CreateKeepAliveTaskExecutionAsync(TaskId taskId, int taskDefinitionId,
-        TimeSpan keepAliveInterval, TimeSpan keepAliveDeathThreshold, string referenceValue,
+        TimeSpan keepAliveInterval, TimeSpan keepAliveDeathThreshold, Guid referenceValue,
         int failedTaskRetryLimit, int deadTaskRetryLimit, string tasklingVersion, string executionHeader)
     {
         using (var dbContext = await GetDbContextAsync(taskId))
@@ -310,7 +310,7 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
     }
 
     private async Task<int> CreateOverrideTaskExecutionAsync(TaskId taskId, int taskDefinitionId,
-        TimeSpan overrideThreshold, string referenceValue,
+        TimeSpan overrideThreshold, Guid referenceValue,
         int failedTaskRetryLimit, int deadTaskRetryLimit, string tasklingVersion, string executionHeader)
     {
         using (var dbContext = await GetDbContextAsync(taskId))

@@ -29,7 +29,7 @@ public interface IBlockSettings
 
     // Reprocess Specific Task
     ReprocessOption ReprocessOption { get; set; }
-    string ReferenceValueToReprocess { get; set; }
+    Guid ReferenceValueToReprocess { get; set; }
 
     // Configuration Overridable
     bool? MustReprocessFailedTasks { get; set; }

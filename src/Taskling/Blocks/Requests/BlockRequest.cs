@@ -1,13 +1,19 @@
 ﻿using System;
 using Taskling.Blocks.Common;
+using Taskling.InfrastructureContracts;
 using Taskling.Tasks;
 
 namespace Taskling.Blocks.Requests;
 
-public class BlockRequest
+public abstract class BlockRequest
 {
-    public string ApplicationName { get; set; }
-    public string TaskName { get; set; }
+    public BlockRequest(TaskId taskId)
+    {
+        TaskId = taskId;
+    }
+
+    public TaskId TaskId { get; }
+
     public int TaskExecutionId { get; set; }
 
     public int MaxBlocks { get; set; }
@@ -25,6 +31,6 @@ public class BlockRequest
 
     public BlockType BlockType { get; protected set; }
 
-    public string ReprocessReferenceValue { get; set; }
+    public Guid ReprocessReferenceValue { get; set; }
     public ReprocessOption ReprocessOption { get; set; }
 }
