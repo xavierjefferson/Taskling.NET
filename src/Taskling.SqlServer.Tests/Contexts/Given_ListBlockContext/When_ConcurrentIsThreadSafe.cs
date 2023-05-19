@@ -2,18 +2,18 @@
 using System.Collections.Async;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Taskling.Blocks.ListBlocks;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
-using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_ListBlockContext;
 
 [Collection(TestConstants.CollectionName)]
-public class When_ConcurrentIsThreadSafe:TestBase
+public class When_ConcurrentIsThreadSafe : TestBase
 {
     private readonly IBlocksHelper _blocksHelper;
     private readonly IClientHelper _clientHelper;
@@ -21,11 +21,14 @@ public class When_ConcurrentIsThreadSafe:TestBase
     private readonly ILogger<When_ConcurrentIsThreadSafe> _logger;
 
     public When_ConcurrentIsThreadSafe(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper,
-        IClientHelper clientHelper, ILogger<When_ConcurrentIsThreadSafe> logger, ITaskRepository taskRepository) : base(executionsHelper)
+        IClientHelper clientHelper, ILogger<When_ConcurrentIsThreadSafe> logger, ITaskRepository taskRepository) : base(
+        executionsHelper)
     {
+        _logger = logger;
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _blocksHelper = blocksHelper;
         _clientHelper = clientHelper;
-        _logger = logger;
+
         _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
         _executionsHelper = executionsHelper;
         _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
@@ -40,6 +43,7 @@ public class When_ConcurrentIsThreadSafe:TestBase
     public async Task
         If_AsListWithSingleUnitCommit_BlocksProcessedSequentially_BlocksListItemsProcessedInParallel_ThenNoConcurrencyIssues()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             _logger.LogDebug("Starting test");
@@ -83,6 +87,7 @@ public class When_ConcurrentIsThreadSafe:TestBase
     public async Task
         If_AsListWithBatchCommitAtEnd_BlocksProcessedSequentially_BlocksListItemsProcessedInParallel_ThenNoConcurrencyIssues()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             _logger.LogDebug("Starting test");
@@ -125,6 +130,7 @@ public class When_ConcurrentIsThreadSafe:TestBase
     public async Task
         If_AsListWithPeriodicCommit_BlocksProcessedSequentially_BlocksListItemsProcessedInParallel_ThenNoConcurrencyIssues()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             _logger.LogDebug("Starting test");
@@ -170,6 +176,7 @@ public class When_ConcurrentIsThreadSafe:TestBase
     public async Task
         If_AsListWithSingleUnitCommit_BlocksProcessedInParallel_BlocksListItemsProcessedSequentially_ThenNoConcurrencyIssues()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             _logger.LogDebug("Starting test");
@@ -208,6 +215,7 @@ public class When_ConcurrentIsThreadSafe:TestBase
 
     private List<PersonDto> GetList(int count)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _logger.LogDebug("In GetList");
         var list = new List<PersonDto>();
 

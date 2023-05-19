@@ -2,7 +2,6 @@
 using Microsoft.Extensions.Logging;
 using Taskling.SqlServer.AncilliaryServices;
 using Taskling.SqlServer.Tests.Helpers;
-using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using TransactionScopeRetryHelper;
 using TransactionScopeRetryHelper.MicrosoftDataSqlClient;
 using TransactionScopeRetryHelper.MySqlClient;
@@ -16,8 +15,10 @@ public class Startup
 {
     public void Configure(ILoggerFactory loggerFactory, ITestOutputHelperAccessor accessor)
     {
-        loggerFactory.AddProvider(new XunitTestOutputLoggerProvider(accessor,
-            (source, ll) => ll >= LogLevel.Debug));
+        var xunitTestOutputLoggerProvider = new XunitTestOutputLoggerProvider(accessor,
+            (source, ll) => ll >= LogLevel.Debug);
+        
+        loggerFactory.AddProvider(xunitTestOutputLoggerProvider);
     }
 
     public void ConfigureServices(IServiceCollection services)

@@ -1,14 +1,18 @@
 ﻿using System;
+using System.Reflection;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Taskling.Contexts;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.TaskExecution;
+using Taskling.Retries;
 
 namespace Taskling.Blocks.ListBlocks;
 
 public class ListBlockContext<T> : ListBlockContextBase<T, bool>, IListBlockContext<T>, IDisposable
 {
-    #region .: Constructor :.
+    private readonly ILogger<ListBlockContext<T>> _logger;
 
     public ListBlockContext(IListBlockRepository listBlockRepository,
         ITaskExecutionRepository taskExecutionRepository,
@@ -16,9 +20,9 @@ public class ListBlockContext<T> : ListBlockContextBase<T, bool>, IListBlockCont
         int taskExecutionId,
         ListUpdateMode listUpdateMode,
         int uncommittedThreshold,
-        ListBlock<T> listBlock,
+        ListBlock<T> listBlock, IRetryService retryService,
         long blockExecutionId,
-        int maxStatusReasonLength,
+        int maxStatusReasonLength, ILoggerFactory loggerFactory, IServiceProvider serviceProvider,
         int forcedBlockQueueId = 0)
         : base(listBlockRepository,
             taskExecutionRepository,
@@ -28,13 +32,22 @@ public class ListBlockContext<T> : ListBlockContextBase<T, bool>, IListBlockCont
             uncommittedThreshold,
             listBlock,
             blockExecutionId,
-            maxStatusReasonLength,
+            maxStatusReasonLength, retryService, loggerFactory,
             forcedBlockQueueId)
     {
+        _logger = loggerFactory.CreateLogger<ListBlockContext<T>>();
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _headerlessBlock.SetParentContext(this);
     }
 
-    #endregion .: Constructor :.
 
     public IListBlock<T> Block => _headerlessBlock;
+}
+
+public static class ServiceProviderExtensions
+{
+    public static ILogger<T> CreateLogger<T>(this IServiceProvider serviceProvider)
+    {
+        return serviceProvider.GetRequiredService<ILogger<T>>();
+    }
 }

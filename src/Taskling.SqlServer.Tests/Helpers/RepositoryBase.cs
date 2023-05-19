@@ -1,7 +1,4 @@
-﻿using System;
-using Microsoft.EntityFrameworkCore;
-using Taskling.SqlServer.Models;
-using Taskling.SqlServer.Tests.Enums;
+﻿using Taskling.SqlServer.Models;
 
 namespace Taskling.SqlServer.Tests.Helpers;
 

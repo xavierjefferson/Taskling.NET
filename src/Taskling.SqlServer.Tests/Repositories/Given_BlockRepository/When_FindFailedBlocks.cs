@@ -1,8 +1,8 @@
 ﻿using System;
+using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
-using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.TaskExecution;
@@ -18,16 +18,20 @@ public class When_FindFailedBlocks : TestBase
     private readonly IBlocksHelper _blocksHelper;
     private readonly IClientHelper _clientHelper;
     private readonly IExecutionsHelper _executionsHelper;
+    private readonly ILogger<When_FindFailedBlocks> _logger;
     private readonly int _taskDefinitionId;
 
     public When_FindFailedBlocks(IBlocksHelper blocksHelper, IBlockRepository blockRepository,
         IExecutionsHelper executionsHelper, IClientHelper clientHelper, ILogger<When_FindFailedBlocks> logger,
         ITaskRepository taskRepository) : base(executionsHelper)
     {
+        _logger = logger;
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _executionsHelper = executionsHelper;
         _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
         _blocksHelper = blocksHelper;
         _clientHelper = clientHelper;
+
         _blockRepository = blockRepository;
         _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
 
@@ -41,6 +45,7 @@ public class When_FindFailedBlocks : TestBase
     public async Task
         When_FailedDateRangeBlocksExistInTargetPeriodAndNumberIsLessThanBlocksLimit_ThenReturnAllFailedBlocks()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -48,7 +53,8 @@ public class When_FindFailedBlocks : TestBase
             var taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
                 now.AddMinutes(-12), now.AddMinutes(-1));
             var block1 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-2), now.AddMinutes(-1));
-            var block2 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-12), now.AddMinutes(-11));
+            var block2 =
+                _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-12), now.AddMinutes(-11));
             _blocksHelper.InsertBlockExecution(taskExecution1, block1, now.AddMinutes(-2), now.AddMinutes(-2),
                 now.AddMinutes(-1), BlockExecutionStatus.Failed);
             _blocksHelper.InsertBlockExecution(taskExecution1, block2, now.AddMinutes(-12), now.AddMinutes(-12),
@@ -78,6 +84,7 @@ public class When_FindFailedBlocks : TestBase
     public async Task
         When_FailedDateRangeBlocksExistInTargetPeriodAndNumberIsGreaterThanBlocksLimit_ThenReturnOldestBlocksUpToCountLimit()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -85,9 +92,12 @@ public class When_FindFailedBlocks : TestBase
             var taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
                 now.AddMinutes(-32), now.AddMinutes(-1));
             var block1 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-2), now.AddMinutes(-1));
-            var block2 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-12), now.AddMinutes(-11));
-            var block3 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-22), now.AddMinutes(-21));
-            var block4 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-32), now.AddMinutes(-31));
+            var block2 =
+                _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-12), now.AddMinutes(-11));
+            var block3 =
+                _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-22), now.AddMinutes(-21));
+            var block4 =
+                _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-32), now.AddMinutes(-31));
             _blocksHelper.InsertBlockExecution(taskExecution1, block1, now.AddMinutes(-2), now.AddMinutes(-2),
                 now.AddMinutes(-1), BlockExecutionStatus.Failed);
             _blocksHelper.InsertBlockExecution(taskExecution1, block2, now.AddMinutes(-12), now.AddMinutes(-12),
@@ -123,14 +133,17 @@ public class When_FindFailedBlocks : TestBase
     [Trait("Area", "Blocks")]
     public async Task When_FailedDateRangeBlocksExistOutsideTargetPeriod_ThenReturnNoBlocks()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
             var now = DateTime.UtcNow;
             var taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
                 now.AddMinutes(-212), now.AddMinutes(-200));
-            var block1 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-200), now.AddMinutes(-201));
-            var block2 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-212), now.AddMinutes(-211));
+            var block1 =
+                _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-200), now.AddMinutes(-201));
+            var block2 =
+                _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-212), now.AddMinutes(-211));
             _blocksHelper.InsertBlockExecution(taskExecution1, block1, now.AddMinutes(-200), now.AddMinutes(-200),
                 now.AddMinutes(-201), BlockExecutionStatus.Failed);
             _blocksHelper.InsertBlockExecution(taskExecution1, block2, now.AddMinutes(-212), now.AddMinutes(-212),
@@ -159,6 +172,7 @@ public class When_FindFailedBlocks : TestBase
     public async Task
         When_FailedNumericRangeBlocksExistInTargetPeriodAndNumberIsLessThanBlocksLimit_ThenReturnAllFailedBlocks()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -196,6 +210,7 @@ public class When_FindFailedBlocks : TestBase
     public async Task
         When_FailedNumericRangeBlocksExistInTargetPeriodAndNumberIsGreaterThanBlocksLimit_ThenReturnOldestBlocksUpToCountLimit()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -241,6 +256,7 @@ public class When_FindFailedBlocks : TestBase
     [Trait("Area", "Blocks")]
     public async Task When_FailedNumericRangeBlocksExistOutsideTargetPeriod_ThenReturnNoBlocks()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -276,6 +292,7 @@ public class When_FindFailedBlocks : TestBase
     [Trait("Area", "Blocks")]
     public async Task When_FailedListBlocksExistInTargetPeriodAndNumberIsLessThanBlocksLimit_ThenReturnAllFailedBlocks()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -313,6 +330,7 @@ public class When_FindFailedBlocks : TestBase
     public async Task
         When_FailedListBlocksExistInTargetPeriodAndNumberIsGreaterThanBlocksLimit_ThenReturnOldestBlocksUpToCountLimit()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -358,6 +376,7 @@ public class When_FindFailedBlocks : TestBase
     [Trait("Area", "Blocks")]
     public async Task When_FailedListBlocksExistOutsideTargetPeriod_ThenReturnNoBlocks()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -395,14 +414,17 @@ public class When_FindFailedBlocks : TestBase
     public async Task
         When_FailedObjectBlocksExistInTargetPeriodAndNumberIsLessThanBlocksLimit_ThenReturnAllFailedBlocks()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
             var now = DateTime.UtcNow;
             var taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
                 now.AddMinutes(-12), now.AddMinutes(-1));
-            var block1 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-2), Guid.NewGuid().ToString());
-            var block2 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-12), Guid.NewGuid().ToString());
+            var block1 =
+                _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-2), Guid.NewGuid().ToString());
+            var block2 =
+                _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-12), Guid.NewGuid().ToString());
             _blocksHelper.InsertBlockExecution(taskExecution1, block1, now.AddMinutes(-2), now.AddMinutes(-2),
                 now.AddMinutes(-1), BlockExecutionStatus.Failed);
             _blocksHelper.InsertBlockExecution(taskExecution1, block2, now.AddMinutes(-12), now.AddMinutes(-12),
@@ -432,16 +454,21 @@ public class When_FindFailedBlocks : TestBase
     public async Task
         When_FailedObjectBlocksExistInTargetPeriodAndNumberIsGreaterThanBlocksLimit_ThenReturnOldestBlocksUpToCountLimit()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
             var now = DateTime.UtcNow;
             var taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId, new TimeSpan(0, 1, 0),
                 now.AddMinutes(-32), now.AddMinutes(-1));
-            var block1 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-2), Guid.NewGuid().ToString());
-            var block2 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-12), Guid.NewGuid().ToString());
-            var block3 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-22), Guid.NewGuid().ToString());
-            var block4 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-32), Guid.NewGuid().ToString());
+            var block1 =
+                _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-2), Guid.NewGuid().ToString());
+            var block2 =
+                _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-12), Guid.NewGuid().ToString());
+            var block3 =
+                _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-22), Guid.NewGuid().ToString());
+            var block4 =
+                _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-32), Guid.NewGuid().ToString());
             _blocksHelper.InsertBlockExecution(taskExecution1, block1, now.AddMinutes(-2), now.AddMinutes(-2),
                 now.AddMinutes(-1), BlockExecutionStatus.Failed);
             _blocksHelper.InsertBlockExecution(taskExecution1, block2, now.AddMinutes(-12), now.AddMinutes(-12),
@@ -477,6 +504,7 @@ public class When_FindFailedBlocks : TestBase
     [Trait("Area", "Blocks")]
     public async Task When_FailedObjectBlocksExistOutsideTargetPeriod_ThenReturnNoBlocks()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE

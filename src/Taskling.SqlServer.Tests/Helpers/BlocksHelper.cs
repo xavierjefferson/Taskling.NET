@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
 using Taskling.InfrastructureContracts;
@@ -13,8 +15,16 @@ namespace Taskling.SqlServer.Tests.Helpers;
 
 public class BlocksHelper : RepositoryBase, IBlocksHelper
 {
+    private readonly ILogger<BlocksHelper> _logger;
+
+    public BlocksHelper(ILogger<BlocksHelper> logger)
+    {
+        _logger = logger;
+    }
+
     public int GetListBlockItemCountByStatus(long blockId, ItemStatus status)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -34,12 +44,14 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
 
     public long GetLastBlockId(TaskId taskId)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
             {
                 return dbContext.Blocks.Include(i => i.TaskDefinition).Where(i =>
-                        i.TaskDefinition.TaskName == taskId.TaskName && i.TaskDefinition.ApplicationName == taskId.ApplicationName)
+                        i.TaskDefinition.TaskName == taskId.TaskName &&
+                        i.TaskDefinition.ApplicationName == taskId.ApplicationName)
                     .Max(i => i.BlockId);
             }
             //using (var connection = GetConnection())
@@ -53,8 +65,9 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
         });
     }
 
-    public List<ListBlockItem<T>> GetListBlockItems<T>(long blockId, ItemStatus status)
+    public List<ListBlockItem<T>> GetListBlockItems<T>(long blockId, ItemStatus status, ILoggerFactory loggerFactory)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
         {
             var items = new List<ListBlockItem<T>>();
@@ -64,7 +77,7 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
                     .Select(i => new { i.ListBlockItemId, i.Value, i.Status, i.StatusReason, i.Step }).ToList();
                 foreach (var reader in tmp)
                 {
-                    var item = new ListBlockItem<T>();
+                    var item = new ListBlockItem<T>(loggerFactory.CreateLogger<ListBlockItem<T>>());
                     item.ListBlockItemId = reader.ListBlockItemId;
                     item.Value = JsonGenericSerializer.Deserialize<T>(reader.Value);
                     item.Status = (ItemStatus)reader.Status;
@@ -105,6 +118,7 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
 
     public void EnqueueForcedBlock(long blockId)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -131,6 +145,7 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
 
     public void InsertPhantomDateRangeBlock(TaskId taskId, DateTime fromDate, DateTime toDate)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -158,6 +173,7 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
 
     public void InsertPhantomNumericBlock(TaskId taskId, long fromId, long toId)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -184,6 +200,7 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
 
     public void InsertPhantomListBlock(TaskId taskId)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -253,6 +270,7 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
 
     public void InsertPhantomObjectBlock(TaskId taskId)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -283,6 +301,7 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
 
     public int GetBlockCount(TaskId taskId)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -308,6 +327,7 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
     private void OnTaskDefinitionFound(TasklingDbContext dbContext, TaskId taskId,
         TaskDefinitionDelegate action)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var taskDefinitionId = dbContext.TaskDefinitions
             .Where(i => i.TaskName == taskId.TaskName && i.ApplicationName == taskId.ApplicationName)
             .Select(i => i.TaskDefinitionId).FirstOrDefault();
@@ -510,11 +530,13 @@ INSERT INTO [Taskling].[Block]
 
     public long InsertDateRangeBlock(int taskDefinitionId, DateTime fromDate, DateTime toDate)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return InsertDateRangeBlock(taskDefinitionId, fromDate, toDate, fromDate);
     }
 
     public long InsertDateRangeBlock(int taskDefinitionId, DateTime fromDate, DateTime toDate, DateTime createdAt)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -535,10 +557,11 @@ INSERT INTO [Taskling].[Block]
         });
     }
 
-    private static long AddDateRange(TasklingDbContext dbContext, int taskDefinitionId, DateTime fromDate,
+    private long AddDateRange(TasklingDbContext dbContext, int taskDefinitionId, DateTime fromDate,
         DateTime toDate, DateTime createdAt,
         bool isPhantom)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var objectBlock = new Block
         {
             TaskDefinitionId = taskDefinitionId,
@@ -555,6 +578,7 @@ INSERT INTO [Taskling].[Block]
 
     public long InsertNumericRangeBlock(int taskDefinitionId, long fromNumber, long toNumber, DateTime createdDate)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -577,10 +601,11 @@ INSERT INTO [Taskling].[Block]
         });
     }
 
-    private static long AddNumericBlock(TasklingDbContext dbContext, int taskDefinitionId, long fromNumber,
+    private long AddNumericBlock(TasklingDbContext dbContext, int taskDefinitionId, long fromNumber,
         long toNumber, DateTime createdDate,
         bool isPhantom)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var objectBlock = new Block
         {
             TaskDefinitionId = taskDefinitionId,
@@ -598,6 +623,7 @@ INSERT INTO [Taskling].[Block]
 
     public long InsertListBlock(int taskDefinitionId, DateTime createdDate, string objectData = null)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -634,6 +660,7 @@ INSERT INTO [Taskling].[Block]
 
     public long InsertObjectBlock(int taskDefinitionId, DateTime createdDate, string objectData)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -654,10 +681,11 @@ INSERT INTO [Taskling].[Block]
         });
     }
 
-    private static long AddObjectBlock(TasklingDbContext dbContext, int taskDefinitionId, DateTime createdDate,
+    private long AddObjectBlock(TasklingDbContext dbContext, int taskDefinitionId, DateTime createdDate,
         string objectData,
         bool isPhantom)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var objectBlock = new Block
         {
             IsPhantom = isPhantom,
@@ -674,6 +702,7 @@ INSERT INTO [Taskling].[Block]
     public long InsertBlockExecution(int taskExecutionId, long blockId, DateTime createdAt, DateTime? startedAt,
         DateTime? completedAt, BlockExecutionStatus executionStatus, int attempt = 1)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -719,6 +748,7 @@ INSERT INTO [Taskling].[Block]
 
     public void DeleteBlocks(string applicationName)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         RetryHelper.WithRetry(() =>
             {
                 using (var dbContext = GetDbContext())
@@ -779,6 +809,7 @@ INSERT INTO [Taskling].[Block]
     public int GetBlockExecutionCountByStatus(TaskId taskId,
         BlockExecutionStatus blockExecutionStatus)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -802,6 +833,7 @@ INSERT INTO [Taskling].[Block]
 
     public int GetBlockExecutionItemCount(long blockExecutionId)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())

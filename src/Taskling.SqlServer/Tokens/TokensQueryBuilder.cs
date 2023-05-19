@@ -4,8 +4,6 @@ namespace Taskling.SqlServer.Tokens;
 
 public class TokensQueryBuilder
 {
-    #region .: Common :.
-
     public const string AcquireLockQuery = @"UPDATE Taskling.[TaskDefinition]
 SET [HoldLockTaskExecutionId] = @TaskExecutionId
 WHERE [TaskDefinitionId] = @TaskDefinitionId;";
@@ -22,28 +20,6 @@ WHERE [TaskDefinitionId] = @TaskDefinitionId;";
   FROM [Taskling].[TaskExecution]
   WHERE [TaskExecutionId] IN ";
 
-    public static string GetTaskExecutions(int taskExecutionCount)
-    {
-        var sb = new StringBuilder();
-        sb.Append(GetTaskExecutionsBaseQuery);
-
-        sb.Append("(");
-        for (var i = 0; i < taskExecutionCount; i++)
-        {
-            if (i > 0)
-                sb.Append(",");
-
-            sb.Append("@InParam" + i);
-        }
-
-        sb.Append(")");
-
-        return sb.ToString();
-    }
-
-    #endregion .: Common :.
-
-    #region .: Critical Sections :.
 
     public const string GetUserCriticalSectionStateQuery = @"SELECT [UserCsStatus]
       ,[UserCsTaskExecutionId]
@@ -77,9 +53,6 @@ WHERE [TaskDefinitionId] = @TaskDefinitionId;";
 	SET [ClientCsStatus] = 1
 	WHERE [TaskDefinitionId] = @TaskDefinitionId;";
 
-    #endregion .: Critical Sections :.
-
-    #region .: Executions :.
 
     public const string GetExecutionTokensQuery = @"SELECT [ExecutionTokens]
 FROM [Taskling].[TaskDefinition]
@@ -89,5 +62,22 @@ WHERE TaskDefinitionId = @TaskDefinitionId";
 SET [ExecutionTokens] = @ExecutionTokens
 WHERE TaskDefinitionId = @TaskDefinitionId";
 
-    #endregion .: Executions :.
+    public static string GetTaskExecutions(int taskExecutionCount)
+    {
+        var sb = new StringBuilder();
+        sb.Append(GetTaskExecutionsBaseQuery);
+
+        sb.Append("(");
+        for (var i = 0; i < taskExecutionCount; i++)
+        {
+            if (i > 0)
+                sb.Append(",");
+
+            sb.Append("@InParam" + i);
+        }
+
+        sb.Append(")");
+
+        return sb.ToString();
+    }
 }

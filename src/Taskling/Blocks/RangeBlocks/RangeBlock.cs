@@ -1,16 +1,21 @@
 ﻿using System;
+using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
 
 namespace Taskling.Blocks.RangeBlocks;
 
 public class RangeBlock : IDateRangeBlock, INumericRangeBlock
 {
+    private readonly ILogger<RangeBlock> _logger;
+
     public RangeBlock(long rangeBlockId,
         int attempt,
         long rangeBegin,
         long rangeEnd,
-        BlockType blockType)
+        BlockType blockType, ILogger<RangeBlock> logger)
     {
+        _logger = logger;
+
         RangeBlockId = rangeBlockId;
         Attempt = attempt;
         RangeBegin = rangeBegin;

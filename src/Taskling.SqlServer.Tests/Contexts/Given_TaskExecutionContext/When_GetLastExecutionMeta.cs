@@ -1,10 +1,10 @@
 ﻿using System;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
-using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Xunit;
 using TaskExecutionStatus = Taskling.Tasks.TaskExecutionStatus;
 
@@ -15,13 +15,18 @@ public class When_GetLastExecutionMeta : TestBase
 {
     private readonly IClientHelper _clientHelper;
     private readonly IExecutionsHelper _executionsHelper;
+    private readonly ILogger<When_GetLastExecutionMeta> _logger;
     private readonly int _taskDefinitionId;
 
     public When_GetLastExecutionMeta(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper,
-        IClientHelper clientHelper, ILogger<When_GetLastExecutionMeta> logger, ITaskRepository taskRepository) : base(executionsHelper)
+        IClientHelper clientHelper, ILogger<When_GetLastExecutionMeta> logger, ITaskRepository taskRepository) : base(
+        executionsHelper)
     {
+        _logger = logger;
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _executionsHelper = executionsHelper;
         _clientHelper = clientHelper;
+
 
         executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
 
@@ -33,17 +38,18 @@ public class When_GetLastExecutionMeta : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_MultipleExecutionsAndGetLastExecutionMeta_ThenReturnLastOne()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
             var referenceValues = new[]
             {
-            Guid.Parse("cfed1331-24cc-4fe0-a308-4f5f88af3df4"),
-            Guid.Parse("eda35fa8-5742-45c0-bab1-7be557445559"),
-            Guid.Parse("785a4118-223b-44c1-8709-0fb4d10ef21c"),
-            Guid.Parse("79d2de63-563d-4464-afde-07506e9cf56d"),
-            Guid.Parse("902f1c0d-100c-407e-a744-c9e09c2e5e69"),
-        };
+                Guid.Parse("cfed1331-24cc-4fe0-a308-4f5f88af3df4"),
+                Guid.Parse("eda35fa8-5742-45c0-bab1-7be557445559"),
+                Guid.Parse("785a4118-223b-44c1-8709-0fb4d10ef21c"),
+                Guid.Parse("79d2de63-563d-4464-afde-07506e9cf56d"),
+                Guid.Parse("902f1c0d-100c-407e-a744-c9e09c2e5e69")
+            };
             foreach (var referenceValue in referenceValues)
             {
                 using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
@@ -70,17 +76,18 @@ public class When_GetLastExecutionMeta : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_MultipleExecutionsAndGetLastExecutionMetas_ThenReturnLastXItems()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
             var referenceValues = new[]
             {
-            Guid.Parse("cfed1331-24cc-4fe0-a308-4f5f88af3df4"),
-            Guid.Parse("eda35fa8-5742-45c0-bab1-7be557445559"),
-            Guid.Parse("785a4118-223b-44c1-8709-0fb4d10ef21c"),
-            Guid.Parse("79d2de63-563d-4464-afde-07506e9cf56d"),
-            Guid.Parse("902f1c0d-100c-407e-a744-c9e09c2e5e69"),
-        };
+                Guid.Parse("cfed1331-24cc-4fe0-a308-4f5f88af3df4"),
+                Guid.Parse("eda35fa8-5742-45c0-bab1-7be557445559"),
+                Guid.Parse("785a4118-223b-44c1-8709-0fb4d10ef21c"),
+                Guid.Parse("79d2de63-563d-4464-afde-07506e9cf56d"),
+                Guid.Parse("902f1c0d-100c-407e-a744-c9e09c2e5e69")
+            };
             foreach (var referenceValue in referenceValues)
             {
                 using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
@@ -110,6 +117,7 @@ public class When_GetLastExecutionMeta : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_NoPreviousExecutionsAndGetLastExecutionMeta_ThenReturnNull()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -129,6 +137,7 @@ public class When_GetLastExecutionMeta : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_MultipleExecutionsAndGetLastExecutionMetaWithHeader_ThenReturnLastOne()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -165,6 +174,7 @@ public class When_GetLastExecutionMeta : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_MultipleExecutionsAndGetLastExecutionMetasWithHeader_ThenReturnLastXItems()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -204,6 +214,7 @@ public class When_GetLastExecutionMeta : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_NoPreviousExecutionsAndGetLastExecutionMetaWithHeader_ThenReturnNull()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -224,6 +235,7 @@ public class When_GetLastExecutionMeta : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_LastExecutionCompleted_ThenReturnStatusIsCompleted()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -251,6 +263,7 @@ public class When_GetLastExecutionMeta : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_LastExecutionFailed_ThenReturnStatusIsFailed()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -279,6 +292,7 @@ public class When_GetLastExecutionMeta : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_LastExecutionBlocked_ThenReturnStatusIsBlockedAsync()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -316,6 +330,7 @@ public class When_GetLastExecutionMeta : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_LastExecutionInProgress_ThenReturnStatusIsInProgress()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE, ACT, ASSERT
@@ -340,6 +355,7 @@ public class When_GetLastExecutionMeta : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_LastExecutionDead_ThenReturnStatusIsDead()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE, ACT, ASSERT

@@ -1,29 +1,39 @@
 ﻿using System;
+using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
 using Taskling.Contexts;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.TaskExecution;
+using Taskling.Retries;
 
 namespace Taskling.Blocks.RangeBlocks;
 
 public class RangeBlockContext : BlockContextBase, IDateRangeBlockContext, INumericRangeBlockContext
 {
     private readonly RangeBlock _block;
-    private readonly IRangeBlockRepository _rangeBlockRepository;
 
+    private readonly ILogger<RangeBlockContext> _logger;
+    private readonly IRangeBlockRepository _rangeBlockRepository;
 
     public RangeBlockContext(IRangeBlockRepository rangeBlockRepository,
         ITaskExecutionRepository taskExecutionRepository,
         TaskId taskId,
         int taskExecutionId,
         RangeBlock rangeBlock,
-        long blockExecutionId,
-        int forcedBlockQueueId = 0) : base(taskId, blockExecutionId, taskExecutionId, taskExecutionRepository,
+        long blockExecutionId, IServiceProvider serviceProvider,
+        ILoggerFactory loggerFactory,
+        IRetryService retryService,
+        int forcedBlockQueueId = 0) : base(taskId, blockExecutionId, taskExecutionId, retryService,
+        taskExecutionRepository,
+        loggerFactory.CreateLogger<BlockContextBase>(),
         forcedBlockQueueId)
     {
+        _logger = loggerFactory.CreateLogger<RangeBlockContext>();
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _rangeBlockRepository = rangeBlockRepository;
         _block = rangeBlock;
     }
@@ -43,6 +53,7 @@ public class RangeBlockContext : BlockContextBase, IDateRangeBlockContext, INume
 
     protected override string GetFailedErrorMessage(string message)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (_block.RangeType == BlockType.DateRange)
             return
                 $"BlockId {_block.RangeBlockId} From: {_block.RangeBeginAsDateTime().ToString("yyyy-MM-dd HH:mm:ss")} To: {_block.RangeEndAsDateTime().ToString("yyyy-MM-dd HH:mm:ss")} Error: {message}";

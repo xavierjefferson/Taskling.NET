@@ -68,7 +68,7 @@ public class BlocksOfTaskQueryBuilder
         var leftSide1 = dbContext.BlockExecutions.Include(i => i.Block);
         var query =
             from leftSide in leftSide1
-            join subRightSide in dbContext.TaskExecutions on leftSide.BlockExecutionId equals subRightSide
+            join subRightSide in dbContext.TaskExecutions on leftSide.TaskExecutionId equals subRightSide
                 .TaskExecutionId into gj
             from rightSide in gj.DefaultIfEmpty()
             select new

@@ -2,8 +2,6 @@
 
 internal class TokensQueryBuilder
 {
-    #region .: Base Queries :.
-
     public const string OverrideBasedRequestExecutionTokenQuery = @"
     ----------------------------
 -- Get an exclusive lock on the records of this process
@@ -204,6 +202,4 @@ END";
     SELECT GETUTCDATE() AS CompletedAt;";
 
     public const string GetCurrentDateQuery = @"SELECT GETUTCDATE() AS CurrentDate;";
-
-    #endregion .: Executions :.
 }

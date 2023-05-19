@@ -13,10 +13,10 @@ public interface IListBlockUpdateArgs
 
 public class ProtoListBlockItem : IListBlockUpdateArgs
 {
-    public long ListBlockItemId { get; set; }
     public string Value { get; set; }
+    public DateTime LastUpdated { get; set; }
+    public long ListBlockItemId { get; set; }
     public ItemStatus Status { get; set; }
     public string StatusReason { get; set; }
-    public DateTime LastUpdated { get; set; }
     public int? Step { get; set; }
 }

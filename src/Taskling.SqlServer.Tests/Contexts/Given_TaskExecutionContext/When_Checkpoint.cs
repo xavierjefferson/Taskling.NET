@@ -1,24 +1,28 @@
-﻿using System.Threading.Tasks;
+﻿using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Taskling.Events;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
-using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_TaskExecutionContext;
 
 [Collection(TestConstants.CollectionName)]
-public class When_Checkpoint:TestBase
+public class When_Checkpoint : TestBase
 {
     private readonly IClientHelper _clientHelper;
     private readonly IExecutionsHelper _executionsHelper;
+    private readonly ILogger<When_Checkpoint> _logger;
     private readonly int _taskDefinitionId;
 
     public When_Checkpoint(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper, IClientHelper clientHelper,
         ILogger<When_Checkpoint> logger, ITaskRepository taskRepository) : base(executionsHelper)
     {
+        _logger = logger;
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _clientHelper = clientHelper;
+
         _executionsHelper = executionsHelper;
         executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
 
@@ -30,6 +34,7 @@ public class When_Checkpoint:TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_Checkpoint_ThenCheckpointEventCreated()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
 // ARRANGE

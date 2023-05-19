@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -10,7 +11,6 @@ using Taskling.Contexts;
 using Taskling.Events;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
-using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_ListBlockContext;
@@ -22,15 +22,18 @@ public class When_GetListBlocksFromExecutionContext : TestBase
     private readonly IClientHelper _clientHelper;
     private readonly IExecutionsHelper _executionsHelper;
     private readonly ILogger<When_GetListBlocksFromExecutionContext> _logger;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly int _taskDefinitionId;
 
     public When_GetListBlocksFromExecutionContext(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper,
         IClientHelper clientHelper, ILogger<When_GetListBlocksFromExecutionContext> logger,
-        ITaskRepository taskRepository) : base(executionsHelper)
-    {
+        ITaskRepository taskRepository, ILoggerFactory loggerFactory) : base(executionsHelper)
+    {     _logger = logger;
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _blocksHelper = blocksHelper;
         _clientHelper = clientHelper;
-        _logger = logger;
+   
+        _loggerFactory = loggerFactory;
         _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
         _executionsHelper = executionsHelper;
         _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
@@ -44,6 +47,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_AsListWithSingleUnitCommit_NumberOfBlocksAndStatusesOfBlockExecutionsCorrectAtEveryStep()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -119,7 +123,6 @@ public class When_GetListBlocksFromExecutionContext : TestBase
                     }
                 }
             }
-
         });
     }
 
@@ -128,6 +131,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_AsListWithSingleUnitCommitAndFailsWithReason_ThenReasonIsPersisted()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -160,7 +164,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
                 }
             }
 
-            Assert.True(_blocksHelper.GetListBlockItems<PersonDto>(listBlockId, ItemStatus.Failed)
+            Assert.True(_blocksHelper.GetListBlockItems<PersonDto>(listBlockId, ItemStatus.Failed, _loggerFactory)
                 .All(x => x.StatusReason == "Exception"));
         });
     }
@@ -170,6 +174,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_LargeValues_ThenValuesArePersistedAndRetrievedOk()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -230,6 +235,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_AsListWithNoValues_ThenCheckpointIsPersistedAndEmptyBlockGenerated()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -262,6 +268,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_AsListWithSingleUnitCommitAndStepSet_ThenStepIsPersisted()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -295,7 +302,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
                 }
             }
 
-            Assert.True(_blocksHelper.GetListBlockItems<PersonDto>(listBlockId, ItemStatus.Failed)
+            Assert.True(_blocksHelper.GetListBlockItems<PersonDto>(listBlockId, ItemStatus.Failed, _loggerFactory)
                 .All(x => x.StatusReason == "Exception" && x.Step == 2));
         });
     }
@@ -305,6 +312,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_AsListWithBatchCommitAtEnd_NumberOfBlocksAndStatusesOfBlockExecutionsCorrectAtEveryStep()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -390,6 +398,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_AsListWithPeriodicCommit_NumberOfBlocksAndStatusesOfBlockExecutionsCorrectAtEveryStep()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -489,6 +498,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_AsListWithPeriodicCommitAndFailsWithReason_ThenReasonIsPersisted()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -521,7 +531,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
                 }
             }
 
-            Assert.True(_blocksHelper.GetListBlockItems<PersonDto>(listBlockId, ItemStatus.Failed)
+            Assert.True(_blocksHelper.GetListBlockItems<PersonDto>(listBlockId, ItemStatus.Failed, _loggerFactory)
                 .All(x => x.StatusReason == "Exception"));
         });
     }
@@ -531,6 +541,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_AsListWithPeriodicCommitAndStepSet_ThenStepIsPersisted()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -564,7 +575,8 @@ public class When_GetListBlocksFromExecutionContext : TestBase
                 }
             }
 
-            var listBlockItems = _blocksHelper.GetListBlockItems<PersonDto>(listBlockId, ItemStatus.Failed);
+            var listBlockItems =
+                _blocksHelper.GetListBlockItems<PersonDto>(listBlockId, ItemStatus.Failed, _loggerFactory);
             Assert.True(listBlockItems.All(x => x.StatusReason == "Exception" && x.Step == 2));
         });
     }
@@ -574,6 +586,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_PreviousBlock_ThenLastBlockContainsCorrectItems()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -600,9 +613,11 @@ public class When_GetListBlocksFromExecutionContext : TestBase
             }
 
             var expectedPeople = GetPersonList(11, 15);
-            var expectedLastBlock = new ListBlock<PersonDto>();
+            var expectedLastBlock = new ListBlock<PersonDto>(_loggerFactory.CreateLogger<ListBlock<PersonDto>>());
             foreach (var person in expectedPeople)
-                expectedLastBlock.Items.Add(new ListBlockItem<PersonDto> { Value = person });
+                expectedLastBlock.Items.Add(
+                    new ListBlockItem<PersonDto>(_loggerFactory.CreateLogger<ListBlockItem<PersonDto>>())
+                        { Value = person });
 
 
             // ACT
@@ -640,6 +655,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_NoPreviousBlock_ThenLastBlockIsNull()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -663,6 +679,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_PreviousBlockIsPhantom_ThenLastBlockNotThisPhantom()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -712,6 +729,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_AnItemFails_ThenCompleteSetsStatusAsFailed()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -761,6 +779,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
     public async Task
         If_ReprocessingSpecificExecutionAndItExistsWithMultipleExecutionsAndOnlyOneFailed_ThenBringBackOnFailedBlockWhenRequested()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             var referenceValue = Guid.NewGuid();
@@ -822,7 +841,8 @@ public class When_GetListBlocksFromExecutionContext : TestBase
                     Assert.Equal(2, listBlocksToReprocess.Count);
 
                     // the block that failed has one failed item
-                    var itemsOfB1 = (await listBlocksToReprocess[0].GetItemsAsync(ItemStatus.Failed, ItemStatus.Pending))
+                    var itemsOfB1 =
+                        (await listBlocksToReprocess[0].GetItemsAsync(ItemStatus.Failed, ItemStatus.Pending))
                         .ToList();
                     Assert.Single(itemsOfB1);
                     Assert.Equal("Exception", itemsOfB1[0].StatusReason);
@@ -844,6 +864,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_AsListWithOverridenConfiguration_ThenOverridenValuesAreUsed()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -888,6 +909,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_AsListWithNoOverridenConfiguration_ThenConfigurationValuesAreUsed()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -934,6 +956,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_AsList_ThenReturnsBlockInOrderOfBlockId()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -975,6 +998,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_ForceBlock_ThenBlockGetsReprocessedAndDequeued()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -1051,6 +1075,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_BlockItemsAccessedBeforeGetItemsCalled_ThenItemsAreLoadedOkAnyway()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -1086,6 +1111,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
 
     private async Task CreateFailedTaskAsync()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         using (var executionContext = CreateTaskExecutionContextWithNoReprocessing())
         {
             var startedOk = await executionContext.TryStartAsync();
@@ -1110,6 +1136,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
 
     private async Task CreateDeadTaskAsync()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         using (var executionContext = CreateTaskExecutionContextWithNoReprocessing())
         {
             var startedOk = await executionContext.TryStartAsync();
@@ -1130,18 +1157,21 @@ public class When_GetListBlocksFromExecutionContext : TestBase
 
     private ITaskExecutionContext CreateTaskExecutionContext(int maxBlocksToGenerate = 10)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return _clientHelper.GetExecutionContext(CurrentTaskId,
             _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing(maxBlocksToGenerate));
     }
 
     private ITaskExecutionContext CreateTaskExecutionContextWithNoReprocessing()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return _clientHelper.GetExecutionContext(CurrentTaskId,
             _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndNoReprocessing());
     }
 
     private List<PersonDto> GetPersonList(int count, int skip = 0)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var people = new List<PersonDto>
         {
             new() { DateOfBirth = new DateTime(1980, 1, 1), Id = 1, Name = "Terrence" },
@@ -1178,6 +1208,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
 
     private List<PersonDto> GetLargePersonList(int count, int skip = 0)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var people = new List<PersonDto>
         {
             new() { DateOfBirth = new DateTime(1980, 1, 1), Id = 1, Name = GetLongName("Terrence") },
@@ -1214,6 +1245,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
 
     public string GetLongName(string name)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var sb = new StringBuilder();
         for (var i = 0; i < 1000; i++)
             sb.Append(" " + name);

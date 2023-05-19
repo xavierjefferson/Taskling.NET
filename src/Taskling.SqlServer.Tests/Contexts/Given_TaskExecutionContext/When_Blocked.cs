@@ -1,24 +1,28 @@
-﻿using System.Threading.Tasks;
+﻿using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
-using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_TaskExecutionContext;
 
 [Collection(TestConstants.CollectionName)]
-public class When_Blocked:TestBase
+public class When_Blocked : TestBase
 {
     private readonly IClientHelper _clientHelper;
     private readonly IExecutionsHelper _executionsHelper;
+    private readonly ILogger<When_Blocked> _logger;
     private readonly int _taskDefinitionId;
 
     public When_Blocked(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper, IClientHelper clientHelper,
         ILogger<When_Blocked> logger, ITaskRepository taskRepository) : base(executionsHelper)
     {
+        _logger = logger;
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _executionsHelper = executionsHelper;
         _clientHelper = clientHelper;
+
 
         executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
 
@@ -30,6 +34,7 @@ public class When_Blocked:TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_TryStartOverTheConcurrencyLimit_ThenMarkExecutionAsBlocked()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
 // ARRANGE

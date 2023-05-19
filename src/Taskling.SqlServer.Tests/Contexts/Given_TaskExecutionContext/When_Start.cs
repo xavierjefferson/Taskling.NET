@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
-using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Contexts.Given_TaskExecutionContext;
@@ -21,6 +21,7 @@ public class When_Start : TestBase
     public When_Start(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper, IClientHelper clientHelper,
         ILogger<When_Start> logger, ITaskRepository taskRepository) : base(executionsHelper)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _logger = logger;
         _executionsHelper = executionsHelper;
         _clientHelper = clientHelper;
@@ -35,6 +36,7 @@ public class When_Start : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_TryStart_ThenLogCorrectTasklingVersion()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -67,6 +69,7 @@ public class When_Start : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_TryStartWithHeader_ThenGetHeaderReturnsTheHeader()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -99,6 +102,7 @@ public class When_Start : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_TryStartWithHeader_ThenHeaderWrittenToDatabase()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE

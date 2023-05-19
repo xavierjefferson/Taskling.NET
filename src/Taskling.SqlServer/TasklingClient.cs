@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Factories;
 using Taskling.CleanUp;
 using Taskling.Configuration;
@@ -110,7 +111,8 @@ public class TasklingClient : ITasklingClient
     public TasklingClient(IServiceProvider serviceProvider, IConfigurationReader configurationReader)
     {
         _serviceProvider = serviceProvider;
-        _taskConfigurationRepository = new TaskConfigurationRepository(configurationReader);
+        _taskConfigurationRepository = new TaskConfigurationRepository(configurationReader,
+            serviceProvider.GetRequiredService<ILogger<TaskConfigurationRepository>>());
         _connectionStore = serviceProvider.GetRequiredService<IConnectionStore>() ??
                            throw new NullReferenceException(nameof(IConnectionStore));
 

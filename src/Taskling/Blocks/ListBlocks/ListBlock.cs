@@ -1,17 +1,21 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Taskling.Contexts;
 
 namespace Taskling.Blocks.ListBlocks;
 
- 
 public class ListBlock<T> : IListBlock<T>
 {
+    private readonly ILogger<ListBlock<T>> _logger;
     private IListBlockContext<T> _parentContext;
 
-    public ListBlock()
+    public ListBlock(ILogger<ListBlock<T>> logger)
     {
+        _logger = logger;
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         Items = new List<IListBlockItem<T>>();
     }
 
@@ -22,6 +26,7 @@ public class ListBlock<T> : IListBlock<T>
 
     public async Task<IList<IListBlockItem<T>>> GetItemsAsync()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (Items == null || !Items.Any())
             if (_parentContext != null)
                 await _parentContext.FillItemsAsync().ConfigureAwait(false);
@@ -31,16 +36,20 @@ public class ListBlock<T> : IListBlock<T>
 
     internal void SetParentContext(IListBlockContext<T> parentContext)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _parentContext = parentContext;
     }
 }
 
 public class ListBlock<TItem, THeader> : IListBlock<TItem, THeader>
 {
+    private readonly ILogger<ListBlock<TItem, THeader>> _logger;
     private IListBlockContext<TItem, THeader> _parentContext;
 
-    public ListBlock()
+    public ListBlock(ILogger<ListBlock<TItem, THeader>> logger)
     {
+        _logger = logger;
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         Items = new List<IListBlockItem<TItem>>();
     }
 
@@ -52,6 +61,7 @@ public class ListBlock<TItem, THeader> : IListBlock<TItem, THeader>
 
     public async Task<IList<IListBlockItem<TItem>>> GetItemsAsync()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (Items == null) await _parentContext.FillItemsAsync().ConfigureAwait(false);
 
         return Items;
@@ -59,6 +69,7 @@ public class ListBlock<TItem, THeader> : IListBlock<TItem, THeader>
 
     internal void SetParentContext(IListBlockContext<TItem, THeader> parentContext)
     {
-        _parentContext =  parentContext;
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
+        _parentContext = parentContext;
     }
 }

@@ -1,12 +1,11 @@
 ﻿using System;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.CriticalSections;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
-using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Taskling.Tasks;
 using Xunit;
 
@@ -22,8 +21,10 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
     public When_TryStart_AsOverrideAfterElaspedTimeMode(IBlocksHelper blocksHelper,
         ICriticalSectionRepository criticalSectionRepository, IExecutionsHelper executionsHelper,
         IClientHelper clientHelper,
-        ILogger<When_TryStart_AsOverrideAfterElaspedTimeMode> logger, ITaskRepository taskRepository) : base(executionsHelper)
+        ILogger<When_TryStart_AsOverrideAfterElaspedTimeMode> logger, ITaskRepository taskRepository) : base(
+        executionsHelper)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _criticalSectionRepository = criticalSectionRepository;
         _executionsHelper = executionsHelper;
         _logger = logger;
@@ -36,6 +37,7 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
     [Trait("Area", "CriticalSectionTokens")]
     public async Task If_OverrideMode_TokenAvailableAndNothingInQueue_ThenGrant()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -64,6 +66,7 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
     [Trait("Area", "CriticalSectionTokens")]
     public async Task If_OverrideMode_TokenNotAvailableAndNothingInQueue_ThenAddToQueueAndDeny()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -100,6 +103,7 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
     [Trait("Area", "CriticalSectionTokens")]
     public async Task If_OverrideMode_TokenNotAvailableAndAlreadyInQueue_ThenDoNotAddToQueueAndDeny()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -137,6 +141,7 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
     [Trait("Area", "CriticalSectionTokens")]
     public async Task If_OverrideMode_TokenAvailableAndIsFirstInQueue_ThenRemoveFromQueueAndGrant()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -171,6 +176,7 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
     [Trait("Area", "CriticalSectionTokens")]
     public async Task If_OverrideMode_TokenAvailableAndIsNotFirstInQueue_ThenDoNotChangeQueueAndDeny()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -212,6 +218,7 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
     public async Task
         If_OverrideMode_TokenAvailableAndIsNotFirstInQueueButFirstHasExpiredTimeout_ThenRemoveBothFromQueueAndGrant()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -259,6 +266,7 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
     public async Task
         If_OverrideMode_TokenAvailableAndIsNotFirstInQueueButFirstHasCompleted_ThenRemoveBothFromQueueAndGrant()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE

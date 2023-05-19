@@ -1,12 +1,11 @@
 ﻿using System;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.CriticalSections;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
-using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Taskling.Tasks;
 using Xunit;
 
@@ -25,6 +24,7 @@ public class When_TryStart_AsKeepAliveMode : TestBase
         ILogger<When_TryStart_AsKeepAliveMode> logger, ITaskRepository taskRepository,
         ICriticalSectionRepository criticalSectionRepository) : base(executionsHelper)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _executionsHelper = executionsHelper;
         _logger = logger;
         _criticalSectionRepository = criticalSectionRepository;
@@ -38,6 +38,7 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     [Trait("Area", "CriticalSectionTokens")]
     public async Task If_KeepAliveMode_TokenAvailableAndNothingInQueue_ThenGrant()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -66,6 +67,7 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     [Trait("Area", "CriticalSectionTokens")]
     public async Task If_KeepAliveMode_TokenNotAvailableAndNothingInQueue_ThenAddToQueueAndDeny()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -102,6 +104,7 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     [Trait("Area", "CriticalSectionTokens")]
     public async Task If_KeepAliveMode_TokenNotAvailableAndAlreadyInQueue_ThenDoNotAddToQueueAndDeny()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -139,6 +142,7 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     [Trait("Area", "CriticalSectionTokens")]
     public async Task If_KeepAliveMode_TokenAvailableAndIsFirstInQueue_ThenRemoveFromQueueAndGrant()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -173,6 +177,7 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     [Trait("Area", "CriticalSectionTokens")]
     public async Task If_KeepAliveMode_TokenAvailableAndIsNotFirstInQueue_ThenDoNotChangeQueueAndDeny()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -214,6 +219,7 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     public async Task
         If_KeepAliveMode_TokenAvailableAndIsNotFirstInQueueButFirstHasExpiredTimeout_ThenRemoveBothFromQueueAndGrant()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -224,7 +230,8 @@ public class When_TryStart_AsKeepAliveMode : TestBase
 
             // Create execution 1 and add it to the queue
             var taskExecutionId1 =
-                _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId, new TimeSpan(0, 0, 1), keepAliveThreshold);
+                _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId, new TimeSpan(0, 0, 1),
+                    keepAliveThreshold);
             _executionsHelper.InsertUnlimitedExecutionToken(taskDefinitionId);
             _executionsHelper.SetKeepAlive(taskExecutionId1);
             _executionsHelper.InsertIntoCriticalSectionQueue(taskDefinitionId, 1, taskExecutionId1);
@@ -264,6 +271,7 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     public async Task
         If_KeepAliveMode_TokenAvailableAndIsNotFirstInQueueButFirstHasCompleted_ThenRemoveBothFromQueueAndGrant()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE

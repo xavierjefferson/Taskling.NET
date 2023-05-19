@@ -6,6 +6,7 @@ using Taskling.Blocks.ListBlocks;
 using Taskling.Blocks.ObjectBlocks;
 using Taskling.Blocks.RangeBlocks;
 using Taskling.Exceptions;
+using Taskling.Extensions;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
@@ -28,31 +29,26 @@ namespace Taskling.SqlServer.Blocks;
 
 public partial class BlockRepository : DbOperationsService, IBlockRepository
 {
-    #region .: Constructor :.
-
-    public BlockRepository(ITaskRepository taskRepository, IConnectionStore connectionStore,
-        ILogger<BlockRepository> logger, IDbContextFactoryEx dbx) : base(connectionStore, dbx)
-    {
-        _taskRepository = taskRepository;
-        _logger = logger;
-        _logger.LogDebug($"{nameof(BlockRepository)} constructor was called");
-    }
-
-    #endregion .: Constructor :.
-
-    #region .: Fields and services :.
-
-    private readonly ITaskRepository _taskRepository;
-    private readonly ILogger<BlockRepository> _logger;
-
     private const string UnexpectedBlockTypeMessage =
         "This block type was not expected. This can occur when changing the block type of an existing process or combining different block types in a single process - which is not supported";
 
-    #endregion .: Fields and services :.
+    private readonly ILogger<BlockRepository> _logger;
+    private readonly ILoggerFactory _loggerFactory;
 
-    #region .: Public Methods :.
 
-    #region .: Force Block Queue :.
+    private readonly ITaskRepository _taskRepository;
+
+
+    public BlockRepository(ITaskRepository taskRepository, IConnectionStore connectionStore,
+        ILogger<BlockRepository> logger, IDbContextFactoryEx dbx, ILoggerFactory loggerFactory) : base(connectionStore,
+        dbx, loggerFactory.CreateLogger<DbOperationsService>())
+    {
+        _taskRepository = taskRepository;
+        _logger = logger;
+        _loggerFactory = loggerFactory;
+        _logger.LogDebug($"{nameof(BlockRepository)} constructor was called");
+    }
+
 
     public async Task<IList<ForcedRangeBlockQueueItem>> GetQueuedForcedRangeBlocksAsync(
         QueuedForcedBlocksRequest queuedForcedBlocksRequest)
@@ -60,9 +56,15 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
         switch (queuedForcedBlocksRequest.BlockType)
         {
             case BlockType.DateRange:
-                return await GetForcedDateRangeBlocksAsync(queuedForcedBlocksRequest).ConfigureAwait(false);
+                _logger.Debug("1168ca9b-e21c-4475-bb23-c7857f760db3");
+                var tmp = await GetForcedDateRangeBlocksAsync(queuedForcedBlocksRequest).ConfigureAwait(false);
+                _logger.Debug($"Returning {tmp.Count}");
+                return tmp;
             case BlockType.NumericRange:
-                return await GetForcedNumericRangeBlocksAsync(queuedForcedBlocksRequest).ConfigureAwait(false);
+                _logger.Debug("9aab0db8-0d99-491c-921f-4836b82dee44");
+                var tmp2 = await GetForcedNumericRangeBlocksAsync(queuedForcedBlocksRequest).ConfigureAwait(false);
+                _logger.Debug($"Returning {tmp2.Count}");
+                return tmp2;
             default:
                 throw new NotSupportedException("This range type is not supported");
         }
@@ -85,24 +87,25 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
         await UpdateForcedBlocksAsync(dequeueForcedBlocksRequest).ConfigureAwait(false);
     }
 
-    #endregion .: Force Block Queue :.
-
-    #region .: Range Blocks :.
 
     public async Task<IList<RangeBlock>> FindRangeBlocksOfTaskAsync(FindBlocksOfTaskRequest blocksOfTaskRequest)
     {
+        _logger.Debug("4fac3bbe-9b32-4412-b8ca-b384c9d38280");
         Func<BlocksOfTaskQueryParams,
             Expression<Func<BlockQueryItem, bool>>> query;
         switch (blocksOfTaskRequest.BlockType)
         {
             case BlockType.DateRange:
+                _logger.Debug("6f26bba4-79e8-4448-ab80-2be6ab47c917");
                 query = BlocksOfTaskQueryBuilder.GetFindDateRangeBlocksOfTaskQuery(blocksOfTaskRequest.ReprocessOption);
                 break;
             case BlockType.NumericRange:
+                _logger.Debug("e7306f31-1521-4e58-acb4-1ff96c2c0e22");
                 query = BlocksOfTaskQueryBuilder.GetFindNumericRangeBlocksOfTaskQuery(blocksOfTaskRequest
                     .ReprocessOption);
                 break;
             default:
+                _logger.Debug("87970746-3a69-426b-8d1c-93dbe5723c58");
                 throw new NotSupportedException("This range type is not supported");
         }
 
@@ -140,7 +143,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
                                 0,
                                 rangeBlockCreateRequest.From,
                                 rangeBlockCreateRequest.To,
-                                rangeBlockCreateRequest.BlockType);
+                                rangeBlockCreateRequest.BlockType, _loggerFactory.CreateLogger<RangeBlock>());
                         }
                     }).ConfigureAwait(false);
                 break;
@@ -163,7 +166,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
 
                             return new RangeBlock(block.BlockId, 0, rangeBlockCreateRequest.From,
                                 rangeBlockCreateRequest.To,
-                                rangeBlockCreateRequest.BlockType);
+                                rangeBlockCreateRequest.BlockType, _loggerFactory.CreateLogger<RangeBlock>());
                         }
                     }).ConfigureAwait(false);
                 break;
@@ -179,9 +182,6 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
         return await AddBlockExecutionAsync(executionCreateRequest).ConfigureAwait(false);
     }
 
-    #endregion .: Range Blocks :.
-
-    #region .: List Blocks :.
 
     public async Task<IList<ProtoListBlock>> FindListBlocksOfTaskAsync(FindBlocksOfTaskRequest blocksOfTaskRequest)
     {
@@ -226,9 +226,6 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
         return await AddBlockExecutionAsync(executionCreateRequest).ConfigureAwait(false);
     }
 
-    #endregion .: List Blocks :.
-
-    #region .: Object Blocks :.
 
     public async Task<IList<ObjectBlock<T>>> FindObjectBlocksOfTaskAsync<T>(FindBlocksOfTaskRequest blocksOfTaskRequest)
     {
@@ -271,13 +268,6 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
         throw new NotSupportedException(UnexpectedBlockTypeMessage);
     }
 
-    #endregion .: Object Blocks :.
-
-    #endregion .: Public Methods :.
-
-    #region .: Private Methods :.
-
-    #region .: Range Blocks :.
 
     private async Task<IList<RangeBlock>> FindRangeBlocksOfTaskAsync(FindBlocksOfTaskRequest blocksOfTaskRequest,
         Func<BlocksOfTaskQueryParams,
@@ -290,20 +280,19 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
 
             using (var dbContext = await GetDbContextAsync(blocksOfTaskRequest.TaskId))
             {
+                _logger.Debug("ba90155a-3970-43b7-a488-63cf4c8adb1a");
                 var items = await BlocksOfTaskQueryBuilder.GetBlocksOfTaskQueryItems(dbContext,
                     taskDefinition.TaskDefinitionId,
                     blocksOfTaskRequest.ReferenceValueOfTask,
                     query(new BlocksOfTaskQueryParams()));
                 var results = GetRangeBlocks(blocksOfTaskRequest, items);
+                _logger.Debug("2318000f-633c-4147-ae89-88ec44db3e26");
                 _logger.LogDebug($"{nameof(FindRangeBlocksOfTaskAsync)} is returning {results.Count} rows");
                 return results;
             }
         }).ConfigureAwait(false);
     }
 
-    #endregion .: Range Blocks :.
-
-    #region .: List Blocks :.
 
     private async Task<IList<ProtoListBlock>> FindListBlocksOfTaskAsync(FindBlocksOfTaskRequest blocksOfTaskRequest,
         Func<BlocksOfTaskQueryParams,
@@ -422,9 +411,6 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
         });
     }
 
-    #endregion .: List Blocks :.
-
-    #region .: Object Blocks :.
 
     private async Task<long> AddNewObjectBlockAsync<T>(TaskId taskId, int taskDefinitionId, T objectData,
         int compressionThreshold)
@@ -540,9 +526,6 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
         });
     }
 
-    #endregion .: Object Blocks :.
-
-    #region .: Force Block Queue :.
 
     private async Task<IList<ForcedRangeBlockQueueItem>> GetForcedDateRangeBlocksAsync(
         QueuedForcedBlocksRequest queuedForcedBlocksRequest)
@@ -584,12 +567,13 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
                         long rangeEnd;
 
                         RangeBlock? rangeBlock = null;
+                        var logger = _loggerFactory.CreateLogger<RangeBlock>();
                         if (queuedForcedBlocksRequest.BlockType == BlockType.DateRange)
                         {
                             rangeBegin = item.FromDate.Value.Ticks;
                             rangeEnd = item.ToDate.Value.Ticks;
                             rangeBlock = new RangeBlock(blockId, attempt + 1, rangeBegin, rangeEnd,
-                                queuedForcedBlocksRequest.BlockType);
+                                queuedForcedBlocksRequest.BlockType, logger);
                             forceBlockQueueId = item.ForceBlockQueueId;
                         }
                         else if (queuedForcedBlocksRequest.BlockType == BlockType.NumericRange)
@@ -597,7 +581,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
                             rangeBegin = item.FromNumber.Value;
                             rangeEnd = item.ToNumber.Value;
                             rangeBlock = new RangeBlock(blockId, attempt + 1, rangeBegin, rangeEnd,
-                                queuedForcedBlocksRequest.BlockType);
+                                queuedForcedBlocksRequest.BlockType, logger);
                             forceBlockQueueId = item.ForceBlockQueueId;
                         }
 
@@ -758,8 +742,6 @@ This could occur if the block type of the process has been changed during a new 
         });
     }
 
-    #endregion .: Force Block Queue :.
-
 
     private async Task<long> AddBlockExecutionAsync(BlockExecutionCreateRequest executionCreateRequest)
     {
@@ -783,6 +765,4 @@ This could occur if the block type of the process has been changed during a new 
             }
         });
     }
-
-    #endregion .: Private Methods :.
 }

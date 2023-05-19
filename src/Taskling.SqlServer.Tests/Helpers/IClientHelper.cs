@@ -10,6 +10,7 @@ public interface IClientHelper
 
     ITaskExecutionContext GetExecutionContext(TaskId taskId,
         ConfigurationOptions configurationOptions);
+
     ConfigurationOptions GetDefaultTaskConfigurationWithKeepAliveAndReprocessing(int maxBlocksToGenerate = 2000);
     ConfigurationOptions GetDefaultTaskConfigurationWithKeepAliveAndNoReprocessing(int maxBlocksToGenerate = 2000);
 

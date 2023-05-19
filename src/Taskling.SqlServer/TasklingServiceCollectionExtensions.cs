@@ -7,6 +7,7 @@ using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.CleanUp;
 using Taskling.InfrastructureContracts.CriticalSections;
 using Taskling.InfrastructureContracts.TaskExecution;
+using Taskling.Retries;
 using Taskling.SqlServer.Blocks;
 using Taskling.SqlServer.Events;
 using Taskling.SqlServer.TaskExecution;
@@ -22,9 +23,11 @@ public static class TasklingServiceCollectionExtensions
     public static IServiceCollection AddTaskling(this IServiceCollection services)
     {
         services.AddSingleton(new TasklingOptions());
+        services.AddSingleton<IRetryService, RetryService>();
         services.AddSingleton<ITaskRepository, TaskRepository>();
         services.AddScoped<ITaskExecutionRepository, TaskExecutionRepository>();
         services.AddScoped<IExecutionTokenRepository, ExecutionTokenRepository>();
+        services.AddScoped<IExecutionTokenHelper, ExecutionTokenHelper>();
         services.AddScoped<IListBlockRepository, ListBlockRepository>();
         services.AddScoped<ICommonTokenRepository, CommonTokenRepository>();
         services.AddScoped<IEventsRepository, EventsRepository>();

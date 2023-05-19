@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
 using Taskling.InfrastructureContracts;
@@ -18,7 +19,8 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
     private readonly ITaskRepository _taskRepository;
 
     public ListBlockRepository(ITaskRepository taskRepository, IConnectionStore connectionStore,
-        IDbContextFactoryEx dbContextFactoryEx) : base(connectionStore, dbContextFactoryEx)
+        IDbContextFactoryEx dbContextFactoryEx, ILoggerFactory loggerFactory) : base(connectionStore,
+        dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
     {
         _taskRepository = taskRepository;
     }
@@ -90,7 +92,7 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
         {
             using (var dbContext = await GetDbContextAsync(singeUpdateRequest.TaskId))
             {
-                UpdateListBlockItems(dbContext, new List<ProtoListBlockItem>
+                await UpdateListBlockItemsAsync(dbContext, new List<ProtoListBlockItem>
                 {
                     singeUpdateRequest.ListBlockItem
                 });
@@ -105,7 +107,7 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
         {
             using (var dbContext = await GetDbContextAsync(batchUpdateRequest.TaskId))
             {
-                 UpdateListBlockItems(dbContext, batchUpdateRequest.ListBlockItems);
+                await UpdateListBlockItemsAsync(dbContext, batchUpdateRequest.ListBlockItems);
                 await dbContext.SaveChangesAsync().ConfigureAwait(false);
             }
         });
@@ -142,21 +144,25 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
         });
     }
 
-    private static void UpdateListBlockItems(TasklingDbContext dbContext, IList<ProtoListBlockItem> listBlockItems)
+    private async Task UpdateListBlockItemsAsync(TasklingDbContext dbContext,
+        IList<ProtoListBlockItem> listBlockItems)
     {
         foreach (var listBlockItem in listBlockItems)
         {
-            var exampleEntity = dbContext.ListBlockItems.Attach(new ListBlockItem
-                { ListBlockItemId = listBlockItem.ListBlockItemId });
+            var entityEntry = dbContext.ListBlockItems.Attach(new ListBlockItem
+            {
+                ListBlockItemId = listBlockItem.ListBlockItemId, 
+                Status = (int)listBlockItem.Status,
+                StatusReason = listBlockItem.StatusReason, 
+                Step = listBlockItem.Step
+            });
 
-            exampleEntity.Entity.Status = (int)listBlockItem.Status;
-            exampleEntity.Property(i => i.Status).IsModified = true;
 
-            exampleEntity.Entity.StatusReason = listBlockItem.StatusReason;
-            exampleEntity.Property(i => i.StatusReason).IsModified = true;
-
-            exampleEntity.Entity.Step = listBlockItem.Step;
-            exampleEntity.Property(i => i.Step).IsModified = true;
+            entityEntry.Property(i => i.Status).IsModified = true;
+            entityEntry.Property(i => i.StatusReason).IsModified = true;
+            entityEntry.Property(i => i.Step).IsModified = true;
         }
+
+        await Task.CompletedTask;
     }
 }

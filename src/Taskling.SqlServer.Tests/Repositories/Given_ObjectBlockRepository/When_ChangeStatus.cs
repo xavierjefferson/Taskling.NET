@@ -1,13 +1,12 @@
 ﻿using System;
+using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
-using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
-using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_ObjectBlockRepository;
@@ -30,12 +29,15 @@ public class When_ChangeStatus : TestBase
         IExecutionsHelper executionsHelper, IClientHelper clientHelper, ILogger<When_ChangeStatus> logger,
         ITaskRepository taskRepository) : base(executionsHelper)
     {
+        _logger = logger;
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _blocksHelper = blocksHelper;
         _clientHelper = clientHelper;
         _objectBlockRepository = objectBlockRepository;
         _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
         _executionsHelper = executionsHelper;
-        _logger = logger;
+
+
         _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
 
         _taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
@@ -46,6 +48,7 @@ public class When_ChangeStatus : TestBase
 
     private void InsertObjectBlock()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId);
 
         _baseDateTime = new DateTime(2016, 1, 1);
@@ -59,6 +62,7 @@ public class When_ChangeStatus : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_SetStatusOfObjectBlock_ThenItemsCountIsCorrect()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE

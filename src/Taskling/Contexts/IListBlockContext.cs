@@ -6,9 +6,9 @@ namespace Taskling.Contexts;
 
 public interface IListBlockContextBase<T> : IBlockContext
 {
-    Task FillItemsAsync();
     long ListBlockId { get; }
-    
+    Task FillItemsAsync();
+
     Task<IEnumerable<IListBlockItem<T>>> GetItemsAsync(params ItemStatus[] statuses);
     Task ItemFailedAsync(IListBlockItem<T> item, string reason, int? step = null);
     Task DiscardItemAsync(IListBlockItem<T> item, string reason, int? step = null);

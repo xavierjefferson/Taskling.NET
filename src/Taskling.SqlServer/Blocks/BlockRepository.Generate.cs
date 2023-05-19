@@ -1,4 +1,5 @@
-﻿using Taskling.Blocks.Common;
+﻿using Microsoft.Extensions.Logging;
+using Taskling.Blocks.Common;
 using Taskling.Blocks.ObjectBlocks;
 using Taskling.Blocks.RangeBlocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
@@ -10,9 +11,10 @@ namespace Taskling.SqlServer.Blocks;
 
 public partial class BlockRepository
 {
-    private static List<RangeBlock> GetRangeBlocks<T>(IBlockRequest request, List<T> blockQueryItems)
+    private List<RangeBlock> GetRangeBlocks<T>(IBlockRequest request, List<T> blockQueryItems)
         where T : IBlockQueryItem
     {
+        var logger = _loggerFactory.CreateLogger<RangeBlock>();
         var results = new List<RangeBlock>();
         foreach (var blockQueryItem in blockQueryItems)
         {
@@ -33,8 +35,9 @@ public partial class BlockRepository
                 rangeEnd = blockQueryItem.ToNumber.Value;
             }
 
+
             results.Add(new RangeBlock(blockQueryItem.BlockId, blockQueryItem.Attempt, rangeBegin, rangeEnd,
-                request.BlockType));
+                request.BlockType, logger));
         }
 
         return results;

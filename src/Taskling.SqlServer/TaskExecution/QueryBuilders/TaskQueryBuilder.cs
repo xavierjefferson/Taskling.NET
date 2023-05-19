@@ -2,8 +2,6 @@
 
 internal class TaskQueryBuilder
 {
-    #region .: TaskExecutionEvents :.
-
     public const string InsertTaskExecutionEventQuery = @"
 INSERT INTO [Taskling].[TaskExecutionEvent]
            ([TaskExecutionId]
@@ -16,9 +14,6 @@ INSERT INTO [Taskling].[TaskExecutionEvent]
            ,@Message
            ,@EventDateTime)";
 
-    #endregion .: TaskExecutionEvents :.
-
-    #region .: Tasks :.
 
     public const string GetTaskQuery = @"SELECT [ApplicationName]
       ,[TaskName]
@@ -46,9 +41,6 @@ FROM [Taskling].[TaskDefinition]
 WHERE ApplicationName = @ApplicationName
 AND TaskName = @TaskName";
 
-    #endregion .: Tasks :.
-
-    #region .: TaskExecutions :.
 
     public const string InsertKeepAliveTaskExecution = @"
 INSERT INTO [Taskling].[TaskExecution]([TaskDefinitionId],[StartedAt],[ServerName],[LastKeepAlive],[TaskDeathMode],[KeepAliveInterval],[KeepAliveDeathThreshold],
@@ -110,6 +102,4 @@ WHERE TaskExecutionId = @TaskExecutionId";
 FROM [Taskling].[TaskExecution]
 WHERE [TaskDefinitionId] = @TaskDefinitionId
 ORDER BY [TaskExecutionId] DESC";
-
-    #endregion .: TaskExecutions :.
 }

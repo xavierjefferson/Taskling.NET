@@ -8,6 +8,7 @@ public class JsonGenericSerializer
 {
     public static string Serialize<T>(T data)
     {
+        // _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (data == null)
             throw new ExecutionException("The object being serialized is null");
 
@@ -16,6 +17,7 @@ public class JsonGenericSerializer
 
     public static T Deserialize<T>(string input, bool allowNullValues = false)
     {
+        // _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (input == null)
         {
             if (allowNullValues)

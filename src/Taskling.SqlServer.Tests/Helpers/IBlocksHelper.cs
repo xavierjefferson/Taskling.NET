@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
 using Taskling.InfrastructureContracts;
@@ -10,7 +11,7 @@ public interface IBlocksHelper
 {
     int GetListBlockItemCountByStatus(long blockId, ItemStatus status);
     long GetLastBlockId(TaskId taskId);
-    List<ListBlockItem<T>> GetListBlockItems<T>(long blockId, ItemStatus status);
+    List<ListBlockItem<T>> GetListBlockItems<T>(long blockId, ItemStatus status, ILoggerFactory loggerFactory);
     void EnqueueForcedBlock(long blockId);
     void InsertPhantomDateRangeBlock(TaskId taskId, DateTime fromDate, DateTime toDate);
     void InsertPhantomNumericBlock(TaskId taskId, long fromId, long toId);

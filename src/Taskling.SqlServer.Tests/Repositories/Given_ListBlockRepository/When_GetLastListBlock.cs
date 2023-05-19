@@ -1,14 +1,13 @@
 ﻿using System;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
-using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.Serialization;
 using Taskling.SqlServer.Tests.Helpers;
-using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_ListBlockRepository;
@@ -36,12 +35,14 @@ public class When_GetLastListBlock : TestBase
         IExecutionsHelper executionsHelper, IClientHelper clientHelper, ILogger<When_GetLastListBlock> logger,
         ITaskRepository taskRepository) : base(executionsHelper)
     {
+        _logger = logger;
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _blocksHelper = blocksHelper;
         _clientHelper = clientHelper;
         _listBlockRepository = listBlockRepository;
         _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
         _executionsHelper = executionsHelper;
-        _logger = logger;
+
         _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
 
         _taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
@@ -52,6 +53,7 @@ public class When_GetLastListBlock : TestBase
 
     private void InsertBlocks()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId);
 
         _baseDateTime = new DateTime(2016, 1, 1);
@@ -95,6 +97,7 @@ public class When_GetLastListBlock : TestBase
     [Trait("Area", "Blocks")]
     public async Task ThenReturnLastCreated()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -116,6 +119,7 @@ public class When_GetLastListBlock : TestBase
 
     private LastBlockRequest CreateRequest()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var request = new LastBlockRequest(CurrentTaskId,
             BlockType.Object);
         request.LastBlockOrder = LastBlockOrder.LastCreated;

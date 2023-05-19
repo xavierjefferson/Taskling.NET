@@ -1,14 +1,12 @@
-﻿using System.Text;
-using Newtonsoft.Json;
-using Taskling.SqlServer.Configuration;
+﻿using Newtonsoft.Json;
 
 namespace Taskling.SqlServer.Tokens.Executions;
 
-public class ExecutionTokenList:List<ExecutionToken>
+public class ExecutionTokenList : List<ExecutionToken>
 {
     //public ExecutionTokenList()
     //{
-    
+
     //}
 
     //public ExecutionTokenList(IEnumerable<ExecutionToken> executionTokens) : base(executionTokens)

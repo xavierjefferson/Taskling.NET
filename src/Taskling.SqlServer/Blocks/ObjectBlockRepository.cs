@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ObjectBlocks;
 using Taskling.InfrastructureContracts.Blocks;
@@ -15,7 +16,7 @@ public class ObjectBlockRepository : DbOperationsService, IObjectBlockRepository
     private readonly ITaskRepository _taskRepository;
 
     public ObjectBlockRepository(ITaskRepository taskRepository, IConnectionStore connectionStore,
-        IDbContextFactoryEx dbContextFactoryEx) : base(connectionStore, dbContextFactoryEx)
+        IDbContextFactoryEx dbContextFactoryEx, ILoggerFactory loggerFactory) : base(connectionStore, dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
     {
         _taskRepository = taskRepository;
     }

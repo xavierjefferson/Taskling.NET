@@ -1,6 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Reflection;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using Taskling.Exceptions;
+using Taskling.Extensions;
 using Taskling.InfrastructureContracts;
 
 namespace Taskling.Configuration;
@@ -9,16 +13,21 @@ public class TaskConfigurationRepository : ITaskConfigurationRepository
 {
     private readonly object _cacheSync = new();
     private readonly IConfigurationReader _configurationReader;
+    private readonly ILogger<TaskConfigurationRepository> _logger;
     private readonly Dictionary<string, TaskConfiguration> _taskConfigurations;
 
-    public TaskConfigurationRepository(IConfigurationReader configurationReader)
+    public TaskConfigurationRepository(IConfigurationReader configurationReader,
+        ILogger<TaskConfigurationRepository> logger)
     {
+        _logger = logger;
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _configurationReader = configurationReader;
         _taskConfigurations = new Dictionary<string, TaskConfiguration>();
     }
 
     public TaskConfiguration GetTaskConfiguration(TaskId taskId)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (string.IsNullOrEmpty(taskId.ApplicationName))
             throw new TaskConfigurationException("Cannot load a TaskConfiguration, ApplicationName is null or empty");
 
@@ -53,19 +62,23 @@ public class TaskConfigurationRepository : ITaskConfigurationRepository
 
     private string GetCacheKey(TaskId taskId)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return taskId.GetUniqueKey();
     }
 
     private TaskConfiguration LoadConfiguration(TaskId taskId)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var configString = FindKey(taskId);
         var taskConfiguration = ParseConfig(configString, taskId);
-
+        _logger.Debug("bd627edb-a956-4d6f-8461-20567b19c796");
+        _logger.Debug(JsonConvert.SerializeObject(taskConfiguration, Formatting.Indented));
         return taskConfiguration;
     }
 
     private TaskConfiguration ParseConfig(ConfigurationOptions configurationOptions, TaskId taskId)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var databaseConnString =
             configurationOptions.DB ?? throw new ArgumentNullException(nameof(ConfigurationOptions.DB));
         var taskConfiguration = new TaskConfiguration(taskId);
@@ -98,6 +111,7 @@ public class TaskConfigurationRepository : ITaskConfigurationRepository
 
     private ConfigurationOptions FindKey(TaskId taskId)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return _configurationReader.GetTaskConfigurationString(taskId);
     }
 }

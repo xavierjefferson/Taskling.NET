@@ -1,4 +1,6 @@
 ﻿using System.Collections.Generic;
+using System.Reflection;
+using Microsoft.Extensions.Logging;
 using Taskling.InfrastructureContracts;
 using Taskling.Tasks;
 
@@ -11,14 +13,18 @@ public class ConnectionStore : IConnectionStore
     //private static volatile ConnectionStore _instance;
     private static readonly object sync = new();
     private readonly Dictionary<TaskId, ClientConnectionSettings> _connections;
+    private readonly ILogger<ConnectionStore> _logger;
 
-    public ConnectionStore()
+    public ConnectionStore(ILogger<ConnectionStore> logger)
     {
+        _logger = logger;
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _connections = new Dictionary<TaskId, ClientConnectionSettings>();
     }
 
     public void SetConnection(TaskId taskId, ClientConnectionSettings connectionSettings)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         lock (sync)
         {
             if (_connections.ContainsKey(taskId))
@@ -30,6 +36,7 @@ public class ConnectionStore : IConnectionStore
 
     public ClientConnectionSettings GetConnection(TaskId taskId)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         lock (sync)
         {
             if (_connections.ContainsKey(taskId))

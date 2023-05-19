@@ -1,6 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.RangeBlocks;
+using Taskling.Extensions;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.TaskExecution;
@@ -11,22 +13,31 @@ namespace Taskling.SqlServer.Blocks;
 
 public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
 {
+    private readonly ILoggerFactory _loggerFactory;
     private readonly ITaskRepository _taskRepository;
+    private readonly ILogger<RangeBlockRepository> _logger;
 
-    public RangeBlockRepository(ITaskRepository taskRepository, IConnectionStore connectionStore,
-        IDbContextFactoryEx dbContextFactoryEx) : base(connectionStore, dbContextFactoryEx)
+    public RangeBlockRepository(ITaskRepository taskRepository, IConnectionStore connectionStore, ILogger<RangeBlockRepository> logger,
+        IDbContextFactoryEx dbContextFactoryEx, ILoggerFactory loggerFactory) : base(connectionStore,
+        dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
     {
         _taskRepository = taskRepository;
+        _logger = logger;
+        _loggerFactory = loggerFactory;
     }
 
     public async Task ChangeStatusAsync(BlockExecutionChangeStatusRequest changeStatusRequest)
     {
+        _logger.Debug("0e5423e6-7d5d-4103-a6c6-a43d1441af4b");
+        _logger.Debug($"Called {nameof(ChangeStatusAsync)} where blocktype={changeStatusRequest.BlockType}");
         switch (changeStatusRequest.BlockType)
         {
             case BlockType.DateRange:
+                _logger.Debug("503f5553-d5ab-4ec1-ab5e-1d42c8261a59");
                 await ChangeStatusOfDateRangeExecutionAsync(changeStatusRequest).ConfigureAwait(false);
                 break;
             case BlockType.NumericRange:
+                _logger.Debug("29cf52f7-321a-4744-a706-a5667b55306e");
                 await ChangeStatusOfNumericRangeExecutionAsync(changeStatusRequest).ConfigureAwait(false);
                 break;
             default:
@@ -103,7 +114,7 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
                     }
 
                     return new RangeBlock(rangeBlockId, 0, rangeBegin, rangeEnd,
-                        lastRangeBlockRequest.BlockType);
+                        lastRangeBlockRequest.BlockType, _loggerFactory.CreateLogger<RangeBlock>());
                 }
             }
 
@@ -148,6 +159,9 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
 
     private async Task ChangeStatusOfNumericRangeExecutionAsync(BlockExecutionChangeStatusRequest changeStatusRequest)
     {
+        _logger.Debug(
+            $"Called {nameof(ChangeStatusOfNumericRangeExecutionAsync)} to change blockexecutionid {changeStatusRequest.BlockExecutionId}, status={changeStatusRequest.BlockExecutionStatus}, itemsCount={changeStatusRequest.ItemsProcessed}");
+        _logger.Debug("d2e88c03-a06a-49d1-bb01-df687e47a24a");
         await RetryHelper.WithRetryAsync(async () =>
         {
             using (var dbContext = await GetDbContextAsync(changeStatusRequest.TaskId).ConfigureAwait(false))

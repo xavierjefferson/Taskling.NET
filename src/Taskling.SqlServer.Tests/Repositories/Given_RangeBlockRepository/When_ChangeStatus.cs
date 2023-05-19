@@ -1,13 +1,12 @@
 ﻿using System;
+using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
-using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
-using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Xunit;
 
 namespace Taskling.SqlServer.Tests.Repositories.Given_RangeBlockRepository;
@@ -29,8 +28,10 @@ public class When_ChangeStatus : TestBase
         IExecutionsHelper executionsHelper, ILogger<When_ChangeStatus> logger,
         ITaskRepository taskRepository) : base(executionsHelper)
     {
-        _blocksHelper = blocksHelper;
         _logger = logger;
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
+        _blocksHelper = blocksHelper;
+
         _rangeBlockRepository = rangeBlockRepository;
         _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
         _executionsHelper = executionsHelper;
@@ -44,11 +45,13 @@ public class When_ChangeStatus : TestBase
 
     private IRangeBlockRepository CreateSut()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return _rangeBlockRepository;
     }
 
     private void InsertDateRangeBlock()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId);
 
         _baseDateTime = new DateTime(2016, 1, 1);
@@ -60,6 +63,7 @@ public class When_ChangeStatus : TestBase
 
     private void InsertNumericRangeBlock()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId);
 
         _baseDateTime = new DateTime(2016, 1, 1);
@@ -73,6 +77,7 @@ public class When_ChangeStatus : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_SetStatusOfDateRangeBlock_ThenItemsCountIsCorrect()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -103,6 +108,7 @@ public class When_ChangeStatus : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_SetStatusOfNumericRangeBlock_ThenItemsCountIsCorrect()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE

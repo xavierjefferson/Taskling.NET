@@ -30,7 +30,6 @@
     <PackageReference Include="polly" Version="7.2.3" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Extensions\" />
     <Folder Include="Properties\" />
   </ItemGroup>
   <ItemGroup>

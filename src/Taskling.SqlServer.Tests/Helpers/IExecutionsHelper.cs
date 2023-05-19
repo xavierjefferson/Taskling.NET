@@ -1,13 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
 using Taskling.InfrastructureContracts;
-using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Taskling.SqlServer.Tokens.Executions;
 
 namespace Taskling.SqlServer.Tests.Helpers;
 
 public interface IExecutionsHelper
 {
+    TaskId CurrentTaskId { get; }
     void DeleteRecordsOfApplication(string applicationName);
     void SetKeepAlive(int taskExecutionId);
     void SetKeepAlive(int taskExecutionId, DateTime keepAliveDateTime);
@@ -45,5 +44,4 @@ public interface IExecutionsHelper
     int GetQueueCount(int taskExecutionId);
     void InsertIntoCriticalSectionQueue(int taskDefinitionId, int queueIndex, int taskExecutionId);
     int GetCriticalSectionTokenStatus(TaskId taskId);
-    TaskId CurrentTaskId { get; }
 }

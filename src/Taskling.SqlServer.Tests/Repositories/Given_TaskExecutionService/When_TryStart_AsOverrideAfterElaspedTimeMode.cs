@@ -1,12 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.Tests.Helpers;
-using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
 using Taskling.Tasks;
 using Xunit;
 
@@ -23,8 +22,10 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
         IClientHelper clientHelper, ILogger<When_TryStart_AsOverrideAfterElaspedTimeMode> logger,
         ITaskRepository taskRepository, ITaskExecutionRepository taskExecutionRepository) : base(executionsHelper)
     {
-        _executionsHelper = executionsHelper;
         _logger = logger;
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
+        _executionsHelper = executionsHelper;
+
         _taskExecutionRepository = taskExecutionRepository;
 
         _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
@@ -32,11 +33,13 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
 
     private ITaskExecutionRepository CreateSut()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return _taskExecutionRepository;
     }
 
     private TaskExecutionStartRequest CreateOverrideStartRequest(int concurrencyLimit = 1)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return new TaskExecutionStartRequest(CurrentTaskId,
             TaskDeathMode.Override, concurrencyLimit, 3, 3)
         {
@@ -50,6 +53,7 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
     [Trait("Area", "ExecutionTokens")]
     public async Task If_TimeOverrideMode_ThenReturnsValidDataValues()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -74,6 +78,7 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
     [Trait("Area", "ExecutionTokens")]
     public async Task If_TimeOverrideMode_OneTaskAndOneTokenAndIsAvailable_ThenIsGranted()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -99,6 +104,7 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
     public async Task
         If_TimeOverrideMode_TwoConcurrentTasksAndOneTokenAndIsAvailable_ThenIsGrantFirstTaskAndDenyTheOther()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -126,6 +132,7 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
     public async Task
         If_TimeOverrideMode_TwoSequentialTasksAndOneTokenAndIsAvailable_ThenIsGrantFirstTaskAndThenGrantTheOther()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -158,6 +165,7 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
     public async Task
         If_TimeOverrideMode_FiveConcurrentTasksAndFourTokensAndAllAreAvailable_ThenIsGrantFirstFourTasksAndDenyTheOther()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -194,6 +202,7 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
     [Trait("Area", "ExecutionTokens")]
     public void If_TimeOverrideMode_OneToken_MultipleTaskThreads_ThenNoDeadLocksOccur()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         InSemaphore(() =>
         {
             // ARRANGE
@@ -228,6 +237,7 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
 
     private async Task RequestAndReturnTokenWithTimeOverrideModeAsync(ITaskExecutionRepository sut)
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         for (var i = 0; i < 100; i++)
         {
             var firstStartRequest = CreateOverrideStartRequest();
@@ -250,6 +260,7 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
     public async Task
         If_TimeOverrideMode_OneTaskAndOneTokenAndIsUnavailableAndGrantedDateHasPassedElapsedTime_ThenIsGranted()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -283,6 +294,7 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
     public async Task
         If_TimeOverrideMode_OneTaskAndOneTokenAndIsUnavailableAndKeepAliveHasNotPassedElapsedTime_ThenIsDenied()
     {
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE

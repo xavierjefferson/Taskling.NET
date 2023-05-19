@@ -7,7 +7,6 @@ public interface IDateRangeBlockContext : IBlockContext
 {
     IDateRangeBlock DateRangeBlock { get; }
     Task CompleteAsync(int itemsProcessed);
-   
+
     void Complete(int itemCountProcessed);
-    
 }
