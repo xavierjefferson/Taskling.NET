@@ -446,6 +446,7 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
         {
             await CommitUncommittedItemsAsync().ConfigureAwait(false);
         }).ConfigureAwait(false);
+        await base.FailedAsync();
     }
 
     protected override string GetFailedErrorMessage(string message)

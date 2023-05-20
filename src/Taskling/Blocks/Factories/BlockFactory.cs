@@ -664,6 +664,7 @@ public class BlockFactory : IBlockFactory
         int blockCountLimit)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
+        _logger.Debug("06028d79-7627-4e40-abe1-0a958cb28690");
         var failedBlockRequest = new FindFailedBlocksRequest(
             blockRequest.TaskId,
             blockRequest.TaskExecutionId,
@@ -675,6 +676,8 @@ public class BlockFactory : IBlockFactory
         );
 
         var failedBlocks = await _blockRepository.FindFailedListBlocksAsync(failedBlockRequest).ConfigureAwait(false);
+        _logger.Debug("551d6a92-eb5c-4715-86f8-b91c8532da7d");
+        _logger.Debug($"Count={failedBlocks.Count}");
         return failedBlocks;
     }
 

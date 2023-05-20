@@ -14,11 +14,8 @@ public abstract class BlockRequestBase : IBlockRequest
         BlockExecutionId = blockExecutionId;
         BlockType = blockType;
     }
-    [JsonProperty(Order = 900)]
     public TaskId TaskId { get; }
-    [JsonProperty(Order = 500)]
     public int TaskExecutionId { get; }
     public long BlockExecutionId { get; }
-    [JsonProperty(Order = 100)]
     public BlockType BlockType { get; }
 }

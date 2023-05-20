@@ -129,7 +129,7 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
         finally
         {
             _logger.Debug("5f5e58bf-68ce-42da-a855-2324e0260171");
-            _logger.Debug($"Retrieved tokens {JsonConvert.SerializeObject(result, Formatting.Indented)}");
+            _logger.Debug($"Retrieved tokens {Constants.Serialize(result)}");
 
         }
 
@@ -267,7 +267,7 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
         _logger.Debug("07545a25-612f-463d-93a8-7439a6871014");
         var tmp = executionTokenList.Any(x => x.Status == ExecutionTokenStatus.Available
                                            || x.Status == ExecutionTokenStatus.Unlimited);
-        _logger.Debug($"{JsonConvert.SerializeObject(executionTokenList, Formatting.Indented)}");
+        _logger.Debug($"{Constants.Serialize(executionTokenList)}");
         _logger.Debug($"{nameof(HasAvailableToken)}={tmp}");
         return tmp;
     }

@@ -72,7 +72,7 @@ public class TaskConfigurationRepository : ITaskConfigurationRepository
         var configString = FindKey(taskId);
         var taskConfiguration = ParseConfig(configString, taskId);
         _logger.Debug("bd627edb-a956-4d6f-8461-20567b19c796");
-        _logger.Debug(JsonConvert.SerializeObject(taskConfiguration, Formatting.Indented));
+        _logger.Debug(Constants.Serialize(taskConfiguration));
         return taskConfiguration;
     }
 

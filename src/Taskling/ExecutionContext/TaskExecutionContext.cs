@@ -754,7 +754,7 @@ public class TaskExecutionContext : ITaskExecutionContext
             _taskExecutionOptions.ConcurrencyLimit,
             _taskConfiguration.FailedTaskRetryLimit,
             _taskConfiguration.DeadTaskRetryLimit);
-        _logger.Debug($"{nameof(startRequest)}={JsonConvert.SerializeObject(startRequest, Formatting.Indented)}");
+        _logger.Debug($"{nameof(startRequest)}={Constants.Serialize(startRequest)}");
 
         SetStartRequestValues(startRequest, referenceValue);
         SetStartRequestTasklingVersion(startRequest);
@@ -963,7 +963,7 @@ public class TaskExecutionContext : ITaskExecutionContext
     private bool ShouldProtect(BlockRequest blockRequest)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
-        _logger.Debug(JsonConvert.SerializeObject(blockRequest, Formatting.Indented));
+        _logger.Debug(Constants.Serialize(blockRequest));
         _logger.Debug("254f3474-fc1a-45c6-9836-66864ac3bc02");
         var tmp = (blockRequest.ReprocessDeadTasks || blockRequest.ReprocessFailedTasks) && !IsUserCriticalSectionActive();
         _logger.Debug(tmp.ToString());
