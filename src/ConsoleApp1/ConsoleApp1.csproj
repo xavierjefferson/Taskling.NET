@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Taskling.SqlServer\Taskling.SqlServer.csproj" />
+    <ProjectReference Include="..\Taskling.EntityFrameworkCore\Taskling.EntityFrameworkCore.csproj" />
   </ItemGroup>
 
 </Project>

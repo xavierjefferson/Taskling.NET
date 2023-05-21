@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Taskling.SqlServer\Taskling.SqlServer.csproj" />
+    <ProjectReference Include="..\..\..\src\Taskling.EntityFrameworkCore\Taskling.EntityFrameworkCore.csproj" />
     <ProjectReference Include="..\..\..\src\Taskling\Taskling.csproj" />
     <ProjectReference Include="..\..\TasklingTester.Common\TasklingTester.Common.csproj" />
   </ItemGroup>

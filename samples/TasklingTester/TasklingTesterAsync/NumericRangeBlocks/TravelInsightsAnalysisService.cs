@@ -7,6 +7,78 @@ using TasklingTesterAsync.Repositories;
 
 namespace TasklingTesterAsync.NumericRangeBlocks;
 
+public static class clientHelper
+{
+    public static async Task StartNumberRange(this ITasklingClient client, int low, int hi, int maxBlockSize,
+        Func<INumericRangeBlockContext, Task> processFunc)
+    {
+        using (var taskExecutionContext =
+               client.CreateTaskExecutionContext("MyApplication", "MyNumericBasedBatchJob"))
+        {
+            if (await taskExecutionContext.TryStartAsync())
+            {
+                IList<INumericRangeBlockContext> ctx;
+                using (var cs = taskExecutionContext.CreateCriticalSection())
+                {
+                    if (await cs.TryStartAsync())
+                    {
+                        ctx = await taskExecutionContext.GetNumericRangeBlocksAsync(x =>
+                            x.WithRange(low, hi, maxBlockSize));
+                        try
+                        {
+                            foreach (var block in ctx)
+                                await processFunc(block);
+
+                            await taskExecutionContext.CompleteAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            await taskExecutionContext.ErrorAsync(ex.ToString(), true);
+                        }
+                    }
+
+                    throw new Exception("Could not acquire a critical section, aborted task");
+                }
+            }
+        }
+    }
+
+    public static async Task StartDateRange(this ITasklingClient client, DateTime low, DateTime hi, TimeSpan maxBlockSize,
+        Func<IDateRangeBlockContext, Task> processFunc)
+    {
+        using (var taskExecutionContext =
+               client.CreateTaskExecutionContext("MyApplication", "MyNumericBasedBatchJob"))
+        {
+            if (await taskExecutionContext.TryStartAsync())
+            {
+                IList<IDateRangeBlockContext> ctx;
+                using (var cs = taskExecutionContext.CreateCriticalSection())
+                {
+                    if (await cs.TryStartAsync())
+                    {
+                        ctx = await taskExecutionContext.GetDateRangeBlocksAsync(x =>
+                            x.WithRange(low, hi, maxBlockSize));
+                        try
+                        {
+                            foreach (var block in ctx)
+                                await processFunc(block);
+
+                            await taskExecutionContext.CompleteAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            await taskExecutionContext.ErrorAsync(ex.ToString(), true);
+                        }
+                    }
+
+                    throw new Exception("Could not acquire a critical section, aborted task");
+                }
+            }
+        }
+    }
+
+}
+
 public class TravelInsightsAnalysisService
 {
     private readonly ITasklingClient _tasklingClient;

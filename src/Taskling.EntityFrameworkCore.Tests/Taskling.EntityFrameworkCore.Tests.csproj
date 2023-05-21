@@ -24,7 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Taskling.SqlServer\Taskling.SqlServer.csproj" />
+    <ProjectReference Include="..\Taskling.EntityFrameworkCore\Taskling.EntityFrameworkCore.csproj" />
     <ProjectReference Include="..\Taskling\Taskling.csproj" />
     <ProjectReference Include="..\TransactionScopeRetryHelper.MicrosoftDataSqlClient\TransactionScopeRetryHelper.MicrosoftDataSqlClient.csproj" />
     <ProjectReference Include="..\TransactionScopeRetryHelper.MySqlData\TransactionScopeRetryHelper.MySqlClient.csproj" />
