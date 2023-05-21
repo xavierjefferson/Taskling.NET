@@ -29,16 +29,13 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
 
     public async Task ChangeStatusAsync(BlockExecutionChangeStatusRequest changeStatusRequest)
     {
-        _logger.Debug("0e5423e6-7d5d-4103-a6c6-a43d1441af4b");
         _logger.Debug($"Called {nameof(ChangeStatusAsync)} where blocktype={changeStatusRequest.BlockType}");
         switch (changeStatusRequest.BlockType)
         {
             case BlockType.DateRange:
-                _logger.Debug("503f5553-d5ab-4ec1-ab5e-1d42c8261a59");
                 await ChangeStatusOfDateRangeExecutionAsync(changeStatusRequest).ConfigureAwait(false);
                 break;
             case BlockType.NumericRange:
-                _logger.Debug("29cf52f7-321a-4744-a706-a5667b55306e");
                 await ChangeStatusOfNumericRangeExecutionAsync(changeStatusRequest).ConfigureAwait(false);
                 break;
             default:
@@ -133,7 +130,6 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
     {
         _logger.Debug(
             $"Called {nameof(ChangeStatusOfNumericRangeExecutionAsync)} to change blockexecutionid {changeStatusRequest.BlockExecutionId}, status={changeStatusRequest.BlockExecutionStatus}, itemsCount={changeStatusRequest.ItemsProcessed}");
-        _logger.Debug("d2e88c03-a06a-49d1-bb01-df687e47a24a");
         await RetryHelper.WithRetryAsync(async () =>
         {
             using (var dbContext = await GetDbContextAsync(changeStatusRequest.TaskId).ConfigureAwait(false))

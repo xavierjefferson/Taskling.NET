@@ -23,8 +23,6 @@ public class RetryService : IRetryService
 
     public async Task InvokeWithRetryAsync<RQ>(Func<RQ, Task> requestAction, RQ request)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
-        _logger.Debug("4042b32d-f1d5-44ea-bc58-1f9860d7883c");
         const double publishExponentialBackoffExponent = 2;
         const int attemptLimit = 3;
         const int interval = 5000;

@@ -22,7 +22,6 @@ public abstract class BlockContextBase
     {
         _retryService = retryService;
         _logger = logger;
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         CurrentTaskId = taskId;
         BlockExecutionId = blockExecutionId;
         TaskExecutionRepository = taskExecutionRepository;
@@ -43,14 +42,11 @@ public abstract class BlockContextBase
 
     public virtual async Task CompleteAsync(int itemsProcessed)
     {
-        _logger.Debug("578f5dbd-bb33-4e28-89eb-afa16a2eaaa2");
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await ChangeBlockStatus(BlockExecutionStatus.Completed, itemsProcessed);
     }
 
     public async Task FailedAsync(string message)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await FailedAsync().ConfigureAwait(false);
 
         var errorMessage = GetFailedErrorMessage(message);
@@ -65,50 +61,41 @@ public abstract class BlockContextBase
 
     public virtual async Task StartAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await ChangeBlockStatus(BlockExecutionStatus.Started);
     }
 
     public virtual async Task CompleteAsync()
     {
-        _logger.Debug("c6b4497a-724a-413e-8d48-bc48ae37f879");
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await CompleteAsync(-1).ConfigureAwait(false);
     }
 
     public virtual async Task FailedAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await ChangeBlockStatus(BlockExecutionStatus.Failed);
     }
 
     public void Complete()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         CompleteAsync().WaitAndUnwrapException();
     }
 
     public void Start()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         StartAsync().WaitAndUnwrapException();
     }
 
     public void Complete(int itemCountProcessed)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         CompleteAsync(itemCountProcessed).WaitAndUnwrapException();
     }
 
     public void Failed(string toString)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         FailedAsync(toString).WaitAndUnwrapException();
     }
 
     protected async Task ChangeBlockStatus(BlockExecutionStatus blockExecutionStatus, int? itemsProcessed = null)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var blockType = BlockType;
         var request = new BlockExecutionChangeStatusRequest(CurrentTaskId,
             TaskExecutionId,

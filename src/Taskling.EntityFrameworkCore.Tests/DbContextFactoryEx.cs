@@ -21,7 +21,6 @@ public class DbContextFactoryEx : IDbContextFactoryEx
         ILogger<DbContextFactoryEx> logger)
     {
         _logger = logger;
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _connectionStore = connectionStore;
         _memoryCache = memoryCache;
         //
@@ -29,7 +28,6 @@ public class DbContextFactoryEx : IDbContextFactoryEx
 
     public TasklingDbContext GetDbContext(TaskId taskId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         lock (mutex)
         {
             var key = $"options-{taskId.GetUniqueKey()}";

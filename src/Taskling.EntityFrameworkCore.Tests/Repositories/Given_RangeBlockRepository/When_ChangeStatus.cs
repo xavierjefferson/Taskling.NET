@@ -29,7 +29,6 @@ public class When_ChangeStatus : TestBase
         ITaskRepository taskRepository) : base(executionsHelper)
     {
         _logger = logger;
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _blocksHelper = blocksHelper;
 
         _rangeBlockRepository = rangeBlockRepository;
@@ -45,13 +44,11 @@ public class When_ChangeStatus : TestBase
 
     private IRangeBlockRepository CreateSut()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return _rangeBlockRepository;
     }
 
     private void InsertDateRangeBlock()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId);
 
         _baseDateTime = new DateTime(2016, 1, 1);
@@ -63,7 +60,6 @@ public class When_ChangeStatus : TestBase
 
     private void InsertNumericRangeBlock()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId);
 
         _baseDateTime = new DateTime(2016, 1, 1);
@@ -77,7 +73,6 @@ public class When_ChangeStatus : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_SetStatusOfDateRangeBlock_ThenItemsCountIsCorrect()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -108,7 +103,6 @@ public class When_ChangeStatus : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_SetStatusOfNumericRangeBlock_ThenItemsCountIsCorrect()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE

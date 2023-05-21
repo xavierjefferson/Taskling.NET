@@ -36,7 +36,6 @@ public class When_GetLastObjectBlock : TestBase
         : base(executionsHelper)
     {
         _logger = logger;
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _blocksHelper = blocksHelper;
         _clientHelper = clientHelper;
         _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
@@ -53,7 +52,6 @@ public class When_GetLastObjectBlock : TestBase
 
     private void InsertBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId);
 
         _baseDateTime = new DateTime(2016, 1, 1);
@@ -83,7 +81,6 @@ public class When_GetLastObjectBlock : TestBase
     [Trait("Area", "Blocks")]
     public async Task ThenReturnLastCreated()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -101,7 +98,6 @@ public class When_GetLastObjectBlock : TestBase
 
     private LastBlockRequest CreateRequest()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var request = new LastBlockRequest(CurrentTaskId,
             BlockType.Object);
         request.LastBlockOrder = LastBlockOrder.LastCreated;

@@ -25,7 +25,6 @@ public class When_ConcurrentIsThreadSafe : TestBase
         executionsHelper)
     {
         _logger = logger;
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _blocksHelper = blocksHelper;
         _clientHelper = clientHelper;
 
@@ -44,7 +43,6 @@ public class When_ConcurrentIsThreadSafe : TestBase
     public async Task
         If_AsListWithSingleUnitCommit_BlocksProcessedSequentially_BlocksListItemsProcessedInParallel_ThenNoConcurrencyIssues()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             _logger.LogDebug("Starting test");
@@ -88,7 +86,6 @@ public class When_ConcurrentIsThreadSafe : TestBase
     public async Task
         If_AsListWithBatchCommitAtEnd_BlocksProcessedSequentially_BlocksListItemsProcessedInParallel_ThenNoConcurrencyIssues()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             _logger.LogDebug("Starting test");
@@ -131,7 +128,6 @@ public class When_ConcurrentIsThreadSafe : TestBase
     public async Task
         If_AsListWithPeriodicCommit_BlocksProcessedSequentially_BlocksListItemsProcessedInParallel_ThenNoConcurrencyIssues()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             _logger.LogDebug("Starting test");
@@ -177,7 +173,6 @@ public class When_ConcurrentIsThreadSafe : TestBase
     public async Task
         If_AsListWithSingleUnitCommit_BlocksProcessedInParallel_BlocksListItemsProcessedSequentially_ThenNoConcurrencyIssues()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             _logger.LogDebug("Starting test");
@@ -216,7 +211,6 @@ public class When_ConcurrentIsThreadSafe : TestBase
 
     private List<PersonDto> GetList(int count)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _logger.LogDebug("In GetList");
         var list = new List<PersonDto>();
 

@@ -20,7 +20,6 @@ public class WhenDisposed : TestBase
         base(executionsHelper)
     {
         _logger = logger;
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _clientHelper = clientHelper;
         _executionsHelper = executionsHelper;
 
@@ -33,7 +32,6 @@ public class WhenDisposed : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_InUsingBlockAndNoExecutionTokenExists_ThenExecutionTokenCreatedAutomatically()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
 // ARRANGE
@@ -70,7 +68,6 @@ public class WhenDisposed : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_InUsingBlock_ThenExecutionCompletedOnEndOfBlock()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
 // ARRANGE
@@ -109,7 +106,6 @@ public class WhenDisposed : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_KeepAlive_ThenKeepAliveContinuesUntilExecutionContextDies()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
 // ARRANGE
@@ -131,7 +127,6 @@ public class WhenDisposed : TestBase
 
     private async Task StartContextWithoutUsingOrCompletedAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
             _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing());
         await executionContext.TryStartAsync();

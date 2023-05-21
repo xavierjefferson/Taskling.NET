@@ -44,7 +44,6 @@ public class BlockFactory : IBlockFactory
         IServiceProvider serviceProvider)
     {
         _logger = loggerFactory.CreateLogger<BlockFactory>();
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _blockRepository = blockRepository;
         _rangeBlockRepository = rangeBlockRepository;
         _listBlockRepository = listBlockRepository;
@@ -58,15 +57,12 @@ public class BlockFactory : IBlockFactory
 
     public async Task<IList<IDateRangeBlockContext>> GenerateDateRangeBlocksAsync(DateRangeBlockRequest blockRequest)
     {
-        _logger.Debug("c79ae0a5-8f10-4e8a-ae56-c24efd208290");
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var blocks =
             await GenerateRangeBlocksAsync(blockRequest, i => i.RangeBegin != null, GenerateNewDateRangeBlocksAsync);
 
    
 
         var dateRangeBlocks = blocks.Select(x => (IDateRangeBlockContext)x);
-        _logger.Debug("348c0a24-6090-429e-badc-b936bda315fb");
         var tmp = dateRangeBlocks.OrderBy(x => x.DateRangeBlock.RangeBlockId).ToList();
         _logger.Debug($"Returning {tmp.Count} items");
         return tmp;
@@ -75,7 +71,6 @@ public class BlockFactory : IBlockFactory
     public async Task<IList<INumericRangeBlockContext>> GenerateNumericRangeBlocksAsync(
         NumericRangeBlockRequest blockRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var blocks = await GenerateRangeBlocksAsync(blockRequest, i => i.RangeBegin != null,
             GenerateNewNumericRangeBlocksAsync);
 
@@ -85,7 +80,6 @@ public class BlockFactory : IBlockFactory
 
     public async Task<IList<IListBlockContext<T>>> GenerateListBlocksAsync<T>(ListBlockRequest blockRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var blocks = await CreateProtoListBlocksAsync(blockRequest).ConfigureAwait(false);
         var blockContexts =
             (await CreateListBlockContextsAsync<T>(blockRequest, blocks).ConfigureAwait(false)).ToList();
@@ -103,7 +97,6 @@ public class BlockFactory : IBlockFactory
     public async Task<IList<IListBlockContext<TItem, THeader>>> GenerateListBlocksAsync<TItem, THeader>(
         ListBlockRequest blockRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var blocks = await CreateProtoListBlocksAsync(blockRequest).ConfigureAwait(false);
         var blockContexts =
             (await CreateListBlockContextsAsync<TItem, THeader>(blockRequest, blocks).ConfigureAwait(false)).ToList();
@@ -120,7 +113,6 @@ public class BlockFactory : IBlockFactory
 
     public async Task<IList<IObjectBlockContext<T>>> GenerateObjectBlocksAsync<T>(ObjectBlockRequest<T> blockRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var blocks = new List<IObjectBlockContext<T>>();
 
         if (blockRequest.ReprocessReferenceValue != Guid.Empty)
@@ -150,7 +142,6 @@ public class BlockFactory : IBlockFactory
 
     public async Task<IListBlock<T>> GetLastListBlockAsync<T>(LastBlockRequest lastBlockRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var lastProtoListBlock =
             await _listBlockRepository.GetLastListBlockAsync(lastBlockRequest).ConfigureAwait(false);
         if (lastProtoListBlock == null)
@@ -162,7 +153,6 @@ public class BlockFactory : IBlockFactory
     public async Task<IListBlock<TItem, THeader>> GetLastListBlockAsync<TItem, THeader>(
         LastBlockRequest lastBlockRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var lastProtoListBlock =
             await _listBlockRepository.GetLastListBlockAsync(lastBlockRequest).ConfigureAwait(false);
 
@@ -176,14 +166,12 @@ public class BlockFactory : IBlockFactory
 
         if (blockRequest.ReprocessReferenceValue != Guid.Empty)
         {
-            _logger.Debug("b9ae970d-7a02-4e89-8577-ba15d50a4dd1");
             _logger.LogDebug($"{nameof(blockRequest.ReprocessReferenceValue)} is not null or empty");
             blocks = await LoadRangeBlocksOfTaskAsync(blockRequest).ConfigureAwait(false);
             _logger.LogDebug($"{blocks.Count} were fetched at f70d5f71-f246-4c2c-82e8-71d3438382f2.");
         }
         else
         {
-            _logger.Debug("b670bac2-25d8-41d3-8388-6b9fdb4adb06");
             _logger.LogDebug($"{nameof(blockRequest.ReprocessReferenceValue)} is null or empty.");
             _logger.LogDebug("Getting forced blocks...");
             var forceBlocks = await GetForcedBlocksAsync(blockRequest).ConfigureAwait(false);
@@ -204,7 +192,6 @@ public class BlockFactory : IBlockFactory
                         if (blockRequest.ReprocessDeadTasks)
                         {
                             _logger.LogDebug("loading dead blocks");
-                            _logger.Debug("7aa141e1-56ab-47a7-a9e9-579828f313bf");
                             var rangeBlockContexts =
                                 await GetDeadBlocksAsync(blockRequest, remaining).ConfigureAwait(false);
                             _logger.LogDebug($"{rangeBlockContexts.Count} dead blocks were fetched");
@@ -220,7 +207,6 @@ public class BlockFactory : IBlockFactory
                         if (blockRequest.ReprocessFailedTasks)
                         {
                             _logger.LogDebug("loading failed blocks");
-                            _logger.Debug("b74260e5-7817-45e9-b367-7ac6f8894052");
                             var rangeBlockContexts = await GetFailedBlocksAsync(blockRequest, remaining)
                                 .ConfigureAwait(false);
                             _logger.LogDebug($"{rangeBlockContexts.Count} failed blocks were fetched");
@@ -267,7 +253,6 @@ public class BlockFactory : IBlockFactory
 
     private FindDeadBlocksRequest CreateDeadBlocksRequest(BlockRequest blockRequest, int blockCountLimit)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var utcNow = DateTime.UtcNow;
 
         return new FindDeadBlocksRequest(blockRequest.TaskId,
@@ -283,7 +268,6 @@ public class BlockFactory : IBlockFactory
 
     private async Task LogEmptyBlockEventAsync(long taskExecutionId, TaskId taskId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var checkPointRequest = new TaskExecutionCheckpointRequest(taskId)
         {
             TaskExecutionId = taskExecutionId,
@@ -295,14 +279,11 @@ public class BlockFactory : IBlockFactory
 
     private int GetBlocksRemaining<T>(BlockRequest blockRequest, List<T> blocks)
     {
-        _logger.Debug("93dd84f0-6f84-4217-82d6-1304a65c8269");
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return blockRequest.MaxBlocks - blocks.Count;
     }
 
     private async Task<List<RangeBlockContext>> GetForcedBlocksAsync(BlockRequest blockRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var forcedBlockRequest = new QueuedForcedBlocksRequest(
             blockRequest.TaskId,
             blockRequest.TaskExecutionId,
@@ -325,7 +306,6 @@ public class BlockFactory : IBlockFactory
 
     private async Task DequeueForcedBlocksAsync(BlockRequest blockRequest, List<int> forcedBlockQueueIds)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var request = new DequeueForcedBlocksRequest(
             blockRequest.TaskId,
             blockRequest.TaskExecutionId,
@@ -337,7 +317,6 @@ public class BlockFactory : IBlockFactory
 
     private async Task<List<RangeBlockContext>> LoadRangeBlocksOfTaskAsync(BlockRequest blockRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var failedBlockRequest = new FindBlocksOfTaskRequest(
             blockRequest.TaskId,
             blockRequest.TaskExecutionId,
@@ -355,7 +334,6 @@ public class BlockFactory : IBlockFactory
 
     private async Task<IList<ProtoListBlock>> LoadListBlocksOfTaskAsync(ListBlockRequest blockRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var failedBlockRequest = new FindBlocksOfTaskRequest(
             blockRequest.TaskId,
             blockRequest.TaskExecutionId,
@@ -370,7 +348,6 @@ public class BlockFactory : IBlockFactory
 
     private async Task<List<RangeBlockContext>> GetDeadBlocksAsync(BlockRequest blockRequest, int blockCountLimit)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var deadBlockRequest = CreateDeadBlocksRequest(blockRequest, blockCountLimit);
         var deadBlocks = await _blockRepository.FindDeadRangeBlocksAsync(deadBlockRequest).ConfigureAwait(false);
         return await CreateBlockContextsAsync(blockRequest, deadBlocks).ConfigureAwait(false);
@@ -378,7 +355,6 @@ public class BlockFactory : IBlockFactory
 
     private async Task<List<RangeBlockContext>> GetFailedBlocksAsync(BlockRequest blockRequest, int blockCountLimit)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var failedBlockRequest = new FindFailedBlocksRequest(
             blockRequest.TaskId,
             blockRequest.TaskExecutionId,
@@ -396,7 +372,6 @@ public class BlockFactory : IBlockFactory
     private async Task<List<RangeBlockContext>> CreateBlockContextsAsync(BlockRequest blockRequest,
         IList<RangeBlock> rangeBlocks)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var blocks = new List<RangeBlockContext>();
         foreach (var rangeBlock in rangeBlocks)
         {
@@ -411,7 +386,6 @@ public class BlockFactory : IBlockFactory
         RangeBlock rangeBlock,
         int forcedBlockQueueId = 0)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var attempt = rangeBlock.Attempt + 1;
         var createRequest = new BlockExecutionCreateRequest(
             blockRequest.TaskId,
@@ -434,7 +408,6 @@ public class BlockFactory : IBlockFactory
     private async Task<List<RangeBlockContext>> GenerateNewDateRangeBlocksAsync(DateRangeBlockRequest blockRequest,
         int blockCountLimit)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var newBlocks = new List<RangeBlockContext>();
         var blockStart = blockRequest.RangeBegin.Value;
         var blockEnd = blockStart.Add(blockRequest.MaxBlockRange.Value);
@@ -465,7 +438,6 @@ public class BlockFactory : IBlockFactory
     private async Task<RangeBlock> GenerateDateRangeBlockAsync(DateRangeBlockRequest blockRequest, DateTime rangeBegin,
         DateTime rangeEnd)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var request = new RangeBlockCreateRequest(blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             rangeBegin,
@@ -479,7 +451,6 @@ public class BlockFactory : IBlockFactory
     private async Task<List<RangeBlockContext>> GenerateNewNumericRangeBlocksAsync(
         NumericRangeBlockRequest blockRequest, int blockCountLimit)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var newBlocks = new List<RangeBlockContext>();
         var blockStart = blockRequest.RangeBegin.Value;
         var blockEnd = blockStart + (blockRequest.BlockSize.Value - 1);
@@ -510,7 +481,6 @@ public class BlockFactory : IBlockFactory
     private async Task<RangeBlock> GenerateNumericRangeBlockAsync(NumericRangeBlockRequest blockRequest,
         long rangeBegin, long rangeEnd)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var request = new RangeBlockCreateRequest(blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             rangeBegin,
@@ -524,7 +494,6 @@ public class BlockFactory : IBlockFactory
 
     private async Task<List<ProtoListBlock>> CreateProtoListBlocksAsync(ListBlockRequest blockRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var blocks = new List<ProtoListBlock>();
 
         if (blockRequest.ReprocessReferenceValue != Guid.Empty)
@@ -561,13 +530,11 @@ public class BlockFactory : IBlockFactory
 
     private int GetBlocksRemaining(ListBlockRequest blockRequest, List<ProtoListBlock> blocks)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return blockRequest.MaxBlocks - blocks.Count;
     }
 
     private async Task<IList<ForcedListBlockQueueItem>> GetForcedListBlocksAsync(ListBlockRequest blockRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var forcedBlockRequest = new QueuedForcedBlocksRequest(
             blockRequest.TaskId,
             blockRequest.TaskExecutionId,
@@ -581,7 +548,6 @@ public class BlockFactory : IBlockFactory
 
     private async Task LoadFailedAndDeadListBlocksAsync(ListBlockRequest blockRequest, List<ProtoListBlock> blocks)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var blocksRemaining = GetBlocksRemaining(blockRequest, blocks);
         if (blockRequest.ReprocessDeadTasks)
         {
@@ -595,7 +561,6 @@ public class BlockFactory : IBlockFactory
 
     private async Task<IList<ProtoListBlock>> GetDeadListBlocksAsync(ListBlockRequest blockRequest, int blockCountLimit)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var deadBlockRequest = CreateDeadBlocksRequest(blockRequest, blockCountLimit);
         var deadBlocks = await _blockRepository.FindDeadListBlocksAsync(deadBlockRequest).ConfigureAwait(false);
 
@@ -605,8 +570,6 @@ public class BlockFactory : IBlockFactory
     private async Task<IList<ProtoListBlock>> GetFailedListBlocksAsync(ListBlockRequest blockRequest,
         int blockCountLimit)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
-        _logger.Debug("06028d79-7627-4e40-abe1-0a958cb28690");
         var failedBlockRequest = new FindFailedBlocksRequest(
             blockRequest.TaskId,
             blockRequest.TaskExecutionId,
@@ -618,7 +581,6 @@ public class BlockFactory : IBlockFactory
         );
 
         var failedBlocks = await _blockRepository.FindFailedListBlocksAsync(failedBlockRequest).ConfigureAwait(false);
-        _logger.Debug("551d6a92-eb5c-4715-86f8-b91c8532da7d");
         _logger.Debug($"Count={failedBlocks.Count}");
         return failedBlocks;
     }
@@ -626,7 +588,6 @@ public class BlockFactory : IBlockFactory
     private async Task<List<ProtoListBlock>> GenerateNewListBlocksAsync(ListBlockRequest blockRequest,
         int blockCountLimit)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var newBlocks = new List<ProtoListBlock>();
         var listLength = blockRequest.SerializedValues.Count;
         var listIndex = 0;
@@ -654,7 +615,6 @@ public class BlockFactory : IBlockFactory
 
     private async Task<ProtoListBlock> GenerateListBlockAsync(ListBlockRequest blockRequest, List<string> values)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var request = new ListBlockCreateRequest(blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             values,
@@ -670,7 +630,6 @@ public class BlockFactory : IBlockFactory
     private async Task<IList<IListBlockContext<T>>> CreateListBlockContextsAsync<T>(ListBlockRequest blockRequest,
         IList<ProtoListBlock> listBlocks)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var blocks = new List<IListBlockContext<T>>();
         foreach (var listBlock in listBlocks)
         {
@@ -684,7 +643,6 @@ public class BlockFactory : IBlockFactory
     private async Task<IListBlockContext<T>> CreateListBlockContextAsync<T>(ListBlockRequest blockRequest,
         ProtoListBlock listBlock, int forcedBlockQueueId = 0)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var attempt = listBlock.Attempt + 1;
         var createRequest = new BlockExecutionCreateRequest(
             blockRequest.TaskId,
@@ -713,7 +671,6 @@ public class BlockFactory : IBlockFactory
     private async Task<IList<IListBlockContext<TItem, THeader>>> CreateListBlockContextsAsync<TItem, THeader>(
         ListBlockRequest blockRequest, IList<ProtoListBlock> listBlocks)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var blocks = new List<IListBlockContext<TItem, THeader>>();
         foreach (var listBlock in listBlocks)
         {
@@ -728,7 +685,6 @@ public class BlockFactory : IBlockFactory
     private async Task<IListBlockContext<TItem, THeader>> CreateListBlockContextAsync<TItem, THeader>(
         ListBlockRequest blockRequest, ProtoListBlock listBlock, int forcedBlockQueueId = 0)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var attempt = listBlock.Attempt + 1;
         var createRequest = new BlockExecutionCreateRequest(
             blockRequest.TaskId,
@@ -756,7 +712,6 @@ public class BlockFactory : IBlockFactory
 
     private ListBlock<T> Convert<T>(ProtoListBlock protoListBlock, bool fillBlock = false)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (protoListBlock == null)
             return null;
 
@@ -773,7 +728,6 @@ public class BlockFactory : IBlockFactory
 
     private ListBlock<TItem, THeader> Convert<TItem, THeader>(ProtoListBlock protoListBlock, bool fillBlock = false)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (protoListBlock == null)
             return null;
 
@@ -792,7 +746,6 @@ public class BlockFactory : IBlockFactory
 
     private IList<IListBlockItem<T>> Convert<T>(IList<ProtoListBlockItem> protoListBlockItems)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (protoListBlockItems == null)
             return null;
 
@@ -817,7 +770,6 @@ public class BlockFactory : IBlockFactory
 
     private async Task<List<IObjectBlockContext<T>>> LoadObjectBlocksOfTaskAsync<T>(ObjectBlockRequest<T> blockRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var failedBlockRequest = new FindBlocksOfTaskRequest(
             blockRequest.TaskId,
             blockRequest.TaskExecutionId,
@@ -835,7 +787,6 @@ public class BlockFactory : IBlockFactory
 
     private async Task<List<IObjectBlockContext<T>>> GetForcedObjectBlocksAsync<T>(ObjectBlockRequest<T> blockRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var forcedBlockRequest = new QueuedForcedBlocksRequest(
             blockRequest.TaskId,
             blockRequest.TaskExecutionId,
@@ -859,7 +810,6 @@ public class BlockFactory : IBlockFactory
     private async Task LoadFailedAndDeadObjectBlocksAsync<T>(ObjectBlockRequest<T> blockRequest,
         List<IObjectBlockContext<T>> blocks)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var blocksRemaining = GetBlocksRemaining(blockRequest, blocks);
         if (blockRequest.ReprocessDeadTasks)
         {
@@ -874,7 +824,6 @@ public class BlockFactory : IBlockFactory
     private async Task<List<IObjectBlockContext<T>>> GetDeadObjectBlocksAsync<T>(ObjectBlockRequest<T> blockRequest,
         int blockCountLimit)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var deadBlockRequest = CreateDeadBlocksRequest(blockRequest, blockCountLimit);
         var deadBlocks = await _blockRepository.FindDeadObjectBlocksAsync<T>(deadBlockRequest).ConfigureAwait(false);
         return await CreateObjectBlockContextsAsync(blockRequest, deadBlocks).ConfigureAwait(false);
@@ -883,7 +832,6 @@ public class BlockFactory : IBlockFactory
     private async Task<List<IObjectBlockContext<T>>> GetFailedObjectBlocksAsync<T>(ObjectBlockRequest<T> blockRequest,
         int blockCountLimit)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var failedBlockRequest = new FindFailedBlocksRequest(
             blockRequest.TaskId,
             blockRequest.TaskExecutionId,
@@ -902,7 +850,6 @@ public class BlockFactory : IBlockFactory
     private async Task<List<IObjectBlockContext<T>>> CreateObjectBlockContextsAsync<T>(
         ObjectBlockRequest<T> blockRequest, IList<ObjectBlock<T>> objectBlocks)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var blocks = new List<IObjectBlockContext<T>>();
         foreach (var objectBlock in objectBlocks)
         {
@@ -916,7 +863,6 @@ public class BlockFactory : IBlockFactory
     private async Task<IObjectBlockContext<T>> CreateObjectBlockContextAsync<T>(ObjectBlockRequest<T> blockRequest,
         ObjectBlock<T> objectBlock, int forcedBlockQueueId = 0)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var attempt = objectBlock.Attempt + 1;
         var createRequest = new BlockExecutionCreateRequest(
             blockRequest.TaskId,
@@ -935,14 +881,12 @@ public class BlockFactory : IBlockFactory
 
     private async Task<IObjectBlockContext<T>> GenerateNewObjectBlockAsync<T>(ObjectBlockRequest<T> blockRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var newObjectBlock = await GenerateObjectBlockAsync(blockRequest).ConfigureAwait(false);
         return await CreateObjectBlockContextAsync(blockRequest, newObjectBlock).ConfigureAwait(false);
     }
 
     private async Task<ObjectBlock<T>> GenerateObjectBlockAsync<T>(ObjectBlockRequest<T> blockRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var request = new ObjectBlockCreateRequest<T>(blockRequest.TaskId,
             blockRequest.TaskExecutionId,
             blockRequest.Object,

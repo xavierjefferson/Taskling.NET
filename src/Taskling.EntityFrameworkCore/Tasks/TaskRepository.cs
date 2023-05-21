@@ -28,8 +28,6 @@ public class TaskRepository : DbOperationsService, ITaskRepository
 
     public async Task<TaskDefinition> EnsureTaskDefinitionAsync(TaskId taskId)
     {
-        _logger.Debug("feb002b1-9960-4bd9-a273-9d72a6d66785");
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return await GetTaskSemaphore.WrapAsync(async () =>
         {
             var taskDefinition = await GetTaskAsync(taskId).ConfigureAwait(false);
@@ -66,7 +64,6 @@ public class TaskRepository : DbOperationsService, ITaskRepository
 
     public async Task<DateTime> GetLastTaskCleanUpTimeAsync(TaskId taskId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return await RetryHelper.WithRetryAsync(async () =>
         {
             using (var dbContext = await GetDbContextAsync(taskId))
@@ -80,7 +77,6 @@ public class TaskRepository : DbOperationsService, ITaskRepository
 
     public async Task SetLastCleanedAsync(TaskId taskId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await RetryHelper.WithRetryAsync(async () =>
         {
             using (var dbContext = await GetDbContextAsync(taskId))
@@ -106,20 +102,17 @@ public class TaskRepository : DbOperationsService, ITaskRepository
     private IQueryable<Models.TaskDefinition> GetTaskDefinitionsByTaskIdAsync(TaskId taskId,
         TasklingDbContext dbContext)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return dbContext.TaskDefinitions
             .Where(i => i.TaskName == taskId.TaskName && i.ApplicationName == taskId.ApplicationName);
     }
 
     private async Task<TaskDefinition?> GetTaskAsync(TaskId taskId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return await GetCachedDefinitionAsync(taskId).ConfigureAwait(false);
     }
 
     private async Task<TaskDefinition?> GetCachedDefinitionAsync(TaskId taskId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return await CacheSemaphore.WrapAsync(async () =>
         {
             var key = taskId.GetUniqueKey();
@@ -143,8 +136,6 @@ public class TaskRepository : DbOperationsService, ITaskRepository
 
     private async Task<TaskDefinition?> LoadTaskAsync(TaskId taskId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
-        _logger.Debug("10d1f644-51ea-45c9-b12f-ce2aa9f60d33");
         using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
         {
             return await GetTaskDefinitionsByTaskIdAsync(taskId, dbContext)
@@ -160,11 +151,8 @@ public class TaskRepository : DbOperationsService, ITaskRepository
 
     private void CacheTaskDefinition(string taskKey, TaskDefinition taskDefinition)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
-        _logger.Debug("9858af09-3cab-44b5-8de6-8cbf7b6f787f");
         if (CachedTaskDefinitions.ContainsKey(taskKey))
         {
-            _logger.Debug("911f827a-1493-481a-8352-6de8b0f3d83d");
             CachedTaskDefinitions[taskKey] = new CachedTaskDefinition
             {
                 TaskDefinition = taskDefinition,
@@ -173,7 +161,6 @@ public class TaskRepository : DbOperationsService, ITaskRepository
         }
         else
         {
-            _logger.Debug("b339464d-8f93-4616-885c-2a612fd96206");
             CachedTaskDefinitions.Add(taskKey, new CachedTaskDefinition
             {
                 TaskDefinition = taskDefinition,
@@ -184,8 +171,6 @@ public class TaskRepository : DbOperationsService, ITaskRepository
 
     private async Task<TaskDefinition> InsertNewTaskAsync(TaskId taskId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
-        _logger.Debug("440ad14c-d923-4d37-b3bd-cd47f55d2bdc");
         using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
         {
             var modelsTaskDefinition = new Models.TaskDefinition

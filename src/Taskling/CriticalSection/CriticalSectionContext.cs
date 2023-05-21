@@ -33,7 +33,6 @@ public class CriticalSectionContext : ICriticalSectionContext
         ILogger<CriticalSectionContext> logger)
     {
         _logger = logger;
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _criticalSectionRepository = criticalSectionRepository;
         _taskExecutionInstance = taskExecutionInstance;
         _taskExecutionOptions = taskExecutionOptions;
@@ -46,20 +45,17 @@ public class CriticalSectionContext : ICriticalSectionContext
 
     public bool IsActive()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return _started && !_completeCalled;
     }
 
     public async Task<bool> TryStartAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return await TryStartAsync(_tasklingOptions.CriticalSectionRetry, _tasklingOptions.CriticalSectionAttemptCount)
             .ConfigureAwait(false);
     }
 
     public async Task<bool> TryStartAsync(TimeSpan retryInterval, int numberOfAttempts)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var tryCount = 0;
         var started = false;
 
@@ -76,7 +72,6 @@ public class CriticalSectionContext : ICriticalSectionContext
 
     public async Task CompleteAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (!_started || _completeCalled)
             throw new ExecutionException("There is no active critical section to complete");
 
@@ -92,26 +87,22 @@ public class CriticalSectionContext : ICriticalSectionContext
 
     public bool TryStart()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return TryStartAsync().WaitAndUnwrapException();
     }
 
     public void Dispose()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         Dispose(true);
         GC.SuppressFinalize(this);
     }
 
     ~CriticalSectionContext()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         Dispose(false);
     }
 
     protected virtual void Dispose(bool disposing)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (disposed)
             return;
 
@@ -127,7 +118,6 @@ public class CriticalSectionContext : ICriticalSectionContext
 
     private async Task<bool> TryStartCriticalSectionAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (_started)
             throw new ExecutionException("There is already an active critical section");
 
@@ -157,7 +147,6 @@ public class CriticalSectionContext : ICriticalSectionContext
 
     private void ValidateOptions()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _logger.LogDebug($"TaskDeathMode={_taskExecutionOptions.TaskDeathMode}");
         if (_taskExecutionOptions.TaskDeathMode == TaskDeathMode.KeepAlive)
         {

@@ -30,7 +30,6 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
         ILogger<ExecutionsHelper> logger)
     {
         _logger = logger;
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _connectionStore = connectionStore;
 
         taskRepository.ClearCache();
@@ -64,7 +63,6 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
 
     public void DeleteRecordsOfApplication(string applicationName)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -96,13 +94,11 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
 
     public void SetKeepAlive(long taskExecutionId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         SetKeepAlive(taskExecutionId, DateTime.UtcNow);
     }
 
     public void SetKeepAlive(long taskExecutionId, DateTime keepAliveDateTime)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -123,7 +119,6 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
 
     public DateTime GetLastKeepAlive(long taskDefinitionId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -148,7 +143,6 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
     /// <returns></returns>
     public GetLastEventResponse GetLastEvent(long taskDefinitionId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -168,7 +162,6 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
 
     public long InsertTask(TaskId taskId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -189,7 +182,6 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
 
     public long InsertTask(string applicationName, string taskName)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return InsertTask(new TaskId(applicationName, taskName));
     }
 
@@ -358,7 +350,6 @@ AND T.TaskName = @TaskName";
 
     public void InsertUnlimitedExecutionToken(long taskDefinitionId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         InsertExecutionToken(taskDefinitionId, new ExecInfoList
         {
             new(ExecutionTokenStatus.Unlimited, 0)
@@ -367,7 +358,6 @@ AND T.TaskName = @TaskName";
 
     public void InsertUnavailableExecutionToken(long taskDefinitionId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         InsertExecutionToken(taskDefinitionId, new ExecInfoList
         {
             new(ExecutionTokenStatus.Unavailable, 0)
@@ -376,7 +366,6 @@ AND T.TaskName = @TaskName";
 
     public void InsertAvailableExecutionToken(long taskDefinitionId, int count = 1)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var list = new ExecInfoList();
         for (var i = 0; i < count; i++)
             list.Add(new Execinfo(ExecutionTokenStatus.Available, 0));
@@ -386,7 +375,6 @@ AND T.TaskName = @TaskName";
 
     public void InsertExecutionToken(long taskDefinitionId, ExecInfoList tokens)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         RetryHelper.WithRetry(() =>
         {
             var tokenString = GenerateTokensString(tokens);
@@ -412,13 +400,11 @@ AND T.TaskName = @TaskName";
 
     private string GenerateTokensString(ExecInfoList tokens)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return JsonConvert.SerializeObject(tokens);
     }
 
     public ExecutionTokenList GetExecutionTokens(TaskId taskId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -433,7 +419,6 @@ AND T.TaskName = @TaskName";
 
     public ExecutionTokenStatus GetExecutionTokenStatus(TaskId taskId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -455,20 +440,17 @@ AND T.TaskName = @TaskName";
 
     public long InsertKeepAliveTaskExecution(long taskDefinitionId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return InsertKeepAliveTaskExecution(taskDefinitionId, new TimeSpan(0, 0, 20), new TimeSpan(0, 1, 0));
     }
 
     public long InsertOverrideTaskExecution(long taskDefinitionId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return InsertOverrideTaskExecution(taskDefinitionId, new TimeSpan(0, 1, 0));
     }
 
     public long InsertKeepAliveTaskExecution(long taskDefinitionId, TimeSpan keepAliveInterval,
         TimeSpan keepAliveDeathThreshold)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return InsertKeepAliveTaskExecution(taskDefinitionId, keepAliveInterval, keepAliveDeathThreshold,
             DateTime.UtcNow, DateTime.UtcNow);
     }
@@ -476,7 +458,6 @@ AND T.TaskName = @TaskName";
     public long InsertKeepAliveTaskExecution(long taskDefinitionId, TimeSpan keepAliveInterval,
         TimeSpan keepAliveDeathThreshold, DateTime startedAt, DateTime? completedAt)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -508,14 +489,12 @@ AND T.TaskName = @TaskName";
 
     public long InsertOverrideTaskExecution(long taskDefinitionId, TimeSpan overrideThreshold)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return InsertOverrideTaskExecution(taskDefinitionId, overrideThreshold, DateTime.UtcNow, DateTime.UtcNow);
     }
 
     public long InsertOverrideTaskExecution(long taskDefinitionId, TimeSpan overrideThreshold, DateTime startedAt,
         DateTime? completedAt)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -544,7 +523,6 @@ AND T.TaskName = @TaskName";
 
     public void SetTaskExecutionAsCompleted(long taskExecutionId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -566,7 +544,6 @@ AND T.TaskName = @TaskName";
 
     public void SetLastExecutionAsDead(long taskDefinitionId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -589,7 +566,6 @@ AND T.TaskName = @TaskName";
 
     public bool GetBlockedStatusOfLastExecution(long taskDefinitionId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -602,7 +578,6 @@ AND T.TaskName = @TaskName";
 
     public string GetLastExecutionVersion(long taskDefinitionId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -615,7 +590,6 @@ AND T.TaskName = @TaskName";
 
     public string GetLastExecutionHeader(long taskDefinitionId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -633,19 +607,16 @@ AND T.TaskName = @TaskName";
 
     public void InsertUnavailableCriticalSectionToken(long taskDefinitionId, long taskExecutionId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         InsertCriticalSectionToken(taskDefinitionId, taskExecutionId, 0);
     }
 
     public void InsertAvailableCriticalSectionToken(long taskDefinitionId, long taskExecutionId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         InsertCriticalSectionToken(taskDefinitionId, taskExecutionId, 1);
     }
 
     private void InsertCriticalSectionToken(long taskDefinitionId, long taskExecutionId, int status)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -673,7 +644,6 @@ AND T.TaskName = @TaskName";
 
     public int GetQueueCount(long taskExecutionId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -688,7 +658,6 @@ AND T.TaskName = @TaskName";
 
     public void InsertIntoCriticalSectionQueue(long taskDefinitionId, int queueIndex, long taskExecutionId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())
@@ -711,7 +680,6 @@ AND T.TaskName = @TaskName";
 
     public int GetCriticalSectionTokenStatus(TaskId taskId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
         {
             using (var dbContext = GetDbContext())

@@ -27,7 +27,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
         ITaskExecutionRepository taskExecutionRepository) : base(executionsHelper)
     {
         _logger = logger;
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _executionsHelper = executionsHelper;
         _clientHelper = clientHelper;
 
@@ -40,7 +39,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
 
     private TaskExecutionStartRequest CreateKeepAliveStartRequest(int concurrencyLimit = 1)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return new TaskExecutionStartRequest(CurrentTaskId,
             TaskDeathMode.KeepAlive, concurrencyLimit, 3, 3)
         {
@@ -53,7 +51,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     private SendKeepAliveRequest CreateKeepAliveRequest(TaskId taskId, long taskExecutionId,
         Guid executionTokenId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return new SendKeepAliveRequest(taskId)
         {
             TaskExecutionId = taskExecutionId,
@@ -66,7 +63,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     [Trait("Area", "ExecutionTokens")]
     public async Task If_KeepAliveMode_ThenReturnsValidDataValues()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -91,7 +87,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     [Trait("Area", "ExecutionTokens")]
     public async Task If_KeepAliveMode_OneTaskAndOneTokenAndIsAvailable_ThenIsGranted()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -115,7 +110,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     [Trait("Area", "ExecutionTokens")]
     public async Task If_KeepAliveMode_TwoConcurrentTasksAndOneTokenAndIsAvailable_ThenIsGrantFirstTaskAndDenyTheOther()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -144,7 +138,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     public async Task
         If_KeepAliveMode_TwoSequentialTasksAndOneTokenAndIsAvailable_ThenIsGrantFirstTaskAndThenGrantTheOther()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -176,7 +169,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     public async Task
         If_KeepAliveMode_FiveConcurrentTasksAndFourTokensAndAllAreAvailable_ThenIsGrantFirstFourTasksAndDenyTheOther()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -216,7 +208,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     [Trait("Area", "ExecutionTokens")]
     public void If_KeepAliveMode_OneToken_MultipleTaskThreads_ThenNoDeadLocksOccur()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         InSemaphore(() =>
         {
             // ARRANGE
@@ -254,7 +245,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
 
     private async Task RequestAndReturnTokenWithKeepAliveModeAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
 
         for (var i = 0; i < 100; i++)
         {
@@ -281,7 +271,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     public async Task
         If_KeepAliveMode_OneTaskAndOneTokenAndIsUnavailableAndKeepAliveHasPassedElapsedTime_ThenIsGranted()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -316,7 +305,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     public async Task
         If_KeepAliveMode_OneTaskAndOneTokenAndIsUnavailableAndKeepAliveHasNotPassedElapsedTime_ThenIsDenied()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -352,7 +340,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     [Trait("Area", "ExecutionTokens")]
     public async Task If_KeepAliveMode_OneTokenExistsAndConcurrencyLimitIsFour_ThenCreateThreeNewTokens()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -379,7 +366,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     public async Task
         If_KeepAliveMode_OneTokenExistsAndConcurrencyLimitIsUnlimited_ThenRemoveAvailableTokenAndCreateOneNewUnlimitedToken()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -405,7 +391,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     public async Task
         If_KeepAliveMode_OneAvailableTokenAndOneUnavailableTokensExistsAndConcurrencyLimitIsOne_ThenRemoveAvailableToken_AndSoDenyStart()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -436,7 +421,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     public async Task
         If_KeepAliveMode_TwoUnavailableTokensExistsAndConcurrencyLimitIsOne_ThenRemoveOneUnavailableToken()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE

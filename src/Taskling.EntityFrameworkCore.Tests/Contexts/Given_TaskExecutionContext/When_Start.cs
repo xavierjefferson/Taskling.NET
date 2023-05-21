@@ -22,7 +22,6 @@ public class When_Start : TestBase
         ILogger<When_Start> logger, ITaskRepository taskRepository) : base(executionsHelper)
     {
         _logger = logger;
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
 
         _executionsHelper = executionsHelper;
         _clientHelper = clientHelper;
@@ -37,7 +36,6 @@ public class When_Start : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_TryStart_ThenLogCorrectTasklingVersion()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -70,7 +68,6 @@ public class When_Start : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_TryStartWithHeader_ThenGetHeaderReturnsTheHeader()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -103,7 +100,6 @@ public class When_Start : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_TryStartWithHeader_ThenHeaderWrittenToDatabase()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE

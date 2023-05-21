@@ -26,7 +26,6 @@ public class When_FindFailedBlocks : TestBase
         ITaskRepository taskRepository) : base(executionsHelper)
     {
         _logger = logger;
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _executionsHelper = executionsHelper;
         _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
         _blocksHelper = blocksHelper;
@@ -45,7 +44,6 @@ public class When_FindFailedBlocks : TestBase
     public async Task
         When_FailedDateRangeBlocksExistInTargetPeriodAndNumberIsLessThanBlocksLimit_ThenReturnAllFailedBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -84,7 +82,6 @@ public class When_FindFailedBlocks : TestBase
     public async Task
         When_FailedDateRangeBlocksExistInTargetPeriodAndNumberIsGreaterThanBlocksLimit_ThenReturnOldestBlocksUpToCountLimit()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -133,7 +130,6 @@ public class When_FindFailedBlocks : TestBase
     [Trait("Area", "Blocks")]
     public async Task When_FailedDateRangeBlocksExistOutsideTargetPeriod_ThenReturnNoBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -172,7 +168,6 @@ public class When_FindFailedBlocks : TestBase
     public async Task
         When_FailedNumericRangeBlocksExistInTargetPeriodAndNumberIsLessThanBlocksLimit_ThenReturnAllFailedBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -210,7 +205,6 @@ public class When_FindFailedBlocks : TestBase
     public async Task
         When_FailedNumericRangeBlocksExistInTargetPeriodAndNumberIsGreaterThanBlocksLimit_ThenReturnOldestBlocksUpToCountLimit()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -256,7 +250,6 @@ public class When_FindFailedBlocks : TestBase
     [Trait("Area", "Blocks")]
     public async Task When_FailedNumericRangeBlocksExistOutsideTargetPeriod_ThenReturnNoBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -292,7 +285,6 @@ public class When_FindFailedBlocks : TestBase
     [Trait("Area", "Blocks")]
     public async Task When_FailedListBlocksExistInTargetPeriodAndNumberIsLessThanBlocksLimit_ThenReturnAllFailedBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -330,7 +322,6 @@ public class When_FindFailedBlocks : TestBase
     public async Task
         When_FailedListBlocksExistInTargetPeriodAndNumberIsGreaterThanBlocksLimit_ThenReturnOldestBlocksUpToCountLimit()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -376,7 +367,6 @@ public class When_FindFailedBlocks : TestBase
     [Trait("Area", "Blocks")]
     public async Task When_FailedListBlocksExistOutsideTargetPeriod_ThenReturnNoBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -414,7 +404,6 @@ public class When_FindFailedBlocks : TestBase
     public async Task
         When_FailedObjectBlocksExistInTargetPeriodAndNumberIsLessThanBlocksLimit_ThenReturnAllFailedBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -454,7 +443,6 @@ public class When_FindFailedBlocks : TestBase
     public async Task
         When_FailedObjectBlocksExistInTargetPeriodAndNumberIsGreaterThanBlocksLimit_ThenReturnOldestBlocksUpToCountLimit()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -504,7 +492,6 @@ public class When_FindFailedBlocks : TestBase
     [Trait("Area", "Blocks")]
     public async Task When_FailedObjectBlocksExistOutsideTargetPeriod_ThenReturnNoBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE

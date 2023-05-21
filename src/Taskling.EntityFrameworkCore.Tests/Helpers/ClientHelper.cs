@@ -18,7 +18,6 @@ public class ClientHelper : IClientHelper
     {
         _logger = logger;
 
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _serviceProvider = serviceProvider;
 
         _logger.LogDebug($"{nameof(ClientHelper)} constructor was called");
@@ -27,7 +26,6 @@ public class ClientHelper : IClientHelper
     public ConfigurationOptions GetDefaultTaskConfigurationWithTimePeriodOverrideAndNoReprocessing(
         int maxBlocksToGenerate = 2000)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return GetConfigurationOptions(1, 2000, 2000, 1, false, 0, 0, 240, false, 0, 0, false, 0, 0,
             maxBlocksToGenerate);
     }
@@ -35,7 +33,6 @@ public class ClientHelper : IClientHelper
     public ITaskExecutionContext GetExecutionContext(TaskId taskId,
         ConfigurationOptions configurationOptions)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var client = CreateClient(configurationOptions);
         return client.CreateTaskExecutionContext(taskId);
     }
@@ -43,7 +40,6 @@ public class ClientHelper : IClientHelper
 
     public ConfigurationOptions GetDefaultTaskConfigurationWithKeepAliveAndReprocessing(int maxBlocksToGenerate = 2000)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return GetConfigurationOptions(1, 2000, 2000, 1, true, 1, 10, 0, true, 600, 3, true, 600, 3,
             maxBlocksToGenerate);
     }
@@ -51,7 +47,6 @@ public class ClientHelper : IClientHelper
     public ConfigurationOptions GetDefaultTaskConfigurationWithKeepAliveAndNoReprocessing(
         int maxBlocksToGenerate = 2000)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var a = GetConfigurationOptions(1, 2000, 2000, 1, true, 1, 2, 0, true, 0, 0, false, 0, 0,
             maxBlocksToGenerate);
         return a;
@@ -60,7 +55,6 @@ public class ClientHelper : IClientHelper
     public ConfigurationOptions GetDefaultTaskConfigurationWithTimePeriodOverrideAndReprocessing(
         int maxBlocksToGenerate = 2000)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return GetConfigurationOptions(1, 2000, 2000, 1, false, 0, 0, 240, true, 600, 3, true, 600, 3,
             maxBlocksToGenerate);
     }
@@ -70,7 +64,6 @@ public class ClientHelper : IClientHelper
         bool rpcFail, int v9,
         int v10, bool v11, int v12, int v13, int v14)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return new ConfigurationOptions
         {
             DB = TestConstants.GetTestConnectionString(),
@@ -96,7 +89,6 @@ public class ClientHelper : IClientHelper
 
     private TasklingClient CreateClient(ConfigurationOptions configurationOptions)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         lock (_mutex)
         {
             return new TasklingClient(_serviceProvider,

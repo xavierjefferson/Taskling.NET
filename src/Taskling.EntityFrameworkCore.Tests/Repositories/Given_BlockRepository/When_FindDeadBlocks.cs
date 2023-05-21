@@ -36,7 +36,6 @@ public class When_FindDeadBlocks : TestBase
         ITaskRepository taskRepository) : base(executionsHelper)
     {
         _logger = logger;
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _blockRepository = blockRepository;
         _blocksHelper = blocksHelper;
         _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
@@ -53,7 +52,6 @@ public class When_FindDeadBlocks : TestBase
 
     private void InsertDateRangeTestData(TaskDeathMode taskDeathMode)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var now = DateTime.UtcNow;
         if (taskDeathMode == TaskDeathMode.Override)
             _taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId, OneMinuteSpan,
@@ -67,7 +65,6 @@ public class When_FindDeadBlocks : TestBase
 
     private void InsertDateRangeBlocksTestData()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var now = DateTime.UtcNow;
         _block1 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-180), now.AddMinutes(-179));
         _block2 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-200), now.AddMinutes(-199));
@@ -88,7 +85,6 @@ public class When_FindDeadBlocks : TestBase
 
     private void InsertNumericRangeTestData(TaskDeathMode taskDeathMode)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var now = DateTime.UtcNow;
         if (taskDeathMode == TaskDeathMode.Override)
             _taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId, OneMinuteSpan,
@@ -102,7 +98,6 @@ public class When_FindDeadBlocks : TestBase
 
     private void InsertNumericRangeBlocksTestData()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var now = DateTime.UtcNow;
         _block1 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 1, 100, now.AddMinutes(-100));
         _block2 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 101, 200, now.AddMinutes(-90));
@@ -123,7 +118,6 @@ public class When_FindDeadBlocks : TestBase
 
     private void InsertListTestData(TaskDeathMode taskDeathMode)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var now = DateTime.UtcNow;
         if (taskDeathMode == TaskDeathMode.Override)
             _taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId, OneMinuteSpan,
@@ -137,7 +131,6 @@ public class When_FindDeadBlocks : TestBase
 
     private void InsertListBlocksTestData()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var now = DateTime.UtcNow;
         _block1 = _blocksHelper.InsertListBlock(_taskDefinitionId, now.AddMinutes(-246));
         _block2 = _blocksHelper.InsertListBlock(_taskDefinitionId, now.AddMinutes(-247));
@@ -158,7 +151,6 @@ public class When_FindDeadBlocks : TestBase
 
     private void InsertObjectTestData(TaskDeathMode taskDeathMode)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var now = DateTime.UtcNow;
         if (taskDeathMode == TaskDeathMode.Override)
             _taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId, OneMinuteSpan,
@@ -172,7 +164,6 @@ public class When_FindDeadBlocks : TestBase
 
     private void InsertObjectBlocksTestData()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var now = DateTime.UtcNow;
         _block1 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-246), Guid.NewGuid().ToString());
         _block2 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-247), Guid.NewGuid().ToString());
@@ -193,21 +184,18 @@ public class When_FindDeadBlocks : TestBase
 
     private IBlockRepository CreateSut()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return _blockRepository;
     }
 
     private FindDeadBlocksRequest CreateDeadBlockRequest(BlockType blockType, TaskDeathMode taskDeathMode,
         int blockCountLimit)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return CreateDeadBlockRequest(blockType, taskDeathMode, blockCountLimit, 3, -300);
     }
 
     private FindDeadBlocksRequest CreateDeadBlockRequest(BlockType blockType, TaskDeathMode taskDeathMode,
         int blockCountLimit, int attemptLimit, int fromMinutesBack)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return new FindDeadBlocksRequest(CurrentTaskId,
             1,
             blockType,
@@ -226,7 +214,6 @@ public class When_FindDeadBlocks : TestBase
     public async Task
         When_OverrideModeAndDateRange_DeadTasksInTargetPeriodAndLessThanBlockCountLimit_ThenReturnAllDeadBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -251,7 +238,6 @@ public class When_FindDeadBlocks : TestBase
     [Trait("Area", "Blocks")]
     public async Task When_OverrideModeAndDateRange_DeadTasksOutsideTargetPeriod_ThenReturnNoBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -274,7 +260,6 @@ public class When_FindDeadBlocks : TestBase
     public async Task
         When_OverrideModeAndDateRange_DeadTasksInTargetPeriodAndMoreThanBlockCountLimit_ThenReturnOldestDeadBlocksUpToLimit()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -298,7 +283,6 @@ public class When_FindDeadBlocks : TestBase
     public async Task
         When_OverrideModeAndDateRange_SomeDeadTasksHaveReachedRetryLimit_ThenReturnOnlyDeadBlocksNotAtLimit()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -326,7 +310,6 @@ public class When_FindDeadBlocks : TestBase
     public async Task
         When_KeepAliveModeAndDateRange_DeadTasksPassedKeepAliveLimitPeriodAndLessThanBlockCountLimit_ThenReturnAllDeadBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -354,7 +337,6 @@ public class When_FindDeadBlocks : TestBase
     public async Task
         When_KeepAliveModeAndDateRange_DeadTasksPassedKeepAliveLimitAndGreaterThanBlockCountLimit_ThenReturnOldestDeadBlocksUpToLimit()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -380,7 +362,6 @@ public class When_FindDeadBlocks : TestBase
     [Trait("Area", "Blocks")]
     public async Task When_KeepAliveModeAndDateRange_DeadTasksNotPassedKeepAliveLimitInTargetPeriod_ThenReturnNoBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -405,7 +386,6 @@ public class When_FindDeadBlocks : TestBase
     public async Task
         When_KeepAliveModeAndDateRange_DeadTasksPassedKeepAliveLimitButAreOutsideTargetPeriod_ThenReturnNoBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -435,7 +415,6 @@ public class When_FindDeadBlocks : TestBase
     public async Task
         When_OverrideModeAndNumericRange_DeadTasksInTargetPeriodAndLessThanBlockCountLimit_ThenReturnAllDeadBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -460,7 +439,6 @@ public class When_FindDeadBlocks : TestBase
     [Trait("Area", "Blocks")]
     public async Task When_OverrideModeAndNumericRange_DeadTasksOutsideTargetPeriod_ThenReturnNoBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -484,7 +462,6 @@ public class When_FindDeadBlocks : TestBase
     public async Task
         When_OverrideModeAndNumericRange_DeadTasksInTargetPeriodAndMoreThanBlockCountLimit_ThenReturnOldestDeadBlocksUpToLimit()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -508,7 +485,6 @@ public class When_FindDeadBlocks : TestBase
     public async Task
         When_OverrideModeAndNumericRange_SomeDeadTasksHaveReachedRetryLimit_ThenReturnOnlyDeadBlocksNotAtLimit()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -535,7 +511,6 @@ public class When_FindDeadBlocks : TestBase
     public async Task
         When_KeepAliveModeAndNumericRange_DeadTasksPassedKeepAliveLimitPeriodAndLessThanBlockCountLimit_ThenReturnAllDeadBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -563,7 +538,6 @@ public class When_FindDeadBlocks : TestBase
     public async Task
         When_KeepAliveModeAndNumericRange_DeadTasksPassedKeepAliveLimitAndGreaterThanBlockCountLimit_ThenReturnOldestDeadBlocksUpToLimit()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -590,7 +564,6 @@ public class When_FindDeadBlocks : TestBase
     public async Task
         When_KeepAliveModeAndNumericRange_DeadTasksNotPassedKeepAliveLimitInTargetPeriod_ThenReturnNoBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -615,7 +588,6 @@ public class When_FindDeadBlocks : TestBase
     public async Task
         When_KeepAliveModeAndNumericRange_DeadTasksPassedKeepAliveLimitButAreOutsideTargetPeriod_ThenReturnNoBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -645,7 +617,6 @@ public class When_FindDeadBlocks : TestBase
     public async Task
         When_OverrideModeAndList_DeadTasksInTargetPeriodAndLessThanBlockCountLimit_ThenReturnAllDeadBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -670,7 +641,6 @@ public class When_FindDeadBlocks : TestBase
     [Trait("Area", "Blocks")]
     public async Task When_OverrideModeAndList_DeadTasksOutsideTargetPeriod_ThenReturnNoBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -693,7 +663,6 @@ public class When_FindDeadBlocks : TestBase
     public async Task
         When_OverrideModeAndList_DeadTasksInTargetPeriodAndMoreThanBlockCountLimit_ThenReturnOldestDeadBlocksUpToLimit()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -716,7 +685,6 @@ public class When_FindDeadBlocks : TestBase
     [Trait("Area", "Blocks")]
     public async Task When_OverrideModeAndList_SomeDeadTasksHaveReachedRetryLimit_ThenReturnOnlyDeadBlocksNotAtLimit()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -743,7 +711,6 @@ public class When_FindDeadBlocks : TestBase
     public async Task
         When_KeepAliveModeAndList_DeadTasksPassedKeepAliveLimitPeriodAndLessThanBlockCountLimit_ThenReturnAllDeadBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -771,7 +738,6 @@ public class When_FindDeadBlocks : TestBase
     public async Task
         When_KeepAliveModeAndList_DeadTasksPassedKeepAliveLimitAndGreaterThanBlockCountLimit_ThenReturnOldestDeadBlocksUpToLimit()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -797,7 +763,6 @@ public class When_FindDeadBlocks : TestBase
     [Trait("Area", "Blocks")]
     public async Task When_KeepAliveModeAndList_DeadTasksNotPassedKeepAliveLimitInTargetPeriod_ThenReturnNoBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -822,7 +787,6 @@ public class When_FindDeadBlocks : TestBase
     public async Task
         When_KeepAliveModeAndList_DeadTasksPassedKeepAliveLimitButAreOutsideTargetPeriod_ThenReturnNoBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -851,7 +815,6 @@ public class When_FindDeadBlocks : TestBase
     public async Task
         When_OverrideModeAndObject_DeadTasksInTargetPeriodAndLessThanBlockCountLimit_ThenReturnAllDeadBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
 
         await InSemaphoreAsync(async () =>
         {
@@ -877,7 +840,6 @@ public class When_FindDeadBlocks : TestBase
     [Trait("Area", "Blocks")]
     public async Task When_OverrideModeAndObject_DeadTasksOutsideTargetPeriod_ThenReturnNoBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -900,7 +862,6 @@ public class When_FindDeadBlocks : TestBase
     public async Task
         When_OverrideModeAndObject_DeadTasksInTargetPeriodAndMoreThanBlockCountLimit_ThenReturnOldestDeadBlocksUpToLimit()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -923,7 +884,6 @@ public class When_FindDeadBlocks : TestBase
     [Trait("Area", "Blocks")]
     public async Task When_OverrideModeAndObject_SomeDeadTasksHaveReachedRetryLimit_ThenReturnOnlyDeadBlocksNotAtLimit()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -951,7 +911,6 @@ public class When_FindDeadBlocks : TestBase
     public async Task
         When_KeepAliveModeAndObject_DeadTasksPassedKeepAliveLimitPeriodAndLessThanBlockCountLimit_ThenReturnAllDeadBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -979,7 +938,6 @@ public class When_FindDeadBlocks : TestBase
     public async Task
         When_KeepAliveModeAndObject_DeadTasksPassedKeepAliveLimitAndGreaterThanBlockCountLimit_ThenReturnOldestDeadBlocksUpToLimit()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -1005,7 +963,6 @@ public class When_FindDeadBlocks : TestBase
     [Trait("Area", "Blocks")]
     public async Task When_KeepAliveModeAndObject_DeadTasksNotPassedKeepAliveLimitInTargetPeriod_ThenReturnNoBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -1030,7 +987,6 @@ public class When_FindDeadBlocks : TestBase
     public async Task
         When_KeepAliveModeAndObject_DeadTasksPassedKeepAliveLimitButAreOutsideTargetPeriod_ThenReturnNoBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE

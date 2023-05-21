@@ -20,7 +20,6 @@ public class When_Checkpoint : TestBase
         ILogger<When_Checkpoint> logger, ITaskRepository taskRepository) : base(executionsHelper)
     {
         _logger = logger;
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _clientHelper = clientHelper;
 
         _executionsHelper = executionsHelper;
@@ -34,7 +33,6 @@ public class When_Checkpoint : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_Checkpoint_ThenCheckpointEventCreated()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
 // ARRANGE

@@ -25,7 +25,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
         ICriticalSectionRepository criticalSectionRepository) : base(executionsHelper)
     {
         _logger = logger;
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _executionsHelper = executionsHelper;
 
         _criticalSectionRepository = criticalSectionRepository;
@@ -39,7 +38,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     [Trait("Area", "CriticalSectionTokens")]
     public async Task If_KeepAliveMode_TokenAvailableAndNothingInQueue_ThenGrant()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -68,7 +66,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     [Trait("Area", "CriticalSectionTokens")]
     public async Task If_KeepAliveMode_TokenNotAvailableAndNothingInQueue_ThenAddToQueueAndDeny()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -105,7 +102,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     [Trait("Area", "CriticalSectionTokens")]
     public async Task If_KeepAliveMode_TokenNotAvailableAndAlreadyInQueue_ThenDoNotAddToQueueAndDeny()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -143,7 +139,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     [Trait("Area", "CriticalSectionTokens")]
     public async Task If_KeepAliveMode_TokenAvailableAndIsFirstInQueue_ThenRemoveFromQueueAndGrant()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -178,7 +173,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     [Trait("Area", "CriticalSectionTokens")]
     public async Task If_KeepAliveMode_TokenAvailableAndIsNotFirstInQueue_ThenDoNotChangeQueueAndDeny()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -220,7 +214,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     public async Task
         If_KeepAliveMode_TokenAvailableAndIsNotFirstInQueueButFirstHasExpiredTimeout_ThenRemoveBothFromQueueAndGrant()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -272,7 +265,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     public async Task
         If_KeepAliveMode_TokenAvailableAndIsNotFirstInQueueButFirstHasCompleted_ThenRemoveBothFromQueueAndGrant()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE

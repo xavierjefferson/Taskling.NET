@@ -31,20 +31,17 @@ public class ExecutionTokenHelper : IExecutionTokenHelper
 
     public ExecutionToken Create(ExecutionTokenStatus status, long g = 0)
     {
-        _logger.Debug("c9c4b7cb-7ea9-4d8f-abd4-4c011e481210");
         return new ExecutionToken { Status = status, GrantedToExecution = g };
     }
 
     public void SetStatus(ExecutionToken execution, ExecutionTokenStatus status)
     {
-        _logger.Debug("f02077dd-8364-4607-a1ba-0913d81ed783");
         _logger.Debug($"Setting token status to {status}");
         execution.Status = status;
     }
 
     public void SetGrantedToExecution(ExecutionToken execution, long g)
     {
-        _logger.Debug("ca65a673-5d53-4e93-afc1-feb23a86383e");
         _logger.Debug($"Setting token g to {g}");
         execution.GrantedToExecution = g;
     }

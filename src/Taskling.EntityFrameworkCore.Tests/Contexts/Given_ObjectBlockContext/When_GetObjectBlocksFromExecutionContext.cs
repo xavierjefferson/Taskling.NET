@@ -28,7 +28,6 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
         ITaskRepository taskRepository) : base(executionsHelper)
     {
         _logger = logger;
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _blocksHelper = blocksHelper;
         _clientHelper = clientHelper;
 
@@ -45,7 +44,6 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_NumberOfBlocksAndStatusesOfBlockExecutionsCorrectAtEveryStep()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
 // ARRANGE
@@ -99,7 +97,6 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_NoBlockNeeded_ThenEmptyListAndEventPersisted()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
 // ARRANGE
@@ -127,7 +124,6 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_ComplexObjectStored_ThenRetrievedOk()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
 // ARRANGE
@@ -171,7 +167,6 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_LargeComplexObjectStored_ThenRetrievedOk()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var longList = GetLargeListOfStrings();
 
         await InSemaphoreAsync(async () =>
@@ -215,7 +210,6 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
 
     private List<string> GetLargeListOfStrings()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var list = new List<string>();
 
         for (var i = 0; i < 1000; i++)
@@ -229,7 +223,6 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_PreviousBlock_ThenLastBlockHasCorrectObjectValue()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
 // ARRANGE
@@ -273,7 +266,6 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_NoPreviousBlock_ThenLastBlockIsNull()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
 // ARRANGE
@@ -297,7 +289,6 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_PreviousBlockIsPhantom_ThenLastBlockIsNotThePhantom()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
 // ARRANGE
@@ -337,7 +328,6 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_PreviousExecutionHadOneFailedBlockAndMultipleOkOnes_ThenBringBackTheFailedBlockWhenRequested()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
 // ARRANGE
@@ -397,7 +387,6 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_PreviousExecutionHadOneFailedBlockAndMultipleOkOnes_ThenBringBackAllBlocksWhenRequested()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
 // ARRANGE
@@ -461,7 +450,6 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_WithPreviousDeadBlocks_ThenReprocessOk()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
 // ARRANGE
@@ -504,7 +492,6 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_AsDateRangeWithOverridenConfiguration_ThenOverridenValuesAreUsed()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
 // ARRANGE
@@ -539,7 +526,6 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_WithNoOverridenConfiguration_ThenConfigurationValuesAreUsed()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
 // ARRANGE
@@ -567,7 +553,6 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_ForceBlock_ThenBlockGetsReprocessedAndDequeued()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
 // ARRANGE
@@ -629,21 +614,18 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
 
     private ITaskExecutionContext CreateTaskExecutionContext()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return _clientHelper.GetExecutionContext(CurrentTaskId,
             _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing());
     }
 
     private ITaskExecutionContext CreateTaskExecutionContextWithNoReprocessing()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return _clientHelper.GetExecutionContext(CurrentTaskId,
             _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndNoReprocessing());
     }
 
     private async Task CreateFailedObjectBlockTaskAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         using (var executionContext = CreateTaskExecutionContextWithNoReprocessing())
         {
             var startedOk = await executionContext.TryStartAsync();
@@ -662,7 +644,6 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
 
     private async Task CreateDeadObjectBlockTaskAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         using (var executionContext = CreateTaskExecutionContextWithNoReprocessing())
         {
             var startedOk = await executionContext.TryStartAsync();

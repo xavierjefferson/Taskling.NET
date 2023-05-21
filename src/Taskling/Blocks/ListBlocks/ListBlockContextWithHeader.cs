@@ -38,7 +38,6 @@ public class ListBlockContext<TItem, THeader> : ListBlockContextBase<TItem, THea
             forcedBlockQueueId)
     {
         _logger = loggerFactory.CreateLogger<ListBlockContext<TItem, THeader>>();
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _blockWithHeader.SetParentContext(this);
     }
 

@@ -52,7 +52,6 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
         _taskRepository = taskRepository;
         _logger = logger;
         _loggerFactory = loggerFactory;
-        _logger.LogDebug($"{nameof(BlockRepository)} constructor was called");
     }
 
 
@@ -62,12 +61,10 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
         switch (queuedForcedBlocksRequest.BlockType)
         {
             case BlockType.DateRange:
-                _logger.Debug("1168ca9b-e21c-4475-bb23-c7857f760db3");
                 var tmp = await GetForcedDateRangeBlocksAsync(queuedForcedBlocksRequest).ConfigureAwait(false);
                 _logger.Debug($"Returning {tmp.Count}");
                 return tmp;
             case BlockType.NumericRange:
-                _logger.Debug("9aab0db8-0d99-491c-921f-4836b82dee44");
                 var tmp2 = await GetForcedNumericRangeBlocksAsync(queuedForcedBlocksRequest).ConfigureAwait(false);
                 _logger.Debug($"Returning {tmp2.Count}");
                 return tmp2;

@@ -20,7 +20,6 @@ public abstract class DbOperationsService
         ILogger<DbOperationsService> logger)
     {
         _logger = logger;
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         ConnectionStore = connectionStore;
         _dbContextFactoryEx = dbContextFactoryEx;
     }
@@ -29,8 +28,6 @@ public abstract class DbOperationsService
 
     protected async Task<TasklingDbContext> GetDbContextAsync(TaskId? taskId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
-        _logger.Debug("859976b7-f185-4ab5-8e34-faa680aa93b8");
         await Task.CompletedTask;
         return _dbContextFactoryEx.GetDbContext(taskId);
     }

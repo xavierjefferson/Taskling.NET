@@ -28,7 +28,6 @@ public class TasklingStressTest : TestBase
         ILogger<TasklingStressTest> logger) : base(executionsHelper)
     {
         _logger = logger;
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _executionsHelper = executionsHelper;
         _clientHelper = clientHelper;
     }
@@ -37,7 +36,6 @@ public class TasklingStressTest : TestBase
     [Trait("Speed", "Slow")]
     public void StartStressTest()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         CreateTasksAndExecutionTokens();
         var tasks = new List<Task>();
         for (var i = 0; i < 10; i++)
@@ -48,7 +46,6 @@ public class TasklingStressTest : TestBase
 
     private void CreateTasksAndExecutionTokens()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
         foreach (var process in _processes)
         {
@@ -80,7 +77,6 @@ public class TasklingStressTest : TestBase
 
     private async Task RunRandomTaskAsync(int repeatCount)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         for (var i = 0; i < repeatCount; i++)
         {
             var num = _random.Next(9);
@@ -122,7 +118,6 @@ public class TasklingStressTest : TestBase
 
     private async Task RunKeepAliveDateRangeTaskAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var taskName = "DR_" + _processes[_random.Next(25)];
         Console.WriteLine(taskName);
         using (var executionContext = _clientHelper.GetExecutionContext(
@@ -156,7 +151,6 @@ public class TasklingStressTest : TestBase
 
     private async Task RunKeepAliveNumericRangeTaskAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var taskName = "NR_" + _processes[_random.Next(25)];
         Console.WriteLine(taskName);
         using (var executionContext = _clientHelper.GetExecutionContext(
@@ -188,7 +182,6 @@ public class TasklingStressTest : TestBase
 
     private async Task RunKeepAliveListTaskWithSingleUnitCommitAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var taskName = "LSUC_" + _processes[_random.Next(25)];
         Console.WriteLine(taskName);
         using (var executionContext = _clientHelper.GetExecutionContext(
@@ -222,7 +215,6 @@ public class TasklingStressTest : TestBase
 
     private async Task RunKeepAliveListTaskWithPeriodicCommitAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var taskName = "LPC_" + _processes[_random.Next(25)];
         Console.WriteLine(taskName);
         using (var executionContext = _clientHelper.GetExecutionContext(
@@ -256,7 +248,6 @@ public class TasklingStressTest : TestBase
 
     private async Task RunKeepAliveListTaskWithBatchCommitAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var taskName = "LBC_" + _processes[_random.Next(25)];
         Console.WriteLine(taskName);
         using (var executionContext = _clientHelper.GetExecutionContext(
@@ -291,7 +282,6 @@ public class TasklingStressTest : TestBase
 
     private async Task RunOverrideDateRangeTaskAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var taskName = "OV_DR_" + _processes[_random.Next(25)];
         Console.WriteLine(taskName);
         using (var executionContext = _clientHelper.GetExecutionContext(
@@ -325,7 +315,6 @@ public class TasklingStressTest : TestBase
 
     private async Task RunOverrideNumericRangeTaskAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var taskName = "OV_NR_" + _processes[_random.Next(25)];
         Console.WriteLine(taskName);
         using (var executionContext = _clientHelper.GetExecutionContext(
@@ -357,7 +346,6 @@ public class TasklingStressTest : TestBase
 
     private async Task RunOverrideListTaskWithSingleUnitCommitAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var taskName = "OV_LSUC_" + _processes[_random.Next(25)];
         Console.WriteLine(taskName);
         using (var executionContext = _clientHelper.GetExecutionContext(
@@ -391,7 +379,6 @@ public class TasklingStressTest : TestBase
 
     private async Task RunOverrideListTaskWithPeriodicCommitAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var taskName = "OV_LPC_" + _processes[_random.Next(25)];
         Console.WriteLine(taskName);
         using (var executionContext = _clientHelper.GetExecutionContext(
@@ -425,7 +412,6 @@ public class TasklingStressTest : TestBase
 
     private async Task RunOverrideListTaskWithBatchCommitAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var taskName = "OV_LBC_" + _processes[_random.Next(25)];
         Console.WriteLine(taskName);
         using (var executionContext = _clientHelper.GetExecutionContext(
@@ -459,7 +445,6 @@ public class TasklingStressTest : TestBase
 
     private List<PersonDto> GetList(string prefix, int count)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var list = new List<PersonDto>();
 
         for (var i = 0; i < count; i++)

@@ -30,7 +30,6 @@ public class When_ChangeStatus : TestBase
         ITaskRepository taskRepository) : base(executionsHelper)
     {
         _logger = logger;
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _blocksHelper = blocksHelper;
         _clientHelper = clientHelper;
         _objectBlockRepository = objectBlockRepository;
@@ -48,7 +47,6 @@ public class When_ChangeStatus : TestBase
 
     private void InsertObjectBlock()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId);
 
         _baseDateTime = new DateTime(2016, 1, 1);
@@ -62,7 +60,6 @@ public class When_ChangeStatus : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_SetStatusOfObjectBlock_ThenItemsCountIsCorrect()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE

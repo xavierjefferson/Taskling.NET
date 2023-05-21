@@ -31,7 +31,6 @@ public class ObjectBlockContext<T> : BlockContextBase, IObjectBlockContext<T>
         forcedBlockQueueId)
     {
         _logger = loggerFactory.CreateLogger<ObjectBlockContext<T>>();
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _objectBlockRepository = objectBlockRepository;
         Block = block;
     }
@@ -49,7 +48,6 @@ public class ObjectBlockContext<T> : BlockContextBase, IObjectBlockContext<T>
 
     protected override string GetFailedErrorMessage(string message)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return $"BlockId {Block.ObjectBlockId} Error: {message}";
     }
 }

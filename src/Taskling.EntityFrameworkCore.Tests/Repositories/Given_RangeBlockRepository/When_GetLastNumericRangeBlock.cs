@@ -38,7 +38,6 @@ public class When_GetLastNumericRangeBlock : TestBase
         ITaskRepository taskRepository) : base(executionsHelper)
     {
         _logger = logger;
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         this.output = output;
         _blocksHelper = blocksHelper;
 
@@ -56,13 +55,11 @@ public class When_GetLastNumericRangeBlock : TestBase
 
     private IRangeBlockRepository CreateSut()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return _rangeBlockRepository;
     }
 
     private void InsertBlocks()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId);
 
         _baseDateTime = new DateTime(2016, 1, 1);
@@ -92,7 +89,6 @@ public class When_GetLastNumericRangeBlock : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_OrderByLastCreated_ThenReturnLastCreatedAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -114,7 +110,6 @@ public class When_GetLastNumericRangeBlock : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_OrderByMaxFromNumber_ThenReturnBlockWithMaxFromNumber()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -136,7 +131,6 @@ public class When_GetLastNumericRangeBlock : TestBase
     [Trait("Area", "Blocks")]
     public async Task If_OrderByMaxToNumber_ThenReturnBlockWithMaxToNumber()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -155,7 +149,6 @@ public class When_GetLastNumericRangeBlock : TestBase
 
     private LastBlockRequest CreateRequest(LastBlockOrder lastBlockOrder)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var request = new LastBlockRequest(CurrentTaskId,
             BlockType.NumericRange);
         request.LastBlockOrder = lastBlockOrder;

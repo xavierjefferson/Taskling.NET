@@ -24,7 +24,6 @@ public class CleanUpRepository : DbOperationsService, ICleanUpRepository
 
     public async Task<bool> CleanOldDataAsync(CleanUpRequest cleanUpRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
 
         var lastCleaned =
             await _taskRepository.GetLastTaskCleanUpTimeAsync(cleanUpRequest.TaskId).ConfigureAwait(false);
@@ -47,7 +46,6 @@ public class CleanUpRepository : DbOperationsService, ICleanUpRepository
 
     private async Task CleanListItemsAsync(TaskId taskId, long taskDefinitionId, DateTime listItemDateThreshold)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
 
         await RetryHelper.WithRetryAsync(async () =>
         {
@@ -62,7 +60,6 @@ public class CleanUpRepository : DbOperationsService, ICleanUpRepository
 
     private async Task CleanOldDataAsync(TaskId taskId, long taskDefinitionId, DateTime generalDateThreshold)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
 
         await RetryHelper.WithRetryAsync(async () =>
         {

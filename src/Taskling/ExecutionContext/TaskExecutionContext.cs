@@ -79,7 +79,6 @@ public class TaskExecutionContext : ITaskExecutionContext
         ICleanUpService cleanUpService, ILogger<TaskExecutionContext> logger, IServiceProvider serviceProvider)
     {
         _logger = logger;
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _taskExecutionRepository =
             taskExecutionRepository ?? throw new ArgumentNullException(nameof(taskExecutionRepository));
         ;
@@ -106,7 +105,6 @@ public class TaskExecutionContext : ITaskExecutionContext
     public IList<IDateRangeBlockContext> GetDateRangeBlocks(
         Func<IFluentDateRangeBlockDescriptor, object> fluentBlockRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return GetDateRangeBlocksAsync(fluentBlockRequest).WaitAndUnwrapException();
     }
 
@@ -116,7 +114,6 @@ public class TaskExecutionContext : ITaskExecutionContext
     public void SetOptions(TaskId taskId,
         TaskExecutionOptions taskExecutionOptions, ITaskConfigurationRepository taskConfigurationRepository)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _taskConfigurationRepository = taskConfigurationRepository;
         _taskExecutionInstance = new TaskExecutionInstance(taskId);
         _taskExecutionOptions = taskExecutionOptions;
@@ -126,13 +123,11 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     public bool TryStart()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return TryStartAsync().WaitAndUnwrapException();
     }
 
     public void Dispose()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
 
         Dispose(true);
         GC.SuppressFinalize(this);
@@ -141,14 +136,11 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     public async Task<bool> TryStartAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return await TryStartAsync(Guid.Empty).ConfigureAwait(false);
     }
 
     public async Task<bool> TryStartAsync(Guid referenceValue)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
-        _logger.LogDebug($"Entered {nameof(TryStartAsync)}");
         try
         {
             if (!_taskExecutionOptions.Enabled) return false;
@@ -193,21 +185,18 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     public async Task<bool> TryStartAsync<TExecutionHeader>(TExecutionHeader executionHeader)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _taskExecutionHeader = executionHeader;
         return await TryStartAsync().ConfigureAwait(false);
     }
 
     public async Task<bool> TryStartAsync<TExecutionHeader>(TExecutionHeader executionHeader, Guid referenceValue)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _taskExecutionHeader = executionHeader;
         return await TryStartAsync(referenceValue).ConfigureAwait(false);
     }
 
     public async Task CompleteAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _logger.LogDebug($"Entered {nameof(CompleteAsync)}");
         try
         {
@@ -237,7 +226,6 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     public async Task CheckpointAsync(string checkpointMessage)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (!IsExecutionContextActive)
             throw new ExecutionException(NotActiveMessage);
 
@@ -251,7 +239,6 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     public async Task ErrorAsync(string errorMessage, bool treatTaskAsFailed)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (!IsExecutionContextActive)
             throw new ExecutionException(NotActiveMessage);
 
@@ -268,7 +255,6 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     public TExecutionHeader GetHeader<TExecutionHeader>()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (_taskExecutionHeader != null)
             return (TExecutionHeader)_taskExecutionHeader;
 
@@ -277,7 +263,6 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     public ICriticalSectionContext CreateCriticalSection()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (!IsExecutionContextActive)
             throw new ExecutionException(NotActiveMessage);
 
@@ -296,8 +281,6 @@ public class TaskExecutionContext : ITaskExecutionContext
     public async Task<IList<IDateRangeBlockContext>> GetDateRangeBlocksAsync(
         Func<IFluentDateRangeBlockDescriptor, object> fluentBlockRequest)
     {
-        _logger.Debug("ee614157-3097-4a5e-ac8e-3a63f107285b");
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return await GetBlocksAsync<IDateRangeBlockContext, FluentRangeBlockDescriptor, DateRangeBlockRequest,
             IBlockSettings>(BlockType.DateRange, fluentBlockRequest, ConvertToDateRangeBlockRequest,
             _blockFactory.GenerateDateRangeBlocksAsync);
@@ -306,14 +289,12 @@ public class TaskExecutionContext : ITaskExecutionContext
     public IList<INumericRangeBlockContext> GetNumericRangeBlocks(
         Func<IFluentNumericRangeBlockDescriptor, object> fluentBlockRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return GetNumericRangeBlocksAsync(fluentBlockRequest).WaitAndUnwrapException();
     }
 
     public async Task<IList<INumericRangeBlockContext>> GetNumericRangeBlocksAsync(
         Func<IFluentNumericRangeBlockDescriptor, object> fluentBlockRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return await GetBlocksAsync<INumericRangeBlockContext, FluentRangeBlockDescriptor, NumericRangeBlockRequest,
             IBlockSettings>(BlockType.NumericRange, fluentBlockRequest, ConvertToNumericRangeBlockRequest,
             _blockFactory.GenerateNumericRangeBlocksAsync);
@@ -322,8 +303,6 @@ public class TaskExecutionContext : ITaskExecutionContext
     public async Task<IList<IListBlockContext<T>>> GetListBlocksAsync<T>(
         Func<IFluentListBlockDescriptorBase<T>, object> fluentBlockRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
-        _logger.Debug("1a79102d-7bbe-4da9-b2e7-b6d8d64c122e");
         return await GetBlocksAsync<IListBlockContext<T>, FluentListBlockDescriptorBase<T>, ListBlockRequest,
             IBlockSettings>(BlockType.List, fluentBlockRequest, GetListBlockRequest,
             _blockFactory.GenerateListBlocksAsync<T>);
@@ -332,7 +311,6 @@ public class TaskExecutionContext : ITaskExecutionContext
     public async Task<IList<IListBlockContext<TItem, THeader>>> GetListBlocksAsync<TItem, THeader>(
         Func<IFluentListBlockDescriptorBase<TItem, THeader>, object> fluentBlockRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return await GetBlocksAsync<IListBlockContext<TItem, THeader>, FluentListBlockDescriptorBase<TItem, THeader>,
             ListBlockRequest, IBlockSettings>(BlockType.List, fluentBlockRequest, GetListBlockRequest,
             _blockFactory.GenerateListBlocksAsync<TItem, THeader>);
@@ -341,7 +319,6 @@ public class TaskExecutionContext : ITaskExecutionContext
     public async Task<IList<IObjectBlockContext<T>>> GetObjectBlocksAsync<T>(
         Func<IFluentObjectBlockDescriptorBase<T>, object> fluentBlockRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return await GetBlocksAsync<IObjectBlockContext<T>, FluentObjectBlockDescriptorBase<T>, ObjectBlockRequest<T>,
             IObjectBlockSettings<T>>(BlockType.Object, fluentBlockRequest, GetObjectBlockRequest,
             _blockFactory.GenerateObjectBlocksAsync);
@@ -349,7 +326,6 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     public async Task<IDateRangeBlock> GetLastDateRangeBlockAsync(LastBlockOrder lastBlockOrder)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (!IsExecutionContextActive)
             throw new ExecutionException(NotActiveMessage);
 
@@ -363,7 +339,6 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     public async Task<INumericRangeBlock> GetLastNumericRangeBlockAsync(LastBlockOrder lastBlockOrder)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (!IsExecutionContextActive)
             throw new ExecutionException(NotActiveMessage);
 
@@ -377,13 +352,11 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     public INumericRangeBlock GetLastNumericRangeBlock(LastBlockOrder lastBlockOrder)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return GetLastNumericRangeBlockAsync(lastBlockOrder).WaitAndUnwrapException();
     }
 
     public async Task<IListBlock<T>> GetLastListBlockAsync<T>()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (!IsExecutionContextActive)
             throw new ExecutionException(NotActiveMessage);
 
@@ -396,7 +369,6 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     public async Task<IListBlock<TItem, THeader>> GetLastListBlockAsync<TItem, THeader>()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (!IsExecutionContextActive)
             throw new ExecutionException(NotActiveMessage);
 
@@ -409,7 +381,6 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     public async Task<IObjectBlock<T>> GetLastObjectBlockAsync<T>()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (!IsExecutionContextActive)
             throw new ExecutionException(NotActiveMessage);
 
@@ -422,7 +393,6 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     public async Task<TaskExecutionMeta> GetLastExecutionMetaAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var request = CreateTaskExecutionMetaRequest(1);
 
         var response = await _taskExecutionRepository.GetLastExecutionMetasAsync(request).ConfigureAwait(false);
@@ -437,7 +407,6 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     public async Task<IList<TaskExecutionMeta>> GetLastExecutionMetasAsync(int numberToRetrieve)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var request = CreateTaskExecutionMetaRequest(numberToRetrieve);
 
         var response = await _taskExecutionRepository.GetLastExecutionMetasAsync(request).ConfigureAwait(false);
@@ -450,7 +419,6 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     public async Task<TaskExecutionMeta<TExecutionHeader>> GetLastExecutionMetaAsync<TExecutionHeader>()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var request = CreateTaskExecutionMetaRequest(1);
 
         var response = await _taskExecutionRepository.GetLastExecutionMetasAsync(request).ConfigureAwait(false);
@@ -470,7 +438,6 @@ public class TaskExecutionContext : ITaskExecutionContext
     public async Task<IList<TaskExecutionMeta<TExecutionHeader>>> GetLastExecutionMetasAsync<TExecutionHeader>(
         int numberToRetrieve)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var request = CreateTaskExecutionMetaRequest(numberToRetrieve);
 
         var response = await _taskExecutionRepository.GetLastExecutionMetasAsync(request).ConfigureAwait(false);
@@ -487,44 +454,37 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     public IDateRangeBlock GetLastDateRangeBlock(LastBlockOrder lastCreated)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return GetLastDateRangeBlockAsync(lastCreated).WaitAndUnwrapException();
     }
 
     public void Complete()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         CompleteAsync().WaitAndUnwrapException();
     }
 
     public void Error(string toString, bool b)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         ErrorAsync(toString, b).WaitAndUnwrapException();
     }
 
     public IList<IListBlockContext<TItem, THeader>> GetListBlocks<TItem, THeader>(
         Func<IFluentListBlockDescriptorBase<TItem, THeader>, object> fluentBlockRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return GetListBlocksAsync(fluentBlockRequest).WaitAndUnwrapException();
     }
 
     public IListBlock<TItem, THeader> GetLastListBlock<TItem, THeader>()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return GetLastListBlockAsync<TItem, THeader>().WaitAndUnwrapException();
     }
 
     ~TaskExecutionContext()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         Dispose(false);
     }
 
     protected virtual void Dispose(bool disposing)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (_disposed)
             return;
 
@@ -540,7 +500,6 @@ public class TaskExecutionContext : ITaskExecutionContext
     public IList<IDateRangeBlockContext> GetDateRangeBlocksc(
         Func<IFluentDateRangeBlockDescriptor, object> fluentBlockRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return GetDateRangeBlocksAsync(fluentBlockRequest).WaitAndUnwrapException();
     }
 
@@ -549,17 +508,14 @@ public class TaskExecutionContext : ITaskExecutionContext
         Func<V, Task<IList<T>>> generateFunc)
         where V : BlockRequest where U : new() where W : IBlockSettings
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _logger.LogDebug($"Entering block request for {typeof(T).Name}");
         try
         {
             if (!IsExecutionContextActive)
             {
-                _logger.Debug("1aeb9ff0-5de1-4141-8bf6-8d1522c2036a");
                 throw new ExecutionException(NotActiveMessage);
             }
 
-            _logger.Debug("ac3a715a-7ce4-4a38-bee6-d2563aa92bfc");
             var fluentDescriptor = fluentBlockRequest(new U());
             var settings = (W)fluentDescriptor;
             if (settings.BlockType == blockType)
@@ -567,7 +523,6 @@ public class TaskExecutionContext : ITaskExecutionContext
                 var request = createRequestFunc(settings);
                 if (ShouldProtect(request))
                 {
-                    _logger.Debug("84cd0420-e6b3-4d1e-8c44-4b3b274ef885");
                     _logger.LogDebug("Request is protected - creating critical section");
                     var csContext = CreateClientCriticalSection();
                     try
@@ -576,11 +531,9 @@ public class TaskExecutionContext : ITaskExecutionContext
                             _tasklingOptions.CriticalSectionAttemptCount).ConfigureAwait(false);
                         if (csStarted)
                         {
-                            _logger.Debug("7fcac822-d753-43f4-8a53-f16eb0e0f7c9");
                             return await generateFunc(request).ConfigureAwait(false);
                         }
 
-                        _logger.Debug("3081d755-b7ec-4858-bbfc-9cd879efd3df");
                         throw new CriticalSectionException("Could not start a critical section in the alloted time");
                     }
                     finally
@@ -590,7 +543,6 @@ public class TaskExecutionContext : ITaskExecutionContext
                 }
                 else
                 {
-                    _logger.Debug("5dc2f323-1101-4db5-a487-55bff6f49bb9");
                 }
 
                 _logger.LogDebug("Request is unprotected");
@@ -607,15 +559,12 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     private void CleanUpOldData()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _cleanUpService.CleanOldData(_taskExecutionInstance.TaskId,
             _taskExecutionInstance.TaskExecutionId, _taskConfigurationRepository);
     }
 
     private TaskExecutionStartRequest CreateStartRequest(Guid referenceValue)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
-        _logger.Debug("d117a96a-84e3-4974-97ef-d353e3f46636");
         var startRequest = new TaskExecutionStartRequest(
             _taskExecutionInstance.TaskId,
             _taskExecutionOptions.TaskDeathMode,
@@ -633,8 +582,6 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     private void SetStartRequestTasklingVersion(TaskExecutionStartRequest startRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
-        _logger.Debug("46b5407c-94ea-4a82-854b-2e4c1d2f7873");
         var assembly = Assembly.GetExecutingAssembly();
         var fileVersionInfo = FileVersionInfo.GetVersionInfo(assembly.Location);
         var version = fileVersionInfo.ProductVersion;
@@ -643,8 +590,6 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     private void SetStartRequestValues(TaskExecutionStartRequest startRequest, Guid referenceValue)
     {
-        _logger.Debug("edbf81ac-5456-4a0d-a36b-f1732b87e8b6");
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (_taskExecutionOptions.TaskDeathMode == TaskDeathMode.KeepAlive)
         {
             if (!_taskExecutionOptions.KeepAliveInterval.HasValue)
@@ -671,21 +616,17 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     private void SerializeHeaderIfExists(TaskExecutionStartRequest startRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (_taskExecutionHeader != null)
         {
-            _logger.Debug("3d5600a8-8718-4de7-8549-9c8cb369929f");
             startRequest.TaskExecutionHeader = JsonGenericSerializer.Serialize(_taskExecutionHeader);
         }
         else
         {
-            _logger.Debug("166166b3-dd14-4dda-a7e3-7132bd600984");
         }
     }
 
     private void StartKeepAlive()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var keepAliveRequest = new SendKeepAliveRequest(_taskExecutionInstance.TaskId)
         {
             TaskExecutionId = _taskExecutionInstance.TaskExecutionId,
@@ -699,7 +640,6 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     private DateRangeBlockRequest ConvertToDateRangeBlockRequest(IBlockSettings settings)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var request = new DateRangeBlockRequest(_taskExecutionInstance.TaskId);
         request.TaskExecutionId = _taskExecutionInstance.TaskExecutionId;
         request.TaskDeathMode = _taskExecutionOptions.TaskDeathMode;
@@ -722,7 +662,6 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     private NumericRangeBlockRequest ConvertToNumericRangeBlockRequest(IBlockSettings settings)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var request = new NumericRangeBlockRequest(_taskExecutionInstance.TaskId);
         request.TaskExecutionId = _taskExecutionInstance.TaskExecutionId;
         request.TaskDeathMode = _taskExecutionOptions.TaskDeathMode;
@@ -745,7 +684,6 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     private ListBlockRequest GetListBlockRequest(IBlockSettings settings)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var request = new ListBlockRequest(_taskExecutionInstance.TaskId);
 
 
@@ -777,7 +715,6 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     private ObjectBlockRequest<T> GetObjectBlockRequest<T>(IObjectBlockSettings<T> settings)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var request = new ObjectBlockRequest<T>(settings.Object,
             _taskConfiguration.MaxLengthForNonCompressedData, _taskExecutionInstance.TaskId);
 
@@ -799,7 +736,6 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     private void SetConfigurationOverridableSettings(BlockRequest request, IBlockSettings settings)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         request.ReprocessDeadTasks = settings.MustReprocessDeadTasks ?? _taskConfiguration.ReprocessDeadTasks;
 
         request.ReprocessFailedTasks = settings.MustReprocessFailedTasks ?? _taskConfiguration.ReprocessFailedTasks;
@@ -821,8 +757,6 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     private bool IsUserCriticalSectionActive()
     {
-        _logger.Debug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
-        _logger.Debug("dc73085c-0af9-4f3f-b736-9064dde835c3");
         var tmp = _userCriticalSectionContext != null && _userCriticalSectionContext.IsActive();
         _logger.Debug($"{nameof(IsUserCriticalSectionActive)} = {tmp}");
         return tmp;
@@ -830,9 +764,6 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     private bool ShouldProtect(BlockRequest blockRequest)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
-        _logger.Debug(Constants.Serialize(blockRequest));
-        _logger.Debug("254f3474-fc1a-45c6-9836-66864ac3bc02");
         var tmp = (blockRequest.ReprocessDeadTasks || blockRequest.ReprocessFailedTasks) &&
                   !IsUserCriticalSectionActive();
         _logger.Debug(tmp.ToString());
@@ -841,7 +772,6 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     private ICriticalSectionContext CreateClientCriticalSection()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (IsClientCriticalSectionActive())
             throw new CriticalSectionException("Only one client critical section context can be active at a time");
 
@@ -855,13 +785,11 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     private bool IsClientCriticalSectionActive()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return _clientCriticalSectionContext != null && _clientCriticalSectionContext.IsActive();
     }
 
     private TaskExecutionMetaRequest CreateTaskExecutionMetaRequest(int numberToRetrieve)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var request = new TaskExecutionMetaRequest(_taskExecutionInstance.TaskId);
 
         request.ExecutionsToRetrieve = numberToRetrieve;

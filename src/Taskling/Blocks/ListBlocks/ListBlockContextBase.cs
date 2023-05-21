@@ -63,7 +63,6 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
     {
         _loggerFactory = loggerFactory;
         _logger = loggerFactory.CreateLogger<ListBlockContextBase<TItem, THeader>>();
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _listBlockRepository = listBlockRepository;
         _retryService = retryService;
         ListUpdateMode = listUpdateMode;
@@ -91,7 +90,6 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
         listUpdateMode, uncommittedThreshold, blockExecutionId, maxStatusReasonLength, loggerFactory,
         forcedBlockQueueId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _headerlessBlock = listBlock;
     }
 
@@ -109,7 +107,6 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
         listUpdateMode, uncommittedThreshold, blockExecutionId, maxStatusReasonLength, loggerFactory,
         forcedBlockQueueId)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _blockWithHeader = listBlock;
         _hasHeader = true;
     }
@@ -137,7 +134,6 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
 
     protected virtual void Dispose(bool disposing)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (_disposed)
             return;
 
@@ -148,14 +144,12 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
 
     protected void ValidateBlockIsActive()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (_completed)
             throw new ExecutionException("The block has been marked as completed");
     }
 
     protected async Task UpdateItemStatusAsync(IListBlockItem<TItem> item)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         switch (ListUpdateMode)
         {
             case ListUpdateMode.SingleItemCommit:
@@ -172,7 +166,6 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
 
     protected async Task CommitAsync(long listBlockId, IListBlockItem<TItem> item)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var singleUpdateRequest = new SingleUpdateRequest(CurrentTaskId)
         {
             ListBlockId = listBlockId,
@@ -185,13 +178,11 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
 
     protected void AddToUncommittedItems(IListBlockItem<TItem> item)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _uncommittedListSemaphore.Wrap(() => { _uncommittedItems.Add(item); });
     }
 
     protected async Task AddAndCommitIfUncommittedCountReachedAsync(IListBlockItem<TItem> item)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await _uncommittedListSemaphore.WrapAsync(async () =>
         {
             _uncommittedItems.Add(item);
@@ -202,7 +193,6 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
 
     protected async Task CommitUncommittedItemsAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         List<IListBlockItem<TItem>> listToCommit = null;
         if (_uncommittedItems != null && _uncommittedItems.Any())
         {
@@ -225,7 +215,6 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
 
     protected List<ProtoListBlockItem> Convert(List<IListBlockItem<TItem>> listBlockItems)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var items = new List<ProtoListBlockItem>();
 
         foreach (var listBlockItem in listBlockItems)
@@ -236,7 +225,6 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
 
     protected ProtoListBlockItem Convert(IListBlockItem<TItem> listBlockItem)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return new ProtoListBlockItem
         {
             LastUpdated = listBlockItem.LastUpdated,
@@ -249,7 +237,6 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
 
     protected List<IListBlockItem<TItem>> Convert(IList<ProtoListBlockItem> listBlockItems)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var items = new List<IListBlockItem<TItem>>();
 
         foreach (var listBlockItem in listBlockItems)
@@ -260,7 +247,6 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
 
     protected IListBlockItem<TItem> Convert(ProtoListBlockItem listBlockItem)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return new ListBlockItem<TItem>(_loggerFactory.CreateLogger<ListBlockItem<TItem>>())
         {
             LastUpdated = listBlockItem.LastUpdated,
@@ -274,7 +260,6 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
 
     protected string LimitLength(string input, int limit)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (input == null)
             return null;
 
@@ -289,7 +274,6 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
 
     private void SetItems(IList<IListBlockItem<TItem>> items)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (_hasHeader)
             _blockWithHeader.Items = items;
 
@@ -306,7 +290,6 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
     private async Task<IEnumerable<IListBlockItem<TItem>>> GetItemsFromHeaderlessBlockAsync(
         params ItemStatus[] statuses)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (statuses.Length == 0)
             statuses = new[] { ItemStatus.All };
 
@@ -331,7 +314,6 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
     private async Task<IEnumerable<IListBlockItem<TItem>>> GetItemsFromBlockWithHeaderAsync(
         params ItemStatus[] statuses)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (statuses.Length == 0)
             statuses = new[] { ItemStatus.All };
         return await _getItemsSemaphore.WrapAsync(async () =>
@@ -354,7 +336,6 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
 
     public async Task FillItemsAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await _getItemsSemaphore.WrapAsync(async () =>
         {
             var protoListBlockItems = await _listBlockRepository
@@ -369,13 +350,11 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
 
     public IEnumerable<IListBlockItem<TItem>> GetItems(params ItemStatus[] statuses)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return GetItemsAsync(statuses).WaitAndUnwrapException();
     }
 
     public async Task<IEnumerable<IListBlockItem<TItem>>> GetItemsAsync(params ItemStatus[] statuses)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (_hasHeader)
             return await GetItemsFromBlockWithHeaderAsync(statuses).ConfigureAwait(false);
 
@@ -384,7 +363,6 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
 
     public async Task ItemCompletedAsync(IListBlockItem<TItem> item)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         ValidateBlockIsActive();
         item.Status = ItemStatus.Completed;
         await UpdateItemStatusAsync(item).ConfigureAwait(false);
@@ -393,7 +371,6 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
 
     public async Task ItemFailedAsync(IListBlockItem<TItem> item, string reason, int? step = null)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         item.StatusReason = reason;
 
         if (step.HasValue)
@@ -406,7 +383,6 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
 
     public async Task DiscardItemAsync(IListBlockItem<TItem> item, string reason, int? step = null)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         item.StatusReason = reason;
         if (step.HasValue)
             item.Step = step;
@@ -418,14 +394,12 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
 
     public override async Task StartAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         ValidateBlockIsActive();
         await base.StartAsync().ConfigureAwait(false);
     }
 
     public override async Task CompleteAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         ValidateBlockIsActive();
         await _uncommittedListSemaphore.WrapAsync(async () =>
         {
@@ -441,7 +415,6 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
 
     public override async Task FailedAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         ValidateBlockIsActive();
         await _uncommittedListSemaphore.WrapAsync(async () =>
         {
@@ -452,13 +425,11 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
 
     protected override string GetFailedErrorMessage(string message)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return $"BlockId {ListBlockId} Error: {message}";
     }
 
     public override async Task CompleteAsync(int itemsProcessed)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await Task.CompletedTask;
         throw new NotImplementedException();
     }
@@ -466,7 +437,6 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
 
     public async Task FlushAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await _uncommittedListSemaphore.WrapAsync(async () =>
         {
             await CommitUncommittedItemsAsync().ConfigureAwait(false);
@@ -475,7 +445,6 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
 
     public void Dispose()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         Dispose(true);
     }
 }

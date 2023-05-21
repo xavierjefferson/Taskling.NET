@@ -19,7 +19,6 @@ public class When_Blocked : TestBase
         ILogger<When_Blocked> logger, ITaskRepository taskRepository) : base(executionsHelper)
     {
         _logger = logger;
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _executionsHelper = executionsHelper;
         _clientHelper = clientHelper;
 
@@ -34,7 +33,6 @@ public class When_Blocked : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_TryStartOverTheConcurrencyLimit_ThenMarkExecutionAsBlocked()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
 // ARRANGE

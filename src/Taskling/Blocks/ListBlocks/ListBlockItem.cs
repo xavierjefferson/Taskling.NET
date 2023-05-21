@@ -27,37 +27,31 @@ public class ListBlockItem<T> : IListBlockItem<T>
 
     public async Task CompleteAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await _itemComplete(this).ConfigureAwait(false);
     }
 
     public async Task FailedAsync(string message)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await _itemFailed(this, message, null).ConfigureAwait(false);
     }
 
     public async Task DiscardedAsync(string message)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await _discardItem(this, message, null).ConfigureAwait(false);
     }
 
     public void Failed(string message)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         FailedAsync(message).WaitAndUnwrapException();
     }
 
     public void Discarded(string message)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         DiscardedAsync(message).WaitAndUnwrapException();
     }
 
     public void Complete()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         CompleteAsync().WaitAndUnwrapException();
     }
 
@@ -65,7 +59,6 @@ public class ListBlockItem<T> : IListBlockItem<T>
         Func<IListBlockItem<T>, string, int?, Task> itemFailed,
         Func<IListBlockItem<T>, string, int?, Task> discardItem)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _itemComplete = itemComplete;
         _itemFailed = itemFailed;
         _discardItem = discardItem;

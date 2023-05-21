@@ -23,7 +23,6 @@ public class When_GetLastExecutionMeta : TestBase
         executionsHelper)
     {
         _logger = logger;
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _executionsHelper = executionsHelper;
         _clientHelper = clientHelper;
 
@@ -38,7 +37,6 @@ public class When_GetLastExecutionMeta : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_MultipleExecutionsAndGetLastExecutionMeta_ThenReturnLastOne()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -76,7 +74,6 @@ public class When_GetLastExecutionMeta : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_MultipleExecutionsAndGetLastExecutionMetas_ThenReturnLastXItems()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -117,7 +114,6 @@ public class When_GetLastExecutionMeta : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_NoPreviousExecutionsAndGetLastExecutionMeta_ThenReturnNull()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -137,7 +133,6 @@ public class When_GetLastExecutionMeta : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_MultipleExecutionsAndGetLastExecutionMetaWithHeader_ThenReturnLastOne()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -174,7 +169,6 @@ public class When_GetLastExecutionMeta : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_MultipleExecutionsAndGetLastExecutionMetasWithHeader_ThenReturnLastXItems()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -214,7 +208,6 @@ public class When_GetLastExecutionMeta : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_NoPreviousExecutionsAndGetLastExecutionMetaWithHeader_ThenReturnNull()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -235,7 +228,6 @@ public class When_GetLastExecutionMeta : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_LastExecutionCompleted_ThenReturnStatusIsCompleted()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -263,7 +255,6 @@ public class When_GetLastExecutionMeta : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_LastExecutionFailed_ThenReturnStatusIsFailed()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -292,7 +283,6 @@ public class When_GetLastExecutionMeta : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_LastExecutionBlocked_ThenReturnStatusIsBlockedAsync()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE
@@ -330,7 +320,6 @@ public class When_GetLastExecutionMeta : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_LastExecutionInProgress_ThenReturnStatusIsInProgress()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE, ACT, ASSERT
@@ -355,7 +344,6 @@ public class When_GetLastExecutionMeta : TestBase
     [Trait("Area", "TaskExecutions")]
     public async Task If_LastExecutionDead_ThenReturnStatusIsDead()
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE, ACT, ASSERT

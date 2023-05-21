@@ -33,7 +33,6 @@ public class RangeBlockContext : BlockContextBase, IDateRangeBlockContext, INume
         forcedBlockQueueId)
     {
         _logger = loggerFactory.CreateLogger<RangeBlockContext>();
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _rangeBlockRepository = rangeBlockRepository;
         _block = rangeBlock;
     }
@@ -53,7 +52,6 @@ public class RangeBlockContext : BlockContextBase, IDateRangeBlockContext, INume
 
     protected override string GetFailedErrorMessage(string message)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         if (_block.RangeType == BlockType.DateRange)
             return
                 $"BlockId {_block.RangeBlockId} From: {_block.RangeBeginAsDateTime().ToString("yyyy-MM-dd HH:mm:ss")} To: {_block.RangeEndAsDateTime().ToString("yyyy-MM-dd HH:mm:ss")} Error: {message}";
