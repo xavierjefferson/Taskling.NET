@@ -10,7 +10,7 @@ public class FindDeadBlocksRequest : StatusSpecificBlockRequestBase, ISearchable
         { (int)BlockExecutionStatus.NotStarted, (int)BlockExecutionStatus.Started };
 
     public FindDeadBlocksRequest(TaskId taskId,
-        int taskExecutionId,
+        long taskExecutionId,
         BlockType blockType,
         DateTime searchPeriodBegin,
         DateTime searchPeriodEnd,

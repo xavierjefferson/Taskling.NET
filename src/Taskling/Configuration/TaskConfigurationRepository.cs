@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Reflection;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using Taskling.Exceptions;
 using Taskling.Extensions;
 using Taskling.InfrastructureContracts;

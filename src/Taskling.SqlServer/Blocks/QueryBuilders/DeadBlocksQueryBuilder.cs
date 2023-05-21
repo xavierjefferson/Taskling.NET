@@ -133,5 +133,5 @@ public class BlockItemRequestWrapper
     public int Limit { get; set; }
     public ISearchableBlockRequest? Body { get; set; }
     public BlockType BlockType { get; set; }
-    public int TaskDefinitionId { get; set; }
+    public long TaskDefinitionId { get; set; }
 }

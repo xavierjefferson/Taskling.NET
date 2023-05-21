@@ -16,13 +16,14 @@ public class When_Start : TestBase
     private readonly IClientHelper _clientHelper;
     private readonly IExecutionsHelper _executionsHelper;
     private readonly ILogger<When_Start> _logger;
-    private readonly int _taskDefinitionId;
+    private readonly long _taskDefinitionId;
 
     public When_Start(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper, IClientHelper clientHelper,
         ILogger<When_Start> logger, ITaskRepository taskRepository) : base(executionsHelper)
     {
-        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _logger = logger;
+        _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
+
         _executionsHelper = executionsHelper;
         _clientHelper = clientHelper;
 

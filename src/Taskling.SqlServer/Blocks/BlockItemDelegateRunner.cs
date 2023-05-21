@@ -21,7 +21,7 @@ public class BlockItemDelegateRunner
     public int Limit { get; }
 
     public async Task<List<BlockQueryItem>> Execute(TasklingDbContext dbContext,
-        ISearchableBlockRequest request, int taskDefinitionId)
+        ISearchableBlockRequest request, long taskDefinitionId)
     {
         return await _getBlockItemsDelegate(new BlockItemRequestWrapper
         {

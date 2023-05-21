@@ -68,7 +68,7 @@ public class TravelInsightsAnalysisService
                     ToDate = endDate
                 };
 
-                int blockSize = 500;
+                var blockSize = 500;
                 return taskExecutionContext.GetListBlocks<Journey, BatchDatesHeader>(x =>
                     x.WithPeriodicCommit(journeys, batchHeader, blockSize, BatchSize.Fifty));
             }

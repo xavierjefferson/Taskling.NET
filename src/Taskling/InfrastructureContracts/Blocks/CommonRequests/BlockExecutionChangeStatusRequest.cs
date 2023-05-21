@@ -5,7 +5,7 @@ namespace Taskling.InfrastructureContracts.Blocks.CommonRequests;
 public class BlockExecutionChangeStatusRequest : BlockRequestBase
 {
     public BlockExecutionChangeStatusRequest(TaskId taskId,
-        int taskExecutionId,
+        long taskExecutionId,
         BlockType blockType,
         long blockExecutionId,
         BlockExecutionStatus blockExecutionStatus)

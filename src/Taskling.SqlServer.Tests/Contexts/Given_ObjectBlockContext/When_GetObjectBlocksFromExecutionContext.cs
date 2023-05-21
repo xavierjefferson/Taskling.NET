@@ -21,7 +21,7 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
     private readonly IClientHelper _clientHelper;
     private readonly IExecutionsHelper _executionsHelper;
     private readonly ILogger<When_GetObjectBlocksFromExecutionContext> _logger;
-    private readonly int _taskDefinitionId;
+    private readonly long _taskDefinitionId;
 
     public When_GetObjectBlocksFromExecutionContext(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper,
         IClientHelper clientHelper, ILogger<When_GetObjectBlocksFromExecutionContext> logger,
@@ -352,10 +352,6 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
                 Assert.True(startedOk);
                 if (startedOk)
                 {
-                    var fromDate = DateTime.UtcNow.AddHours(-12);
-                    var toDate = DateTime.UtcNow;
-                    var maxBlockRange = new TimeSpan(0, 30, 0);
-
                     var blocks = new List<IObjectBlockContext<string>>();
                     blocks.AddRange(
                         await executionContext.GetObjectBlocksAsync<string>(x => x.WithObject("My object1")));

@@ -151,9 +151,9 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
         {
             var entityEntry = dbContext.ListBlockItems.Attach(new ListBlockItem
             {
-                ListBlockItemId = listBlockItem.ListBlockItemId, 
+                ListBlockItemId = listBlockItem.ListBlockItemId,
                 Status = (int)listBlockItem.Status,
-                StatusReason = listBlockItem.StatusReason, 
+                StatusReason = listBlockItem.StatusReason,
                 Step = listBlockItem.Step
             });
 

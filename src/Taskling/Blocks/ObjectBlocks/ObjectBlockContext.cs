@@ -23,7 +23,7 @@ public class ObjectBlockContext<T> : BlockContextBase, IObjectBlockContext<T>
         IRetryService retryService,
         ITaskExecutionRepository taskExecutionRepository,
         TaskId taskId,
-        int taskExecutionId,
+        long taskExecutionId,
         ObjectBlock<T> block,
         long blockExecutionId,
         int forcedBlockQueueId = 0) : base(taskId, blockExecutionId, taskExecutionId, retryService,

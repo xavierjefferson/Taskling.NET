@@ -17,7 +17,7 @@ public class ListBlockContext<TItem, THeader> : ListBlockContextBase<TItem, THea
     public ListBlockContext(IListBlockRepository listBlockRepository,
         ITaskExecutionRepository taskExecutionRepository,
         TaskId taskId,
-        int taskExecutionId,
+        long taskExecutionId,
         ListUpdateMode listUpdateMode,
         int uncommittedThreshold,
         ListBlock<TItem, THeader> listBlock,

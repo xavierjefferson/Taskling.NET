@@ -31,14 +31,6 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
             {
                 return dbContext.ListBlockItems.Count(i => i.BlockId == blockId && i.Status == (int)status);
             }
-            //using (var connection = GetConnection())
-            //{
-            //    var command = connection.CreateCommand();
-            //    command.CommandText = GetListBlockItemCountByStatusQuery;
-            //    command.Parameters.Add("@BlockId", SqlDbType.BigInt).Value = blockId;
-            //    command.Parameters.Add("@Status", SqlDbType.Int).Value = (int)status;
-            //    return (int)command.ExecuteScalar();
-            //}
         });
     }
 
@@ -54,14 +46,6 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
                         i.TaskDefinition.ApplicationName == taskId.ApplicationName)
                     .Max(i => i.BlockId);
             }
-            //using (var connection = GetConnection())
-            //{
-            //    var command = connection.CreateCommand();
-            //    command.CommandText = GetLastBlockIdQuery;
-            //    command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = taskId.ApplicationName;
-            //    command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskId.TaskName;
-            //    return (long)command.ExecuteScalar();
-            //}
         });
     }
 
@@ -87,30 +71,6 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
                     items.Add(item);
                 }
             }
-            //using (var connection = GetConnection())
-            //{
-            //    var command = connection.CreateCommand();
-            //    command.CommandText = GetListBlockItemsQuery;
-            //    command.Parameters.Add("@BlockId", SqlDbType.BigInt).Value = blockId;
-            //    command.Parameters.Add("@Status", SqlDbType.Int).Value = (int)status;
-
-            //    var reader = command.ExecuteReader();
-            //    while (reader.Read())
-            //    {
-            //        var item = new ListBlockItem<T>();
-            //        item.ListBlockItemId = reader.GetInt64(0);
-            //        item.Value = JsonGenericSerializer.Deserialize<T>(reader.GetString(1));
-            //        item.Status = (ItemStatus)reader.GetInt32(2);
-
-            //        if (reader[4] != DBNull.Value)
-            //            item.StatusReason = reader.GetString(4);
-
-            //        if (reader[5] != DBNull.Value)
-            //            item.Step = reader.GetInt32(5);
-
-            //        items.Add(item);
-            //    }
-            //}
 
             return items;
         });
@@ -133,13 +93,6 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
                 dbContext.ForceBlockQueues.Add(forceBlockQueue);
                 dbContext.SaveChanges();
             }
-            //using (var connection = GetConnection())
-            //{
-            //    var command = connection.CreateCommand();
-            //    command.CommandText = InsertForcedBlockQueueQuery;
-            //    command.Parameters.Add("@BlockId", SqlDbType.BigInt).Value = blockId;
-            //    command.ExecuteNonQuery();
-            //}
         });
     }
 
@@ -156,18 +109,6 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
                         AddDateRange(context, taskDefinitionId, fromDate, toDate, DateTime.UtcNow, true);
                     });
             }
-
-            //using (var connection = GetConnection())
-            //{
-            //    var command = connection.CreateCommand();
-            //    command.CommandText = InsertPhantomDateBlockQuery;
-            //    command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = taskId.ApplicationName;
-            //    command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskId.TaskName;
-            //    command.Parameters.Add("@FromDate", SqlDbType.DateTime).Value = fromDate;
-            //    command.Parameters.Add("@ToDate", SqlDbType.DateTime).Value = toDate;
-            //    command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.DateRange;
-            //    command.ExecuteNonQuery();
-            //}
         });
     }
 
@@ -184,17 +125,6 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
                         AddNumericBlock(context, taskDefinitionId, fromId, toId, DateTime.UtcNow, true);
                     });
             }
-            //using (var connection = GetConnection())
-            //{
-            //    var command = connection.CreateCommand();
-            //    command.CommandText = InsertPhantomNumericBlockQuery;
-            //    command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = taskId.ApplicationName;
-            //    command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskId.TaskName;
-            //    command.Parameters.Add("@FromNumber", SqlDbType.BigInt).Value = fromId;
-            //    command.Parameters.Add("@ToNumber", SqlDbType.BigInt).Value = toId;
-            //    command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.NumericRange;
-            //    command.ExecuteNonQuery();
-            //}
         });
     }
 
@@ -230,41 +160,6 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
                         context.SaveChanges();
                     });
             }
-            //            using (var connection = GetConnection())
-            //            {
-            //                var command = connection.CreateCommand();
-            //                command.CommandText = @"DECLARE @TaskDefinitionId INT = (
-            //	SELECT TaskDefinitionId 
-            //	FROM [Taskling].[TaskDefinition]
-            //	WHERE ApplicationName = @ApplicationName
-            //	AND TaskName = @TaskName)
-
-            //INSERT INTO [Taskling].[Block]
-            //           ([TaskDefinitionId]
-            //           ,[BlockType]
-            //           ,[IsPhantom]
-            //           ,[CreatedDate])
-            //     VALUES
-            //           (@TaskDefinitionId
-            //           ,@BlockType
-            //           ,1
-            //           ,GETUTCDATE())
-
-            //DECLARE @BlockId BIGINT = (SELECT CAST(SCOPE_IDENTITY() AS BIGINT))
-
-            //INSERT INTO [Taskling].[ListBlockItem]
-            //           ([BlockId]
-            //           ,[Value]
-            //           ,[Status])
-            //     VALUES
-            //           (@BlockId
-            //           ,'test'
-            //           ,1)";
-            //                command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = taskId.ApplicationName;
-            //                command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskId.TaskName;
-            //                command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.List;
-            //                command.ExecuteNonQuery();
-            //            }
         });
     }
 
@@ -283,17 +178,6 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
                             true);
                     });
             }
-            //using (var connection = GetConnection())
-            //{
-            //    var command = connection.CreateCommand();
-            //    command.CommandText = InsertPhantomObjectBlockQuery;
-            //    command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = taskId.ApplicationName;
-            //    command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskId.TaskName;
-            //    command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.Object;
-            //    command.Parameters.Add("@ObjectData", SqlDbType.NVarChar, -1).Value =
-            //        JsonGenericSerializer.Serialize("My phantom block");
-            //    command.ExecuteNonQuery();
-            //}
         });
     }
 
@@ -311,14 +195,6 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
                     .Count(i => i.TaskDefinition.ApplicationName == taskId.ApplicationName &&
                                 i.TaskDefinition.TaskName == taskId.TaskName);
             }
-            //using (var connection = GetConnection())
-            //{
-            //    var command = connection.CreateCommand();
-            //    command.CommandText = query;
-            //    command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = taskId.ApplicationName;
-            //    command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskId.TaskName;
-            //    return (int)command.ExecuteScalar();
-            //}
         });
     }
 
@@ -334,7 +210,7 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
         if (taskDefinitionId != default) action(taskDefinitionId, dbContext);
     }
 
-    private delegate void TaskDefinitionDelegate(int taskDefinitionId, TasklingDbContext dbContext);
+    private delegate void TaskDefinitionDelegate(long taskDefinitionId, TasklingDbContext dbContext);
 
     #region .: Queries :.
 
@@ -528,13 +404,13 @@ INSERT INTO [Taskling].[Block]
 
     #region .: Insert and Delete Blocks :.
 
-    public long InsertDateRangeBlock(int taskDefinitionId, DateTime fromDate, DateTime toDate)
+    public long InsertDateRangeBlock(long taskDefinitionId, DateTime fromDate, DateTime toDate)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return InsertDateRangeBlock(taskDefinitionId, fromDate, toDate, fromDate);
     }
 
-    public long InsertDateRangeBlock(int taskDefinitionId, DateTime fromDate, DateTime toDate, DateTime createdAt)
+    public long InsertDateRangeBlock(long taskDefinitionId, DateTime fromDate, DateTime toDate, DateTime createdAt)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
@@ -543,21 +419,10 @@ INSERT INTO [Taskling].[Block]
             {
                 return AddDateRange(dbContext, taskDefinitionId, fromDate, toDate, createdAt, false);
             }
-            //using (var connection = GetConnection())
-            //{
-            //    var command = connection.CreateCommand();
-            //    command.CommandText = InsertDateRangeBlockQuery;
-            //    command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-            //    command.Parameters.Add("@FromDate", SqlDbType.DateTime).Value = fromDate;
-            //    command.Parameters.Add("@ToDate", SqlDbType.DateTime).Value = toDate;
-            //    command.Parameters.Add("@CreatedDate", SqlDbType.DateTime).Value = createdAt;
-            //    command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.DateRange;
-            //    return (long)command.ExecuteScalar();
-            //}
         });
     }
 
-    private long AddDateRange(TasklingDbContext dbContext, int taskDefinitionId, DateTime fromDate,
+    private long AddDateRange(TasklingDbContext dbContext, long taskDefinitionId, DateTime fromDate,
         DateTime toDate, DateTime createdAt,
         bool isPhantom)
     {
@@ -576,7 +441,7 @@ INSERT INTO [Taskling].[Block]
         return objectBlock.BlockId;
     }
 
-    public long InsertNumericRangeBlock(int taskDefinitionId, long fromNumber, long toNumber, DateTime createdDate)
+    public long InsertNumericRangeBlock(long taskDefinitionId, long fromNumber, long toNumber, DateTime createdDate)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
@@ -585,23 +450,10 @@ INSERT INTO [Taskling].[Block]
             {
                 return AddNumericBlock(dbContext, taskDefinitionId, fromNumber, toNumber, createdDate, false);
             }
-            //using (var connection = GetConnection())
-            //{
-
-
-            //    var command = connection.CreateCommand();
-            //    command.CommandText = InsertNumericRangeBlockQuery;
-            //    command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-            //    command.Parameters.Add("@FromNumber", SqlDbType.BigInt).Value = fromNumber;
-            //    command.Parameters.Add("@ToNumber", SqlDbType.BigInt).Value = toNumber;
-            //    command.Parameters.Add("@CreatedDate", SqlDbType.DateTime).Value = createdDate;
-            //    command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.NumericRange;
-            //    return (long)command.ExecuteScalar();
-            //}
         });
     }
 
-    private long AddNumericBlock(TasklingDbContext dbContext, int taskDefinitionId, long fromNumber,
+    private long AddNumericBlock(TasklingDbContext dbContext, long taskDefinitionId, long fromNumber,
         long toNumber, DateTime createdDate,
         bool isPhantom)
     {
@@ -621,7 +473,7 @@ INSERT INTO [Taskling].[Block]
         return objectBlock.BlockId;
     }
 
-    public long InsertListBlock(int taskDefinitionId, DateTime createdDate, string objectData = null)
+    public long InsertListBlock(long taskDefinitionId, DateTime createdDate, string objectData = null)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
@@ -641,24 +493,10 @@ INSERT INTO [Taskling].[Block]
                 dbContext.SaveChanges();
                 return objectBlock.BlockId;
             }
-            //using (var connection = GetConnection())
-            //{
-            //    var command = connection.CreateCommand();
-            //    command.CommandText = InsertListBlockQuery;
-            //    command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-            //    command.Parameters.Add("@CreatedDate", SqlDbType.DateTime).Value = createdDate;
-            //    command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.List;
-            //    if (objectData == null)
-            //        command.Parameters.Add("@ObjectData", SqlDbType.NVarChar, 1000).Value = DBNull.Value;
-            //    else
-            //        command.Parameters.Add("@ObjectData", SqlDbType.NVarChar, 1000).Value = objectData;
-
-            //    return (long)command.ExecuteScalar();
-            //}
         });
     }
 
-    public long InsertObjectBlock(int taskDefinitionId, DateTime createdDate, string objectData)
+    public long InsertObjectBlock(long taskDefinitionId, DateTime createdDate, string objectData)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return RetryHelper.WithRetry(() =>
@@ -667,21 +505,10 @@ INSERT INTO [Taskling].[Block]
             {
                 return AddObjectBlock(dbContext, taskDefinitionId, createdDate, objectData, false);
             }
-            //using (var connection = GetConnection())
-            //{
-            //    var command = connection.CreateCommand();
-            //    command.CommandText = InsertObjectBlockQuery;
-            //    command.Parameters.Add("@TaskDefinitionId", SqlDbType.Int).Value = taskDefinitionId;
-            //    command.Parameters.Add("@CreatedDate", SqlDbType.DateTime).Value = createdDate;
-            //    command.Parameters.Add("@ObjectData", SqlDbType.NVarChar, -1).Value =
-            //        JsonGenericSerializer.Serialize(objectData);
-            //    command.Parameters.Add("@BlockType", SqlDbType.Int).Value = (int)BlockType.Object;
-            //    return (long)command.ExecuteScalar();
-            //}
         });
     }
 
-    private long AddObjectBlock(TasklingDbContext dbContext, int taskDefinitionId, DateTime createdDate,
+    private long AddObjectBlock(TasklingDbContext dbContext, long taskDefinitionId, DateTime createdDate,
         string objectData,
         bool isPhantom)
     {
@@ -699,7 +526,7 @@ INSERT INTO [Taskling].[Block]
         return objectBlock.BlockId;
     }
 
-    public long InsertBlockExecution(int taskExecutionId, long blockId, DateTime createdAt, DateTime? startedAt,
+    public long InsertBlockExecution(long taskExecutionId, long blockId, DateTime createdAt, DateTime? startedAt,
         DateTime? completedAt, BlockExecutionStatus executionStatus, int attempt = 1)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
@@ -721,28 +548,6 @@ INSERT INTO [Taskling].[Block]
                 dbContext.SaveChanges();
                 return blockExecution.BlockExecutionId;
             }
-            //using (var connection = GetConnection())
-            //{
-            //    var command = connection.CreateCommand();
-            //    command.CommandText = InsertBlockExecutionQuery;
-            //    command.Parameters.Add("@TaskExecutionId", SqlDbType.Int).Value = taskExecutionId;
-            //    command.Parameters.Add("@BlockId", SqlDbType.BigInt).Value = blockId;
-            //    command.Parameters.Add("@CreatedAt", SqlDbType.DateTime).Value = createdAt;
-            //    command.Parameters.Add("@Attempt", SqlDbType.BigInt).Value = attempt;
-
-            //    if (startedAt.HasValue)
-            //        command.Parameters.Add("@StartedAt", SqlDbType.DateTime).Value = startedAt.Value;
-            //    else
-            //        command.Parameters.Add("@StartedAt", SqlDbType.DateTime).Value = DBNull.Value;
-
-            //    if (completedAt.HasValue)
-            //        command.Parameters.Add("@CompletedAt", SqlDbType.DateTime).Value = completedAt.Value;
-            //    else
-            //        command.Parameters.Add("@CompletedAt", SqlDbType.DateTime).Value = DBNull.Value;
-
-            //    command.Parameters.Add("@BlockExecutionStatus", SqlDbType.Int).Value = (int)executionStatus;
-            //    return (long)command.ExecuteScalar();
-            //}
         });
     }
 
@@ -769,36 +574,6 @@ INSERT INTO [Taskling].[Block]
                     dbContext.SaveChanges();
                 }
             }
-            //            using (var connection = GetConnection())
-            //            {
-            //                var command = connection.CreateCommand();
-            //                command.CommandText = @"
-            //DELETE BE FROM [Taskling].[BlockExecution] BE
-            //inner JOIN [Taskling].[TaskExecution] TE ON BE.TaskExecutionId = TE.TaskExecutionId
-            //inner JOIN [Taskling].[TaskDefinition] T ON TE.TaskDefinitionId = T.TaskDefinitionId
-            //WHERE (T.ApplicationName = @ApplicationName);
-
-            //DELETE Q FROM [Taskling].[ListBlockItem] Q inner join [Taskling].[Block] B on q.BLockid = b.blockid
-            //inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
-            //WHERE (T.ApplicationName = @ApplicationName);
-
-            //DELETE Q FROM [Taskling].[ForceBlockQueue] Q inner join [Taskling].[Block] B on q.BLockid = b.blockid
-            //inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
-            //WHERE (T.ApplicationName = @ApplicationName);
-
-            //DELETE B FROM [Taskling].[Block] B
-            //inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
-            //WHERE (T.ApplicationName = @ApplicationName);
-
-            //DELETE LBI FROM [Taskling].[ListBlockItem] LBI
-            //inner JOIN [Taskling].[Block] B ON LBI.BlockId = B.BlockId 
-            //inner JOIN [Taskling].[TaskDefinition] T ON B.TaskDefinitionId = T.TaskDefinitionId
-            //WHERE (T.ApplicationName = @ApplicationName);
-            //";
-            //                command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = taskId.ApplicationName;
-            //                command.ExecuteNonQuery();
-            //            }
-            //        }
         );
     }
 
@@ -819,15 +594,6 @@ INSERT INTO [Taskling].[Block]
                                 i.TaskExecution.TaskDefinition.TaskName == taskId.TaskName &&
                                 i.BlockExecutionStatus == (int)blockExecutionStatus);
             }
-            //using (var connection = GetConnection())
-            //{
-            //    var command = connection.CreateCommand();
-            //    command.CommandText = GetBlockExecutionsCountByStatusQuery;
-            //    command.Parameters.Add("@ApplicationName", SqlDbType.VarChar, 200).Value = taskId.ApplicationName;
-            //    command.Parameters.Add("@TaskName", SqlDbType.VarChar, 200).Value = taskId.TaskName;
-            //    command.Parameters.Add("@BlockExecutionStatus", SqlDbType.Int).Value = (int)blockExecutionStatus;
-            //    return (int)command.ExecuteScalar();
-            //}
         });
     }
 
@@ -841,14 +607,6 @@ INSERT INTO [Taskling].[Block]
                 return dbContext.BlockExecutions.Where(i => i.BlockExecutionId == blockExecutionId)
                     .Select(i => i.ItemsCount ?? 0).FirstOrDefault();
             }
-            //using (var connection = GetConnection())
-            //{
-            //    var command = connection.CreateCommand();
-            //    command.CommandText = GetItemsCountQuery;
-            //    command.Parameters.Add("@BlockExecutionId", SqlDbType.BigInt).Value = blockExecutionId;
-            //    var result = command.ExecuteScalar();
-            //    return (int)result;
-            //}
         });
     }
 

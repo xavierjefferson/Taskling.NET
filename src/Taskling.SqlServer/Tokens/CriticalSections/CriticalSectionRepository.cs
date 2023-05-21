@@ -1,6 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Reflection;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using System.Reflection;
+using Newtonsoft.Json;
 using Taskling.Exceptions;
 using Taskling.Extensions;
 using Taskling.InfrastructureContracts;
@@ -14,6 +15,18 @@ using TaskDefinition = Taskling.SqlServer.Models.TaskDefinition;
 
 namespace Taskling.SqlServer.Tokens.CriticalSections;
 
+public class CsQueueSerializer
+{
+    public static List<CriticalSectionQueueItem> Deserialize(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return new List<CriticalSectionQueueItem>();
+        return JsonConvert.DeserializeObject<List<CriticalSectionQueueItem>>(json);
+    }
+    public static string Serialize(IEnumerable<CriticalSectionQueueItem> items)
+    {
+        return JsonConvert.SerializeObject(items);
+    }
+}
 public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRepository
 {
     private readonly ICommonTokenRepository _commonTokenRepository;
@@ -22,8 +35,10 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
     private readonly ITaskRepository _taskRepository;
 
     public CriticalSectionRepository(ITaskRepository taskRepository, TasklingOptions tasklingOptions,
-        ICommonTokenRepository commonTokenRepository, IConnectionStore connectionStore, ILogger<CriticalSectionRepository> logger,
-        IDbContextFactoryEx dbContextFactoryEx, ILoggerFactory loggerFactory) : base(connectionStore, dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
+        ICommonTokenRepository commonTokenRepository, IConnectionStore connectionStore,
+        ILogger<CriticalSectionRepository> logger,
+        IDbContextFactoryEx dbContextFactoryEx, ILoggerFactory loggerFactory) : base(connectionStore,
+        dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
     {
         _taskRepository = taskRepository;
         _commonTokenRepository = commonTokenRepository;
@@ -67,7 +82,6 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
                 _logger.LogWarning("KeepAliveDeathThreshold must be set when using KeepAlive mode");
                 throw new ExecutionArgumentsException("KeepAliveDeathThreshold must be set when using KeepAlive mode");
             }
-
         }
         else if (startRequest.TaskDeathMode == TaskDeathMode.Override)
         {
@@ -80,7 +94,7 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
     }
 
     private async Task<CompleteCriticalSectionResponse> ReturnCriticalSectionTokenAsync(TaskId taskId,
-        int taskDefinitionId, int taskExecutionId, CriticalSectionType criticalSectionType)
+        long taskDefinitionId, long taskExecutionId, CriticalSectionType criticalSectionType)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
 
@@ -90,30 +104,8 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
 
             using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
             {
-                //var exampleEntity = dbContext.TaskDefinitions.Attach(new TaskDefinition { TaskDefinitionId = taskDefinitionId });
-                //if (criticalSectionType == CriticalSectionType.User)
-                //{
-                //    exampleEntity.Entity.UserCsStatus = 1;
-                //    exampleEntity.Property(i => i.UserCsStatus).IsModified = true;
-                //    taskDefinition.UserCsStatus = 1;
-                //}
-                //else
-                //{
-                //    exampleEntity.Entity.ClientCsStatus = 1;
-                //    exampleEntity.Property(i => i.ClientCsStatus).IsModified = true;
-
-                //}
-
-
-                //dbContext.TaskDefinitions.Update(taskDefinition);
-                //await dbContext.SaveChangesAsync().ConfigureAwait(false);
-                //exampleEntity.Entity.HoldLockTaskExecutionId = taskExecutionId;
-                //exampleEntity.Property(i => i.HoldLockTaskExecutionId).IsModified = true;
-                //await dbContext.SaveChangesAsync();
-                //exampleEntity.State = EntityState.Detached;
-
                 var entityEntry = dbContext.TaskDefinitions.Attach(new TaskDefinition
-                { TaskDefinitionId = taskDefinitionId });
+                    { TaskDefinitionId = taskDefinitionId });
                 if (criticalSectionType == CriticalSectionType.User)
                 {
                     entityEntry.Entity.UserCsStatus = 1;
@@ -132,7 +124,7 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
         });
     }
 
-    private async Task<bool> TryAcquireCriticalSectionAsync(TaskId taskId, int taskDefinitionId, int taskExecutionId,
+    private async Task<bool> TryAcquireCriticalSectionAsync(TaskId taskId, long taskDefinitionId, long taskExecutionId,
         CriticalSectionType criticalSectionType)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
@@ -159,7 +151,7 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
                 }
                 else
                 {
-                    if (csState.GetQueue().Any())
+                    if (csState.HasQueuedExecutions())
                     {
                         if (csState.GetFirstExecutionIdInQueue() == taskExecutionId)
                         {
@@ -189,7 +181,7 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
         }, 10, 60000);
     }
 
-    private async Task AcquireRowLockAsync(int taskDefinitionId, int taskExecutionId,
+    private async Task AcquireRowLockAsync(long taskDefinitionId, long taskExecutionId,
         TasklingDbContext dbContext)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
@@ -198,53 +190,50 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
             .ConfigureAwait(false);
     }
 
-    class mything
-    {
-        public string Queue { get; set; }
-        public int Status { get; set; }
-        public int? Id { get; set; }
-    }
-    private async Task<CriticalSectionState> GetCriticalSectionStateAsync(int taskDefinitionId,
+    private async Task<CriticalSectionState> GetCriticalSectionStateAsync(long taskDefinitionId,
         CriticalSectionType criticalSectionType, TasklingDbContext dbContext)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _logger.Debug("224d3658-0318-4f88-a682-6e8abdf3814f");
         var tmp = dbContext.TaskDefinitions.Where(i => i.TaskDefinitionId == taskDefinitionId);
 
-        mything? tuple = null;
+        QueueItemInfo? tuple = null;
         if (criticalSectionType == CriticalSectionType.User)
         {
             _logger.Debug("bd53354a-78a8-40f0-96c4-21d0e2830ff5");
-            tuple = await tmp.Select(i => new mything() { Queue = i.UserCsQueue, Status = i.UserCsStatus, Id = i.UserCsTaskExecutionId })
+            tuple = await tmp.Select(i => new QueueItemInfo
+                    { Queue = i.UserCsQueue, Status = i.UserCsStatus, TaskExecutionId = i.UserCsTaskExecutionId })
                 .FirstOrDefaultAsync().ConfigureAwait(false);
         }
         else
         {
             _logger.Debug("993a0f57-b934-44e7-9ae5-9281ebafc473");
-            tuple = await tmp.Select(i => new mything() { Queue = i.ClientCsQueue, Status = i.ClientCsStatus, Id = i.ClientCsTaskExecutionId })
-               .FirstOrDefaultAsync();
-
+            tuple = await tmp.Select(i => new QueueItemInfo
+                    { Queue = i.ClientCsQueue, Status = i.ClientCsStatus, TaskExecutionId = i.ClientCsTaskExecutionId })
+                .FirstOrDefaultAsync();
         }
+
         if (tuple != null)
 
         {
             _logger.Debug("039b96d4-92b1-48d3-afc3-9bf671873a4c");
             var csState = new CriticalSectionState(_loggerFactory.CreateLogger<CriticalSectionState>());
             csState.IsGranted = tuple.Status == 0;
-            csState.GrantedToExecution = tuple.Id;
+            csState.GrantedToExecution = tuple.TaskExecutionId;
             csState.SetQueue(tuple.Queue);
             csState.StartTrackingModifications();
             return csState;
         }
+
         _logger.Debug("91dd5415-a7d4-4aa5-ab5f-bebcf7c209b5");
         throw new CriticalSectionException("No Task exists with id " + taskDefinitionId);
     }
 
-    private List<int> GetActiveTaskExecutionIds(CriticalSectionState csState)
+    private List<long> GetActiveTaskExecutionIds(CriticalSectionState csState)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
 
-        var taskExecutionIds = new List<int>();
+        var taskExecutionIds = new List<long>();
 
         if (!HasEmptyGranteeValue(csState))
             taskExecutionIds.Add(csState.GrantedToExecution.Value);
@@ -290,18 +279,13 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
 
         var validQueuedExecutions = (from tes in taskExecutionStates
-                                     join q in csQueue on tes.TaskExecutionId equals q.TaskExecutionId
-                                     where HasCriticalSectionExpired(tes) == false
-                                     select q).ToList();
+            join q in csQueue on tes.TaskExecutionId equals q.TaskExecutionId
+            where HasCriticalSectionExpired(tes) == false
+            select q).ToList();
 
         if (validQueuedExecutions.Count != csQueue.Count)
         {
-            var updatedQueue = new List<CriticalSectionQueueItem>();
-            var newQueueIndex = 1;
-            foreach (var validQueuedExecution in validQueuedExecutions.OrderBy(x => x.Index))
-                updatedQueue.Add(new CriticalSectionQueueItem(newQueueIndex, validQueuedExecution.TaskExecutionId));
-
-            csState.UpdateQueue(updatedQueue);
+            csState.UpdateQueue(validQueuedExecutions.OrderBy(i=>i.CreatedAt).ToList());
         }
     }
 
@@ -312,7 +296,7 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
         return csState.GrantedToExecution == null || csState.GrantedToExecution == 0;
     }
 
-    private void GrantCriticalSection(CriticalSectionState csState, int taskExecutionId)
+    private void GrantCriticalSection(CriticalSectionState csState, long taskExecutionId)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
 
@@ -320,12 +304,12 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
         csState.GrantedToExecution = taskExecutionId;
     }
 
-    private async Task UpdateCriticalSectionStateAsync(int taskDefinitionId, CriticalSectionState csState,
+    private async Task UpdateCriticalSectionStateAsync(long taskDefinitionId, CriticalSectionState csState,
         CriticalSectionType criticalSectionType, TasklingDbContext dbContext)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
 
-        var taskDefinition = new TaskDefinition() { TaskDefinitionId = taskDefinitionId };
+        var taskDefinition = new TaskDefinition { TaskDefinitionId = taskDefinitionId };
         var entityEntry = dbContext.TaskDefinitions.Attach(taskDefinition);
 
         if (criticalSectionType == CriticalSectionType.User)
@@ -351,7 +335,7 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
         await dbContext.SaveChangesAsync();
     }
 
-    private async Task<List<TaskExecutionState>> GetTaskExecutionStatesAsync(List<int> taskExecutionIds,
+    private async Task<List<TaskExecutionState>> GetTaskExecutionStatesAsync(List<long> taskExecutionIds,
         TasklingDbContext dbContext)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
@@ -365,5 +349,12 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
 
         return _commonTokenRepository.HasExpired(taskExecutionState);
+    }
+
+    private class QueueItemInfo
+    {
+        public string? Queue { get; set; }
+        public int Status { get; set; }
+        public long? TaskExecutionId { get; set; }
     }
 }

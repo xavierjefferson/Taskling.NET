@@ -1,17 +1,19 @@
-﻿namespace Taskling.SqlServer.Tokens.CriticalSections;
+﻿using Newtonsoft.Json;
 
-internal class CriticalSectionQueueItem
+namespace Taskling.SqlServer.Tokens.CriticalSections;
+
+public class CriticalSectionQueueItem
 {
     public CriticalSectionQueueItem()
     {
     }
-
-    public CriticalSectionQueueItem(int index, int taskExecutionId)
+    [JsonProperty("D")]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public CriticalSectionQueueItem(long taskExecutionId)
     {
-        Index = index;
         TaskExecutionId = taskExecutionId;
     }
 
-    public int Index { get; set; }
-    public int TaskExecutionId { get; set; }
+    [JsonProperty("T")]
+    public long TaskExecutionId { get; set; }
 }

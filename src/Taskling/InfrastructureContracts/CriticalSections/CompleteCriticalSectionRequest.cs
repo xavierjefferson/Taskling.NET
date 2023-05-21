@@ -4,7 +4,7 @@ namespace Taskling.InfrastructureContracts.CriticalSections;
 
 public class CompleteCriticalSectionRequest : RequestBase
 {
-    public CompleteCriticalSectionRequest(TaskId taskId, int taskExecutionId, CriticalSectionType criticalSectionType)
+    public CompleteCriticalSectionRequest(TaskId taskId, long taskExecutionId, CriticalSectionType criticalSectionType)
         : base(taskId, taskExecutionId)
     {
         Type = criticalSectionType;

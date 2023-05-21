@@ -19,7 +19,7 @@ public class When_FindFailedBlocks : TestBase
     private readonly IClientHelper _clientHelper;
     private readonly IExecutionsHelper _executionsHelper;
     private readonly ILogger<When_FindFailedBlocks> _logger;
-    private readonly int _taskDefinitionId;
+    private readonly long _taskDefinitionId;
 
     public When_FindFailedBlocks(IBlocksHelper blocksHelper, IBlockRepository blockRepository,
         IExecutionsHelper executionsHelper, IClientHelper clientHelper, ILogger<When_FindFailedBlocks> logger,

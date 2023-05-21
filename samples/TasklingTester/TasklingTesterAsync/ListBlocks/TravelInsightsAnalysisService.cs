@@ -1,7 +1,6 @@
 ﻿using Taskling;
 using Taskling.Blocks.ListBlocks;
 using Taskling.Contexts;
-using Taskling.InfrastructureContracts;
 using TasklingTester.Common.Entities;
 using TasklingTester.Common.ListBlocks;
 using TasklingTesterAsync.Configuration;
@@ -69,7 +68,7 @@ public class TravelInsightsAnalysisService
                     ToDate = endDate
                 };
 
-                int blockSize = 500;
+                var blockSize = 500;
                 return await taskExecutionContext.GetListBlocksAsync<Journey, BatchDatesHeader>(x =>
                     x.WithPeriodicCommit(journeys.ToList(), batchHeader, blockSize, BatchSize.Fifty));
             }

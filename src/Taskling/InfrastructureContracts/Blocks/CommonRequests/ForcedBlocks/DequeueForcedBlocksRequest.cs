@@ -6,7 +6,7 @@ namespace Taskling.InfrastructureContracts.Blocks.CommonRequests.ForcedBlocks;
 public class DequeueForcedBlocksRequest : BlockRequestBase
 {
     public DequeueForcedBlocksRequest(TaskId taskId,
-        int taskExecutionId,
+        long taskExecutionId,
         BlockType blockType,
         List<int> forcedBlockQueueIds)
         : base(taskId, taskExecutionId, blockType)

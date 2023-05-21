@@ -1,43 +1,17 @@
-﻿using Taskling.Blocks.Common;
+﻿using Microsoft.EntityFrameworkCore;
+using Taskling.Blocks.Common;
 using Taskling.Blocks.ObjectBlocks;
 using Taskling.Blocks.RangeBlocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.Blocks.ListBlocks;
+using Taskling.SqlServer.Blocks.Models;
+using Taskling.SqlServer.Models;
+using Taskling.Tasks;
 
 namespace Taskling.SqlServer.Blocks;
 
 public partial class BlockRepository
 {
-    private const string FindFailedBlocksQuery = @"
-WITH OrderedBlocks As (
-	SELECT ROW_NUMBER() OVER (PARTITION BY BE.BlockId ORDER BY BE.BlockExecutionId DESC) AS RowNo
-			,BE.[BlockExecutionId]
-	FROM [Taskling].[BlockExecution] BE WITH(NOLOCK)
-	JOIN [Taskling].[TaskExecution] TE ON BE.TaskExecutionId = TE.TaskExecutionId
-	WHERE TE.TaskDefinitionId = @TaskDefinitionId
-	AND TE.StartedAt >= @SearchPeriodBegin
-    AND TE.StartedAt < @SearchPeriodEnd
-)
-
-SELECT TOP {0} B.[BlockId]
-    {1}
-    ,BE.Attempt
-    ,B.BlockType
-    ,TE.ReferenceValue
-    ,B.ObjectData
-    ,B.CompressedObjectData
-FROM [Taskling].[Block] B WITH(NOLOCK)
-JOIN [Taskling].[BlockExecution] BE WITH(NOLOCK) ON B.BlockId = BE.BlockId
-JOIN [Taskling].[TaskExecution] TE ON BE.TaskExecutionId = TE.TaskExecutionId
-JOIN OrderedBlocks OB ON BE.BlockExecutionId = OB.BlockExecutionId
-WHERE B.TaskDefinitionId = @TaskDefinitionId
-AND B.IsPhantom = 0
-AND BE.BlockExecutionStatus = 4
-AND BE.Attempt < @AttemptLimit
-AND OB.RowNo = 1
-ORDER BY B.CreatedDate ASC";
-
-
     public async Task<IList<ObjectBlock<T>>> FindFailedObjectBlocksAsync<T>(FindFailedBlocksRequest failedBlocksRequest)
     {
         var funcRunner = GetFailedBlockFuncRunner(failedBlocksRequest, BlockType.Object);
@@ -55,5 +29,66 @@ ORDER BY B.CreatedDate ASC";
     {
         var funcRunner = GetFailedBlockFuncRunner(failedBlocksRequest, failedBlocksRequest.BlockType);
         return await FindSearchableDateRangeBlocksAsync(failedBlocksRequest, funcRunner).ConfigureAwait(false);
+    }
+
+    public static async Task<List<BlockQueryItem>> GetBlocksOfTaskQueryItems(TasklingDbContext dbContext,
+        long taskDefinitionId,
+        Guid referenceValue, ReprocessOption reprocessOption)
+    {
+        var leftSide1 = dbContext.Blocks.Join(dbContext.BlockExecutions, i => i.BlockId, j => j.BlockId,
+            (i, j) => new
+            {
+                i.FromDate,
+                i.FromNumber,
+                i.ToDate,
+                i.ToNumber,
+                i.CreatedDate,
+                i.BlockId,
+                j.Attempt,
+                j.BlockExecutionStatus,
+                i.BlockType,
+                i.TaskDefinitionId,
+                i.ObjectData,
+                i.CompressedObjectData,
+                j.TaskExecutionId
+            });
+
+
+        var query =
+            from leftSide in leftSide1
+            join subRightSide in dbContext.TaskExecutions on leftSide.TaskExecutionId equals subRightSide
+                .TaskExecutionId into gj
+            from rightSide in gj.DefaultIfEmpty()
+            select new BlockQueryItem
+            {
+                FromDate = leftSide.FromDate,
+                FromNumber = leftSide.FromNumber,
+                ToDate = leftSide.ToDate,
+                ToNumber = leftSide.ToNumber,
+                CreatedDate = leftSide.CreatedDate,
+                BlockId = leftSide.BlockId,
+                Attempt = leftSide.Attempt,
+                BlockExecutionStatus = leftSide.BlockExecutionStatus,
+                BlockType = leftSide.BlockType,
+                TaskDefinitionId = leftSide.TaskDefinitionId,
+                ReferenceValue = rightSide.ReferenceValue,
+                ObjectData = leftSide.ObjectData,
+                CompressedObjectData = leftSide.CompressedObjectData
+            };
+        var blockQueryItems = query.OrderBy(i => i.CreatedDate).Where(i =>
+            i.ReferenceValue == referenceValue && i.TaskDefinitionId == taskDefinitionId);
+        switch (reprocessOption)
+        {
+            case ReprocessOption.Everything:
+                break;
+            case ReprocessOption.PendingOrFailed:
+                blockQueryItems = blockQueryItems.Where(i => PendingOrFailedStatuses.Contains(i.BlockExecutionStatus));
+                break;
+            default:
+                throw new InvalidOperationException($"Unknown {nameof(ReprocessOption)} value {reprocessOption}");
+        }
+
+
+        return await blockQueryItems.ToListAsync();
     }
 }

@@ -8,5 +8,5 @@ public interface IBlockRequest
     BlockType BlockType { get; }
 
     long BlockExecutionId { get; }
-    int TaskExecutionId { get; }
+    long TaskExecutionId { get; }
 }

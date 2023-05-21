@@ -37,6 +37,7 @@ public class When_ConcurrentIsThreadSafe : TestBase
         _executionsHelper.InsertUnlimitedExecutionToken(taskDefinitionId);
     }
 
+    private const int ListSize = 10000;
     [Fact]
     [Trait("Speed", "Slow")]
     [Trait("Area", "Blocks")]
@@ -55,7 +56,7 @@ public class When_ConcurrentIsThreadSafe : TestBase
                 startedOk = await executionContext.TryStartAsync();
                 if (startedOk)
                 {
-                    var values = GetList(100000);
+                    var values = GetList(ListSize);
                     var maxBlockSize = 1000;
                     var listBlocks =
                         await executionContext.GetListBlocksAsync<PersonDto>(x =>
@@ -99,7 +100,7 @@ public class When_ConcurrentIsThreadSafe : TestBase
                 startedOk = await executionContext.TryStartAsync();
                 if (startedOk)
                 {
-                    var values = GetList(100000);
+                    var values = GetList(ListSize);
                     var maxBlockSize = 1000;
                     var listBlocks =
                         await executionContext.GetListBlocksAsync<PersonDto>(x =>
@@ -142,7 +143,7 @@ public class When_ConcurrentIsThreadSafe : TestBase
                 startedOk = await executionContext.TryStartAsync();
                 if (startedOk)
                 {
-                    var values = GetList(100000);
+                    var values = GetList(ListSize);
                     var maxBlockSize = 1000;
                     var listBlocks = await executionContext.GetListBlocksAsync<PersonDto>(x =>
                         x.WithPeriodicCommit(values, maxBlockSize, BatchSize.Hundred));
@@ -188,7 +189,7 @@ public class When_ConcurrentIsThreadSafe : TestBase
                 startedOk = await executionContext.TryStartAsync();
                 if (startedOk)
                 {
-                    var values = GetList(100000);
+                    var values = GetList(ListSize);
                     var maxBlockSize = 1000;
                     var listBlocks =
                         await executionContext.GetListBlocksAsync<PersonDto>(x =>

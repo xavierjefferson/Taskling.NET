@@ -7,7 +7,7 @@ namespace Taskling.InfrastructureContracts.CriticalSections;
 public class StartCriticalSectionRequest : RequestBase
 {
     public StartCriticalSectionRequest(TaskId taskId,
-        int taskExecutionId,
+        long taskExecutionId,
         TaskDeathMode taskDeathMode,
         CriticalSectionType criticalSectionType)
         : base(taskId, taskExecutionId)

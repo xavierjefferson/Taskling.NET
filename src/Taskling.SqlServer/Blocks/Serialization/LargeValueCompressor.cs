@@ -5,7 +5,7 @@ namespace Taskling.SqlServer.Blocks.Serialization;
 
 public class LargeValueCompressor
 {
-    public static byte[] Zip(string str)
+    public static byte[] Zip(string? str)
     {
         var bytes = Encoding.UTF8.GetBytes(str);
 

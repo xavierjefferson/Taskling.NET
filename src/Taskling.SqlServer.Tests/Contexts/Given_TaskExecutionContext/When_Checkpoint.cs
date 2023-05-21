@@ -14,7 +14,7 @@ public class When_Checkpoint : TestBase
     private readonly IClientHelper _clientHelper;
     private readonly IExecutionsHelper _executionsHelper;
     private readonly ILogger<When_Checkpoint> _logger;
-    private readonly int _taskDefinitionId;
+    private readonly long _taskDefinitionId;
 
     public When_Checkpoint(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper, IClientHelper clientHelper,
         ILogger<When_Checkpoint> logger, ITaskRepository taskRepository) : base(executionsHelper)

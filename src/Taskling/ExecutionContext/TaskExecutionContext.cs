@@ -5,7 +5,6 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using Nito.AsyncEx.Synchronous;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.Factories;
@@ -300,33 +299,8 @@ public class TaskExecutionContext : ITaskExecutionContext
         _logger.Debug("ee614157-3097-4a5e-ac8e-3a63f107285b");
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return await GetBlocksAsync<IDateRangeBlockContext, FluentRangeBlockDescriptor, DateRangeBlockRequest,
-            IBlockSettings>(BlockType.DateRange, fluentBlockRequest, ConvertToDateRangeBlockRequest, _blockFactory.GenerateDateRangeBlocksAsync);
-
-        //if (!IsExecutionContextActive)
-        //    throw new ExecutionException(NotActiveMessage);
-
-        //var fluentDescriptor = fluentBlockRequest(new FluentRangeBlockDescriptor());
-        //var settings = (IBlockSettings)fluentDescriptor;
-
-        //var request = ConvertToDateRangeBlockRequest(settings);
-        //if (ShouldProtect(request))
-        //{
-        //    var csContext = CreateClientCriticalSection();
-        //    try
-        //    {
-        //        var csStarted = await csContext.TryStartAsync(new TimeSpan(0, 0, 20), 3).ConfigureAwait(false);
-        //        if (csStarted)
-        //            return await _blockFactory.GenerateDateRangeBlocksAsync(request).ConfigureAwait(false);
-
-        //        throw new CriticalSectionException("Could not start a critical section in the alloted time");
-        //    }
-        //    finally
-        //    {
-        //        await csContext.CompleteAsync().ConfigureAwait(false);
-        //    }
-        //}
-
-        //return await _blockFactory.GenerateDateRangeBlocksAsync(request).ConfigureAwait(false);
+            IBlockSettings>(BlockType.DateRange, fluentBlockRequest, ConvertToDateRangeBlockRequest,
+            _blockFactory.GenerateDateRangeBlocksAsync);
     }
 
     public IList<INumericRangeBlockContext> GetNumericRangeBlocks(
@@ -341,33 +315,8 @@ public class TaskExecutionContext : ITaskExecutionContext
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return await GetBlocksAsync<INumericRangeBlockContext, FluentRangeBlockDescriptor, NumericRangeBlockRequest,
-            IBlockSettings>(BlockType.NumericRange, fluentBlockRequest, ConvertToNumericRangeBlockRequest, _blockFactory.GenerateNumericRangeBlocksAsync);
-
-        //if (!IsExecutionContextActive)
-        //    throw new ExecutionException(NotActiveMessage);
-
-        //var fluentDescriptor = fluentBlockRequest(new FluentRangeBlockDescriptor());
-        //var settings = (IBlockSettings)fluentDescriptor;
-
-        //var request = ConvertToNumericRangeBlockRequest(settings);
-        //if (ShouldProtect(request))
-        //{
-        //    var csContext = CreateClientCriticalSection();
-        //    try
-        //    {
-        //        var csStarted = await csContext.TryStartAsync(new TimeSpan(0, 0, 20), 3).ConfigureAwait(false);
-        //        if (csStarted)
-        //            return await _blockFactory.GenerateNumericRangeBlocksAsync(request).ConfigureAwait(false);
-
-        //        throw new CriticalSectionException("Could not start a critical section in the alloted time");
-        //    }
-        //    finally
-        //    {
-        //        await csContext.CompleteAsync().ConfigureAwait(false);
-        //    }
-        //}
-
-        //return await _blockFactory.GenerateNumericRangeBlocksAsync(request).ConfigureAwait(false);
+            IBlockSettings>(BlockType.NumericRange, fluentBlockRequest, ConvertToNumericRangeBlockRequest,
+            _blockFactory.GenerateNumericRangeBlocksAsync);
     }
 
     public async Task<IList<IListBlockContext<T>>> GetListBlocksAsync<T>(
@@ -376,37 +325,8 @@ public class TaskExecutionContext : ITaskExecutionContext
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _logger.Debug("1a79102d-7bbe-4da9-b2e7-b6d8d64c122e");
         return await GetBlocksAsync<IListBlockContext<T>, FluentListBlockDescriptorBase<T>, ListBlockRequest,
-            IBlockSettings>(BlockType.List, fluentBlockRequest, GetListBlockRequest, _blockFactory.GenerateListBlocksAsync<T>);
-
-        //if (!IsExecutionContextActive)
-        //    throw new ExecutionException(NotActiveMessage);
-
-        //var fluentDescriptor = fluentBlockRequest(new FluentListBlockDescriptorBase<T>());
-        //var settings = (IBlockSettings)fluentDescriptor;
-
-        //if (settings.BlockType == BlockType.List)
-        //{
-        //    var request = ConvertToListBlockRequest(settings);
-        //    if (ShouldProtect(request))
-        //    {
-        //        var csContext = CreateClientCriticalSection();
-        //        try
-        //        {
-        //            var csStarted = await csContext.TryStartAsync(new TimeSpan(0, 0, 20), 3).ConfigureAwait(false);
-        //            if (csStarted)
-        //                return await _blockFactory.GenerateListBlocksAsync<T>(request).ConfigureAwait(false);
-        //            throw new CriticalSectionException("Could not start a critical section in the alloted time");
-        //        }
-        //        finally
-        //        {
-        //            await csContext.CompleteAsync().ConfigureAwait(false);
-        //        }
-        //    }
-
-        //    return await _blockFactory.GenerateListBlocksAsync<T>(request).ConfigureAwait(false);
-        //}
-
-        //throw new NotSupportedException("BlockType not supported");
+            IBlockSettings>(BlockType.List, fluentBlockRequest, GetListBlockRequest,
+            _blockFactory.GenerateListBlocksAsync<T>);
     }
 
     public async Task<IList<IListBlockContext<TItem, THeader>>> GetListBlocksAsync<TItem, THeader>(
@@ -414,37 +334,8 @@ public class TaskExecutionContext : ITaskExecutionContext
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return await GetBlocksAsync<IListBlockContext<TItem, THeader>, FluentListBlockDescriptorBase<TItem, THeader>,
-            ListBlockRequest, IBlockSettings>(BlockType.List, fluentBlockRequest, GetListBlockRequest, _blockFactory.GenerateListBlocksAsync<TItem, THeader>);
-        //if (!IsExecutionContextActive)
-        //    throw new ExecutionException(NotActiveMessage);
-
-        //var fluentDescriptor = fluentBlockRequest(new FluentListBlockDescriptorBase<TItem, THeader>());
-        //var settings = (IBlockSettings)fluentDescriptor;
-
-        //if (settings.BlockType == BlockType.List)
-        //{
-        //    var request = ConvertToListBlockRequest(settings);
-        //    if (ShouldProtect(request))
-        //    {
-        //        var csContext = CreateClientCriticalSection();
-        //        try
-        //        {
-        //            var csStarted = await csContext.TryStartAsync(new TimeSpan(0, 0, 20), 3).ConfigureAwait(false);
-        //            if (csStarted)
-        //                return await _blockFactory.GenerateListBlocksAsync<TItem, THeader>(request)
-        //                    .ConfigureAwait(false);
-        //            throw new CriticalSectionException("Could not start a critical section in the alloted time");
-        //        }
-        //        finally
-        //        {
-        //            await csContext.CompleteAsync().ConfigureAwait(false);
-        //        }
-        //    }
-
-        //    return await _blockFactory.GenerateListBlocksAsync<TItem, THeader>(request).ConfigureAwait(false);
-        //}
-
-        //throw new NotSupportedException("BlockType not supported");
+            ListBlockRequest, IBlockSettings>(BlockType.List, fluentBlockRequest, GetListBlockRequest,
+            _blockFactory.GenerateListBlocksAsync<TItem, THeader>);
     }
 
     public async Task<IList<IObjectBlockContext<T>>> GetObjectBlocksAsync<T>(
@@ -452,31 +343,8 @@ public class TaskExecutionContext : ITaskExecutionContext
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         return await GetBlocksAsync<IObjectBlockContext<T>, FluentObjectBlockDescriptorBase<T>, ObjectBlockRequest<T>,
-            IObjectBlockSettings<T>>(BlockType.Object, fluentBlockRequest, GetObjectBlockRequest, _blockFactory.GenerateObjectBlocksAsync);
-        //if (!IsExecutionContextActive)
-        //    throw new ExecutionException(NotActiveMessage);
-
-        //var fluentDescriptor = fluentBlockRequest(new FluentObjectBlockDescriptorBase<T>());
-        //var settings = (IObjectBlockSettings<T>)fluentDescriptor;
-
-        //var request = ConvertToObjectBlockRequest(settings);
-        //if (ShouldProtect(request))
-        //{
-        //    var csContext = CreateClientCriticalSection();
-        //    try
-        //    {
-        //        var csStarted = await csContext.TryStartAsync(new TimeSpan(0, 0, 20), 3).ConfigureAwait(false);
-        //        if (csStarted)
-        //            return await _blockFactory.GenerateObjectBlocksAsync(request).ConfigureAwait(false);
-        //        throw new CriticalSectionException("Could not start a critical section in the alloted time");
-        //    }
-        //    finally
-        //    {
-        //        await csContext.CompleteAsync().ConfigureAwait(false);
-        //    }
-        //}
-
-        //return await _blockFactory.GenerateObjectBlocksAsync(request).ConfigureAwait(false);
+            IObjectBlockSettings<T>>(BlockType.Object, fluentBlockRequest, GetObjectBlockRequest,
+            _blockFactory.GenerateObjectBlocksAsync);
     }
 
     public async Task<IDateRangeBlock> GetLastDateRangeBlockAsync(LastBlockOrder lastBlockOrder)
@@ -689,8 +557,8 @@ public class TaskExecutionContext : ITaskExecutionContext
             {
                 _logger.Debug("1aeb9ff0-5de1-4141-8bf6-8d1522c2036a");
                 throw new ExecutionException(NotActiveMessage);
-
             }
+
             _logger.Debug("ac3a715a-7ce4-4a38-bee6-d2563aa92bfc");
             var fluentDescriptor = fluentBlockRequest(new U());
             var settings = (W)fluentDescriptor;
@@ -710,7 +578,6 @@ public class TaskExecutionContext : ITaskExecutionContext
                         {
                             _logger.Debug("7fcac822-d753-43f4-8a53-f16eb0e0f7c9");
                             return await generateFunc(request).ConfigureAwait(false);
-
                         }
 
                         _logger.Debug("3081d755-b7ec-4858-bbfc-9cd879efd3df");
@@ -729,6 +596,7 @@ public class TaskExecutionContext : ITaskExecutionContext
                 _logger.LogDebug("Request is unprotected");
                 return await generateFunc(request).ConfigureAwait(false);
             }
+
             throw new NotSupportedException("BlockType not supported");
         }
         finally
@@ -965,7 +833,8 @@ public class TaskExecutionContext : ITaskExecutionContext
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _logger.Debug(Constants.Serialize(blockRequest));
         _logger.Debug("254f3474-fc1a-45c6-9836-66864ac3bc02");
-        var tmp = (blockRequest.ReprocessDeadTasks || blockRequest.ReprocessFailedTasks) && !IsUserCriticalSectionActive();
+        var tmp = (blockRequest.ReprocessDeadTasks || blockRequest.ReprocessFailedTasks) &&
+                  !IsUserCriticalSectionActive();
         _logger.Debug(tmp.ToString());
         return tmp;
     }

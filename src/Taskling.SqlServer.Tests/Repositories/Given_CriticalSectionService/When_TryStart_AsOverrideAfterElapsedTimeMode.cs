@@ -12,22 +12,23 @@ using Xunit;
 namespace Taskling.SqlServer.Tests.Repositories.Given_CriticalSectionService;
 
 [Collection(TestConstants.CollectionName)]
-public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
+public class When_TryStart_AsOverrideAfterElapsedTimeMode : TestBase
 {
     private readonly ICriticalSectionRepository _criticalSectionRepository;
     private readonly IExecutionsHelper _executionsHelper;
-    private readonly ILogger<When_TryStart_AsOverrideAfterElaspedTimeMode> _logger;
+    private readonly ILogger<When_TryStart_AsOverrideAfterElapsedTimeMode> _logger;
 
-    public When_TryStart_AsOverrideAfterElaspedTimeMode(IBlocksHelper blocksHelper,
+    public When_TryStart_AsOverrideAfterElapsedTimeMode(IBlocksHelper blocksHelper,
         ICriticalSectionRepository criticalSectionRepository, IExecutionsHelper executionsHelper,
         IClientHelper clientHelper,
-        ILogger<When_TryStart_AsOverrideAfterElaspedTimeMode> logger, ITaskRepository taskRepository) : base(
+        ILogger<When_TryStart_AsOverrideAfterElapsedTimeMode> logger, ITaskRepository taskRepository) : base(
         executionsHelper)
     {
+        _logger = logger;
+
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _criticalSectionRepository = criticalSectionRepository;
         _executionsHelper = executionsHelper;
-        _logger = logger;
 
         _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
     }

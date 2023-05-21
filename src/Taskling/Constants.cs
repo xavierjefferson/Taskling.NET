@@ -1,17 +1,17 @@
-﻿using System.Linq;
-using System.Reflection;
-using Newtonsoft.Json;
-
-namespace Taskling;
-
- 
-using System.Reflection;
-using System.Linq;
-using System.Runtime.CompilerServices;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
-public class OrderedContractResolver : Newtonsoft.Json.Serialization.DefaultContractResolver
+using System.Linq;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
+
+namespace Taskling; 
+
+public class OrderedContractResolver : DefaultContractResolver
 {
-    protected override System.Collections.Generic.IList<Newtonsoft.Json.Serialization.JsonProperty> CreateProperties(System.Type type, Newtonsoft.Json.MemberSerialization memberSerialization)
+    protected override IList<JsonProperty> CreateProperties(Type type, MemberSerialization memberSerialization)
     {
         var @base = base.CreateProperties(type, memberSerialization);
         var ordered = @base
@@ -21,12 +21,15 @@ public class OrderedContractResolver : Newtonsoft.Json.Serialization.DefaultCont
         return ordered;
     }
 }
+
 public static class Constants
 {
-    private static OrderedContractResolver r = new OrderedContractResolver();
+    public const string CheckpointName = "Checkpoint";
+    private static readonly OrderedContractResolver r = new();
+
     public static string Serialize(object jsonObject)
     {
-        var jsonSerializerSettings = new Newtonsoft.Json.JsonSerializerSettings
+        var jsonSerializerSettings = new JsonSerializerSettings
         {
             ContractResolver = r,
             Formatting = Formatting.Indented
@@ -34,25 +37,20 @@ public static class Constants
 
         using (var m = new StringWriter())
         {
-            using (Newtonsoft.Json.JsonWriter writer = new Newtonsoft.Json.JsonTextWriter(m))
+            using (JsonWriter writer = new JsonTextWriter(m))
             {
-                var serializer = Newtonsoft.Json.JsonSerializer.Create(jsonSerializerSettings);
+                var serializer = JsonSerializer.Create(jsonSerializerSettings);
                 serializer.Serialize(writer, jsonObject);
                 return m.ToString();
             }
-
         }
     }
-    public const string CheckpointName = "Checkpoint";
 
     private static MethodBase GetRealMethodFromAsyncMethod(MethodBase asyncMethod)
     {
         var generatedType = asyncMethod.DeclaringType;
         var originalType = generatedType.DeclaringType;
-        if (originalType == null)
-        {
-            return asyncMethod;
-        }
+        if (originalType == null) return asyncMethod;
         var matchingMethods =
             from methodInfo in originalType.GetMethods()
             let attr = methodInfo.GetCustomAttribute<AsyncStateMachineAttribute>()
@@ -63,9 +61,9 @@ public static class Constants
         var foundMethod = matchingMethods.FirstOrDefault();
         return foundMethod ?? asyncMethod;
     }
+
     public static string GetEnteredMessage(MethodBase? method)
     {
-
-        return $"Entered {GetRealMethodFromAsyncMethod(method)?.Name}";
+        return $"Entered {method?.Name}";
     }
 }

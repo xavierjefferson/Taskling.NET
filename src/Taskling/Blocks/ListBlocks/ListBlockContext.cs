@@ -17,7 +17,7 @@ public class ListBlockContext<T> : ListBlockContextBase<T, bool>, IListBlockCont
     public ListBlockContext(IListBlockRepository listBlockRepository,
         ITaskExecutionRepository taskExecutionRepository,
         TaskId taskId,
-        int taskExecutionId,
+        long taskExecutionId,
         ListUpdateMode listUpdateMode,
         int uncommittedThreshold,
         ListBlock<T> listBlock, IRetryService retryService,

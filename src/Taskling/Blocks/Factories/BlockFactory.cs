@@ -63,33 +63,11 @@ public class BlockFactory : IBlockFactory
         var blocks =
             await GenerateRangeBlocksAsync(blockRequest, i => i.RangeBegin != null, GenerateNewDateRangeBlocksAsync);
 
-        //var blocks = new List<RangeBlockContext>();
-
-        //if (!string.IsNullOrEmpty(blockRequest.ReprocessReferenceValue))
-        //{
-        //    blocks = await LoadRangeBlocksOfTaskAsync(blockRequest).ConfigureAwait(false);
-        //}
-        //else
-        //{
-        //    var forceBlocks = await GetForcedBlocksAsync(blockRequest).ConfigureAwait(false);
-        //    blocks.AddRange(forceBlocks);
-
-        //    if (GetBlocksRemaining(blockRequest, blocks) > 0)
-        //        await LoadFailedAndDeadBlocksAsync(blockRequest, blocks).ConfigureAwait(false);
-
-        //    var blocksRemaining = GetBlocksRemaining(blockRequest, blocks);
-        //    if (blocksRemaining > 0 && blockRequest.RangeBegin.HasValue)
-        //        blocks.AddRange(await GenerateNewDateRangeBlocksAsync(blockRequest, blocksRemaining)
-        //            .ConfigureAwait(false));
-        //}
-
-        //if (!blocks.Any())
-        //    await LogEmptyBlockEventAsync(blockRequest.TaskExecutionId, blockRequest.ApplicationName,
-        //        blockRequest.TaskName).ConfigureAwait(false);
+   
 
         var dateRangeBlocks = blocks.Select(x => (IDateRangeBlockContext)x);
         _logger.Debug("348c0a24-6090-429e-badc-b936bda315fb");
-        var tmp =  dateRangeBlocks.OrderBy(x => x.DateRangeBlock.RangeBlockId).ToList(); 
+        var tmp = dateRangeBlocks.OrderBy(x => x.DateRangeBlock.RangeBlockId).ToList();
         _logger.Debug($"Returning {tmp.Count} items");
         return tmp;
     }
@@ -100,42 +78,6 @@ public class BlockFactory : IBlockFactory
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var blocks = await GenerateRangeBlocksAsync(blockRequest, i => i.RangeBegin != null,
             GenerateNewNumericRangeBlocksAsync);
-
-        //var blocks = new List<RangeBlockContext>();
-
-        //if (!string.IsNullOrEmpty(blockRequest.ReprocessReferenceValue))
-        //{
-        //    _logger.LogDebug($"{nameof(blockRequest.ReprocessReferenceValue)} is not null or empty");
-        //    blocks = await LoadRangeBlocksOfTaskAsync(blockRequest).ConfigureAwait(false);
-        //}
-        //else
-        //{
-        //    _logger.LogDebug($"{nameof(blockRequest.ReprocessReferenceValue)} is null or empty");
-        //    var forceBlocks = await GetForcedBlocksAsync(blockRequest).ConfigureAwait(false);
-        //    blocks.AddRange(forceBlocks);
-
-        //    var remaining = GetBlocksRemaining(blockRequest, blocks);
-        //    if (remaining > 0)
-        //    {
-        //        _logger.LogDebug($"{remaining} blocks remain, loading dead or failed");
-        //        await LoadFailedAndDeadBlocksAsync(blockRequest, blocks).ConfigureAwait(false);
-        //    }
-
-        //    var blocksRemaining = GetBlocksRemaining(blockRequest, blocks);
-        //    if (blocksRemaining > 0 && blockRequest.RangeBegin.HasValue)
-        //    {
-        //        _logger.LogDebug($"{remaining} blocks remain, generating new range");
-        //        blocks.AddRange(await GenerateNewNumericRangeBlocksAsync(blockRequest, blocksRemaining)
-        //            .ConfigureAwait(false));
-        //    }
-        //}
-
-        //if (!blocks.Any())
-        //{
-        //    _logger.LogDebug($"No blocks were pulled");
-        //    await LogEmptyBlockEventAsync(blockRequest.TaskExecutionId, blockRequest.ApplicationName,
-        //        blockRequest.TaskName).ConfigureAwait(false);
-        //}
 
         var numericRangeBlocks = blocks.Select(x => (INumericRangeBlockContext)x);
         return numericRangeBlocks.OrderBy(x => x.NumericRangeBlock.RangeBlockId).ToList();
@@ -339,7 +281,7 @@ public class BlockFactory : IBlockFactory
     }
 
 
-    private async Task LogEmptyBlockEventAsync(int taskExecutionId, TaskId taskId)
+    private async Task LogEmptyBlockEventAsync(long taskExecutionId, TaskId taskId)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var checkPointRequest = new TaskExecutionCheckpointRequest(taskId)
@@ -1010,9 +952,4 @@ public class BlockFactory : IBlockFactory
         await Task.Delay(10).ConfigureAwait(false); // guarantee that each block has a unique created date
         return objectBlock;
     }
-
-    //private int GetBlocksRemaining<T>(BlockRequest blockRequest, List<IObjectBlockContext<T>> blocks)
-    //{
-    //    return blockRequest.MaxBlocks - blocks.Count;
-    //}
 }

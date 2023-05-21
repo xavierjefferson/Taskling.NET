@@ -7,7 +7,7 @@ namespace Taskling.SqlServer.Blocks.QueryBuilders;
 public class ForcedBlockQueueQueryBuilder
 {
     public static async Task<List<ForcedBlockQueueQueryItem>> GetForcedBlockQueueQueryItems(TasklingDbContext dbContext,
-        int taskDefinitionId, BlockType blockType)
+        long taskDefinitionId, BlockType blockType)
     {
         var getData = false;
         switch (blockType)
@@ -78,7 +78,7 @@ public class ForcedBlockQueueQueryBuilder
         public DateTime? ToDate { get; set; }
         public int BlockType { get; set; }
         public string? ProcessingStatus { get; set; }
-        public int TaskDefinitionId { get; set; }
+        public long TaskDefinitionId { get; set; }
         public long BlockId { get; set; }
         public int ForceBlockQueueId { get; set; }
         public long? FromNumber { get; set; }

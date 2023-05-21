@@ -11,7 +11,7 @@ public class TaskExecutionInstance
     }
 
     public TaskId TaskId { get; }
-    public int TaskExecutionId { get; set; }
+    public long TaskExecutionId { get; set; }
 
     public DateTime StartedAt { get; set; }
     public DateTime? CompletedAt { get; set; }

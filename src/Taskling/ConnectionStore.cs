@@ -44,20 +44,4 @@ public class ConnectionStore : IConnectionStore
             return null;
         }
     }
-
-    //public static ConnectionStore Instance
-    //{
-    //    get
-    //    {
-    //        if (_instance == null)
-    //            lock (sync)
-    //            {
-    //                if (_instance == null) _instance = new ConnectionStore();
-    //            }
-
-    //        return _instance;
-    //    }
-    //}
-
-    //#endregion .: Singleton code :.
 }

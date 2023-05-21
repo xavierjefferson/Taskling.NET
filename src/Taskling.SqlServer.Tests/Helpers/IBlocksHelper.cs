@@ -18,13 +18,13 @@ public interface IBlocksHelper
     void InsertPhantomListBlock(TaskId taskId);
     void InsertPhantomObjectBlock(TaskId taskId);
     int GetBlockCount(TaskId taskId);
-    long InsertDateRangeBlock(int taskDefinitionId, DateTime fromDate, DateTime toDate);
-    long InsertDateRangeBlock(int taskDefinitionId, DateTime fromDate, DateTime toDate, DateTime createdAt);
-    long InsertNumericRangeBlock(int taskDefinitionId, long fromNumber, long toNumber, DateTime createdDate);
-    long InsertListBlock(int taskDefinitionId, DateTime createdDate, string objectData = null);
-    long InsertObjectBlock(int taskDefinitionId, DateTime createdDate, string objectData);
+    long InsertDateRangeBlock(long taskDefinitionId, DateTime fromDate, DateTime toDate);
+    long InsertDateRangeBlock(long taskDefinitionId, DateTime fromDate, DateTime toDate, DateTime createdAt);
+    long InsertNumericRangeBlock(long taskDefinitionId, long fromNumber, long toNumber, DateTime createdDate);
+    long InsertListBlock(long taskDefinitionId, DateTime createdDate, string objectData = null);
+    long InsertObjectBlock(long taskDefinitionId, DateTime createdDate, string objectData);
 
-    long InsertBlockExecution(int taskExecutionId, long blockId, DateTime createdAt, DateTime? startedAt,
+    long InsertBlockExecution(long taskExecutionId, long blockId, DateTime createdAt, DateTime? startedAt,
         DateTime? completedAt, BlockExecutionStatus executionStatus, int attempt = 1);
 
     void DeleteBlocks(string applicationName);

@@ -1,6 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
-using Microsoft.Identity.Client;
-using System.Reflection;
+﻿using System.Reflection;
+using Microsoft.Extensions.Logging;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.CleanUp;
 using Taskling.InfrastructureContracts.TaskExecution;
@@ -11,11 +10,13 @@ namespace Taskling.SqlServer.TaskExecution;
 
 public class CleanUpRepository : DbOperationsService, ICleanUpRepository
 {
-    private readonly ITaskRepository _taskRepository;
     private readonly ILogger<CleanUpRepository> _logger;
+    private readonly ITaskRepository _taskRepository;
 
-    public CleanUpRepository(ITaskRepository taskRepository, IConnectionStore connectionStore, ILogger<CleanUpRepository> logger,
-        IDbContextFactoryEx dbContextFactoryEx, ILoggerFactory loggerFactory) : base(connectionStore, dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
+    public CleanUpRepository(ITaskRepository taskRepository, IConnectionStore connectionStore,
+        ILogger<CleanUpRepository> logger,
+        IDbContextFactoryEx dbContextFactoryEx, ILoggerFactory loggerFactory) : base(connectionStore,
+        dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
     {
         _taskRepository = taskRepository;
         _logger = logger;
@@ -44,7 +45,7 @@ public class CleanUpRepository : DbOperationsService, ICleanUpRepository
         return false;
     }
 
-    private async Task CleanListItemsAsync(TaskId taskId, int taskDefinitionId, DateTime listItemDateThreshold)
+    private async Task CleanListItemsAsync(TaskId taskId, long taskDefinitionId, DateTime listItemDateThreshold)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
 
@@ -59,7 +60,7 @@ public class CleanUpRepository : DbOperationsService, ICleanUpRepository
         });
     }
 
-    private async Task CleanOldDataAsync(TaskId taskId, int taskDefinitionId, DateTime generalDateThreshold)
+    private async Task CleanOldDataAsync(TaskId taskId, long taskDefinitionId, DateTime generalDateThreshold)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
 

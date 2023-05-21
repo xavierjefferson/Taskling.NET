@@ -16,7 +16,8 @@ public class ObjectBlockRepository : DbOperationsService, IObjectBlockRepository
     private readonly ITaskRepository _taskRepository;
 
     public ObjectBlockRepository(ITaskRepository taskRepository, IConnectionStore connectionStore,
-        IDbContextFactoryEx dbContextFactoryEx, ILoggerFactory loggerFactory) : base(connectionStore, dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
+        IDbContextFactoryEx dbContextFactoryEx, ILoggerFactory loggerFactory) : base(connectionStore,
+        dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
     {
         _taskRepository = taskRepository;
     }

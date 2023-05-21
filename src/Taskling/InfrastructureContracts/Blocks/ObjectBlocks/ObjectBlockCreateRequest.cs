@@ -5,7 +5,7 @@ namespace Taskling.InfrastructureContracts.Blocks.ObjectBlocks;
 public class ObjectBlockCreateRequest<T> : BlockRequestBase
 {
     public ObjectBlockCreateRequest(TaskId taskId,
-        int taskExecutionId,
+        long taskExecutionId,
         T objectData,
         int compressionThreshold)
         : base(taskId, taskExecutionId, BlockType.Object)

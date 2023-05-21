@@ -17,7 +17,7 @@ public abstract class BlockContextBase
     private readonly ILogger<BlockContextBase> _logger;
     private readonly IRetryService _retryService;
 
-    protected BlockContextBase(TaskId taskId, long blockExecutionId, int taskExecutionId, IRetryService retryService,
+    protected BlockContextBase(TaskId taskId, long blockExecutionId, long taskExecutionId, IRetryService retryService,
         ITaskExecutionRepository taskExecutionRepository, ILogger<BlockContextBase> logger, int forcedBlockQueueId = 0)
     {
         _retryService = retryService;
@@ -30,7 +30,7 @@ public abstract class BlockContextBase
         ForcedBlockQueueId = forcedBlockQueueId;
     }
 
-    protected int TaskExecutionId { get; }
+    protected long TaskExecutionId { get; }
     protected TaskId CurrentTaskId { get; }
     protected long BlockExecutionId { get; }
     protected ITaskExecutionRepository TaskExecutionRepository { get; }

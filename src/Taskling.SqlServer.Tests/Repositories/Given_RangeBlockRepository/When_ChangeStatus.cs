@@ -19,10 +19,10 @@ public class When_ChangeStatus : TestBase
     private readonly ILogger<When_ChangeStatus> _logger;
     private readonly IRangeBlockRepository _rangeBlockRepository;
 
-    private readonly int _taskDefinitionId;
+    private readonly long _taskDefinitionId;
     private DateTime _baseDateTime;
     private long _blockExecutionId;
-    private int _taskExecution1;
+    private long _taskExecution1;
 
     public When_ChangeStatus(IBlocksHelper blocksHelper, IRangeBlockRepository rangeBlockRepository,
         IExecutionsHelper executionsHelper, ILogger<When_ChangeStatus> logger,

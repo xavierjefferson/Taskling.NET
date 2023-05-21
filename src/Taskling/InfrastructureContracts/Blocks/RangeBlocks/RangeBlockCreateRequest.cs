@@ -6,7 +6,7 @@ namespace Taskling.InfrastructureContracts.Blocks.RangeBlocks;
 public class RangeBlockCreateRequest : BlockRequestBase
 {
     public RangeBlockCreateRequest(TaskId taskId,
-        int taskExecutionId,
+        long taskExecutionId,
         DateTime fromDate,
         DateTime toDate)
         : base(taskId, taskExecutionId, BlockType.DateRange)
@@ -16,7 +16,7 @@ public class RangeBlockCreateRequest : BlockRequestBase
     }
 
     public RangeBlockCreateRequest(TaskId taskId,
-        int taskExecutionId,
+        long taskExecutionId,
         long from,
         long to)
         : base(taskId, taskExecutionId, BlockType.NumericRange)

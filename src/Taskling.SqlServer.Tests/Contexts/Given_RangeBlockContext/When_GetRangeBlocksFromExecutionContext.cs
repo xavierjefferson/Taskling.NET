@@ -20,7 +20,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
     private readonly IExecutionsHelper _executionsHelper;
     private readonly ILogger<When_GetRangeBlocksFromExecutionContext> _logger;
     private readonly ILoggerFactory _loggerFactory;
-    private readonly int _taskDefinitionId;
+    private readonly long _taskDefinitionId;
 
     public When_GetRangeBlocksFromExecutionContext(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper,
         IClientHelper clientHelper, ILogger<When_GetRangeBlocksFromExecutionContext> logger,

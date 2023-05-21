@@ -22,7 +22,7 @@ public class RangeBlockContext : BlockContextBase, IDateRangeBlockContext, INume
     public RangeBlockContext(IRangeBlockRepository rangeBlockRepository,
         ITaskExecutionRepository taskExecutionRepository,
         TaskId taskId,
-        int taskExecutionId,
+        long taskExecutionId,
         RangeBlock rangeBlock,
         long blockExecutionId, IServiceProvider serviceProvider,
         ILoggerFactory loggerFactory,

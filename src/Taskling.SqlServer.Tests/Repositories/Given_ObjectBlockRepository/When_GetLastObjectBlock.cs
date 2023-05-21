@@ -20,7 +20,7 @@ public class When_GetLastObjectBlock : TestBase
     private readonly ILogger<When_GetLastObjectBlock> _logger;
     private readonly IObjectBlockRepository _objectBlockRepository;
 
-    private readonly int _taskDefinitionId;
+    private readonly long _taskDefinitionId;
     private DateTime _baseDateTime;
 
     private long _block1;
@@ -28,7 +28,7 @@ public class When_GetLastObjectBlock : TestBase
     private long _block3;
     private long _block4;
     private long _block5;
-    private int _taskExecution1;
+    private long _taskExecution1;
 
     public When_GetLastObjectBlock(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper,
         IClientHelper clientHelper, IObjectBlockRepository objectBlockRepository,

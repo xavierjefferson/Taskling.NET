@@ -65,7 +65,8 @@ public class ClientHelper : IClientHelper
             maxBlocksToGenerate);
     }
 
-    public ConfigurationOptions GetConfigurationOptions(int con, int v1, int v2, int v3, bool v4, int v5, int v6, int v7,
+    public ConfigurationOptions GetConfigurationOptions(int con, int v1, int v2, int v3, bool v4, int v5, int v6,
+        int v7,
         bool rpcFail, int v9,
         int v10, bool v11, int v12, int v13, int v14)
     {

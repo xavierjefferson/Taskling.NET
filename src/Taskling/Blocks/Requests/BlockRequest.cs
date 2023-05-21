@@ -1,5 +1,4 @@
 ﻿using System;
-using Newtonsoft.Json;
 using Taskling.Blocks.Common;
 using Taskling.InfrastructureContracts;
 using Taskling.Tasks;
@@ -15,26 +14,6 @@ public abstract class BlockRequest
 
     public TaskId TaskId { get; }
 
-    //public int TaskExecutionId { get; set; }
-
-    //public int MaxBlocks { get; set; }
-
-    //public bool ReprocessFailedTasks { get; set; }
-    //public TimeSpan FailedTaskDetectionRange { get; set; }
-    //public int FailedTaskRetryLimit { get; set; }
-
-    //public TaskDeathMode TaskDeathMode { get; set; }
-    //public bool ReprocessDeadTasks { get; set; }
-    //public int DeadTaskRetryLimit { get; set; }
-    //public TimeSpan OverrideDeathThreshold { get; set; }
-    //public TimeSpan DeadTaskDetectionRange { get; set; }
-    //public TimeSpan KeepAliveDeathThreshold { get; set; }
-
-    //public BlockType BlockType { get; protected set; }
-
-    //public Guid ReprocessReferenceValue { get; set; }
-    //public ReprocessOption ReprocessOption { get; set; }
-
     public BlockType BlockType { get; protected set; }
 
     public bool ReprocessDeadTasks { get; set; }
@@ -43,7 +22,7 @@ public abstract class BlockRequest
 
     public int MaxBlocks { get; set; }
 
-    public int TaskExecutionId { get; set; }
+    public long TaskExecutionId { get; set; }
 
     public ReprocessOption ReprocessOption { get; set; }
 

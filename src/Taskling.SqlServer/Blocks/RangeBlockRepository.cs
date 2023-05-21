@@ -13,11 +13,12 @@ namespace Taskling.SqlServer.Blocks;
 
 public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
 {
+    private readonly ILogger<RangeBlockRepository> _logger;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ITaskRepository _taskRepository;
-    private readonly ILogger<RangeBlockRepository> _logger;
 
-    public RangeBlockRepository(ITaskRepository taskRepository, IConnectionStore connectionStore, ILogger<RangeBlockRepository> logger,
+    public RangeBlockRepository(ITaskRepository taskRepository, IConnectionStore connectionStore,
+        ILogger<RangeBlockRepository> logger,
         IDbContextFactoryEx dbContextFactoryEx, ILoggerFactory loggerFactory) : base(connectionStore,
         dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
     {
@@ -126,35 +127,6 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
     private async Task ChangeStatusOfDateRangeExecutionAsync(BlockExecutionChangeStatusRequest changeStatusRequest)
     {
         await ChangeStatusOfNumericRangeExecutionAsync(changeStatusRequest);
-        //try
-        //{
-        //    using (var connection = await CreateNewConnectionAsync(changeStatusRequest.TaskId).ConfigureAwait(false))
-        //    {
-        //        var command = connection.CreateCommand();
-        //        command.CommandTimeout = _connectionStore.GetConnection(changeStatusRequest.TaskId)
-        //            .QueryTimeoutSeconds;
-        //        if (changeStatusRequest.BlockExecutionStatus == BlockExecutionStatus.Completed ||
-        //            changeStatusRequest.BlockExecutionStatus == BlockExecutionStatus.Failed)
-        //            command.CommandText = BlockExecutionQueryBuilder.SetRangeBlockExecutionAsCompleted;
-        //        else
-        //            command.CommandText = BlockExecutionQueryBuilder.SetBlockExecutionStatusToStarted;
-
-        //        command.Parameters.Add("@BlockExecutionId", SqlDbType.BigInt).Value =
-        //            changeStatusRequest.BlockExecutionId;
-        //        command.Parameters.Add("@BlockExecutionStatus", SqlDbType.Int).Value =
-        //            (int)changeStatusRequest.BlockExecutionStatus;
-        //        command.Parameters.Add("@ItemsCount", SqlDbType.Int).Value = changeStatusRequest.ItemsProcessed;
-
-        //        await command.ExecuteNonQueryAsync().ConfigureAwait(false);
-        //    }
-        //}
-        //catch (SqlException sqlEx)
-        //{
-        //    if (TransientErrorDetector.IsTransient(sqlEx))
-        //        throw new TransientException("A transient exception has occurred", sqlEx);
-
-        //    throw;
-        //}
     }
 
     private async Task ChangeStatusOfNumericRangeExecutionAsync(BlockExecutionChangeStatusRequest changeStatusRequest)

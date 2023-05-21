@@ -21,7 +21,7 @@ public class When_GetLastListBlock : TestBase
     private readonly IListBlockRepository _listBlockRepository;
     private readonly ILogger<When_GetLastListBlock> _logger;
 
-    private readonly int _taskDefinitionId;
+    private readonly long _taskDefinitionId;
     private DateTime _baseDateTime;
 
     private long _block1;
@@ -29,7 +29,7 @@ public class When_GetLastListBlock : TestBase
     private long _block3;
     private long _block4;
     private long _block5;
-    private int _taskExecution1;
+    private long _taskExecution1;
 
     public When_GetLastListBlock(IBlocksHelper blocksHelper, IListBlockRepository listBlockRepository,
         IExecutionsHelper executionsHelper, IClientHelper clientHelper, ILogger<When_GetLastListBlock> logger,

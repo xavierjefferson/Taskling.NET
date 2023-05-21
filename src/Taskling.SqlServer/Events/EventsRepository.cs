@@ -9,12 +9,13 @@ namespace Taskling.SqlServer.Events;
 
 public class EventsRepository : DbOperationsService, IEventsRepository
 {
-    public EventsRepository(IConnectionStore connectionStore, IDbContextFactoryEx dbContextFactoryEx, ILoggerFactory loggerFactory) : base(
+    public EventsRepository(IConnectionStore connectionStore, IDbContextFactoryEx dbContextFactoryEx,
+        ILoggerFactory loggerFactory) : base(
         connectionStore, dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
     {
     }
 
-    public async Task LogEventAsync(TaskId taskId, int taskExecutionId, EventType eventType, string? message)
+    public async Task LogEventAsync(TaskId taskId, long taskExecutionId, EventType eventType, string? message)
     {
         await RetryHelper.WithRetryAsync(async () =>
         {

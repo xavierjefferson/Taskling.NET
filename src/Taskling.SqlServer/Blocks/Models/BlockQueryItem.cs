@@ -8,7 +8,7 @@ public class BlockQueryItem : IBlockQueryItem
     public TimeSpan? KeepAliveInterval { get; set; }
     public DateTime LastKeepAlive { get; set; }
     public DateTime CreatedDate { get; set; }
-    public int TaskDefinitionId { get; set; }
+    public long TaskDefinitionId { get; set; }
     public Guid? ReferenceValue { get; set; }
     public int BlockExecutionStatus { get; set; }
     public long BlockId { get; set; }

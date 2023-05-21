@@ -4,9 +4,7 @@ public class FluentObjectBlockDescriptorBase<T> : IFluentObjectBlockDescriptorBa
 {
     public IOverrideConfigurationDescriptor WithObject(T data)
     {
-        var stringBlockDescriptor = new FluentObjectBlockSettings<T>(data);
-
-        return stringBlockDescriptor;
+        return new FluentObjectBlockSettings<T>(data);
     }
 
     public IOverrideConfigurationDescriptor WithNoNewBlocks()

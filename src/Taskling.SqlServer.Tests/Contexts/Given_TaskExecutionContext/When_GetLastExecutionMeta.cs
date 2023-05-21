@@ -16,7 +16,7 @@ public class When_GetLastExecutionMeta : TestBase
     private readonly IClientHelper _clientHelper;
     private readonly IExecutionsHelper _executionsHelper;
     private readonly ILogger<When_GetLastExecutionMeta> _logger;
-    private readonly int _taskDefinitionId;
+    private readonly long _taskDefinitionId;
 
     public When_GetLastExecutionMeta(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper,
         IClientHelper clientHelper, ILogger<When_GetLastExecutionMeta> logger, ITaskRepository taskRepository) : base(

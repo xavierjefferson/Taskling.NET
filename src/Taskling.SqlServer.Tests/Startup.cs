@@ -17,7 +17,7 @@ public class Startup
     {
         var xunitTestOutputLoggerProvider = new XunitTestOutputLoggerProvider(accessor,
             (source, ll) => ll >= LogLevel.Debug);
-        
+
         loggerFactory.AddProvider(xunitTestOutputLoggerProvider);
     }
 

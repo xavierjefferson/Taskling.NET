@@ -50,7 +50,7 @@ public class When_TryStart_AsKeepAliveMode : TestBase
         };
     }
 
-    private SendKeepAliveRequest CreateKeepAliveRequest(TaskId taskId, int taskExecutionId,
+    private SendKeepAliveRequest CreateKeepAliveRequest(TaskId taskId, long taskExecutionId,
         Guid executionTokenId)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));

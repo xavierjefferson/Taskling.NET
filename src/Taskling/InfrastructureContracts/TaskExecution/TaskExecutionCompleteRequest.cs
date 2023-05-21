@@ -4,7 +4,7 @@ namespace Taskling.InfrastructureContracts.TaskExecution;
 
 public class TaskExecutionCompleteRequest : RequestBase
 {
-    public TaskExecutionCompleteRequest(TaskId taskId, int taskExecutionId, Guid executionTokenId)
+    public TaskExecutionCompleteRequest(TaskId taskId, long taskExecutionId, Guid executionTokenId)
         : base(taskId, taskExecutionId)
     {
         ExecutionTokenId = executionTokenId;

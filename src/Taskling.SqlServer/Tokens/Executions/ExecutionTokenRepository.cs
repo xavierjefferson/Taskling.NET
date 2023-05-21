@@ -1,12 +1,12 @@
 ﻿using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using Taskling.Extensions;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.SqlServer.AncilliaryServices;
 using Taskling.SqlServer.Models;
 using TransactionScopeRetryHelper;
+using TaskDefinition = Taskling.SqlServer.Models.TaskDefinition;
 
 namespace Taskling.SqlServer.Tokens.Executions;
 
@@ -16,9 +16,11 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
     private readonly IExecutionTokenHelper _executionTokenHelper;
     private readonly ILogger<ExecutionTokenRepository> _logger;
 
-    public ExecutionTokenRepository(ICommonTokenRepository commonTokenRepository, IConnectionStore connectionStore, IExecutionTokenHelper executionTokenHelper,
-        IDbContextFactoryEx dbContextFactoryEx, ILogger<ExecutionTokenRepository> logger, ILoggerFactory loggerFactory) : base(connectionStore,
-        dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
+    public ExecutionTokenRepository(ICommonTokenRepository commonTokenRepository, IConnectionStore connectionStore,
+        IExecutionTokenHelper executionTokenHelper,
+        IDbContextFactoryEx dbContextFactoryEx, ILogger<ExecutionTokenRepository> logger, ILoggerFactory loggerFactory)
+        : base(connectionStore,
+            dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
     {
         _logger = logger;
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
@@ -88,7 +90,7 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
     }
 
 
-    private async Task AcquireRowLockAsync(int taskDefinitionId, int taskExecutionId,
+    private async Task AcquireRowLockAsync(long taskDefinitionId, long taskExecutionId,
         TasklingDbContext dbContext)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
@@ -98,7 +100,7 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
             .ConfigureAwait(false);
     }
 
-    private async Task<ExecutionTokenList> GetTokensAsync(int taskDefinitionId,
+    private async Task<ExecutionTokenList> GetTokensAsync(long taskDefinitionId,
         TasklingDbContext dbContext)
     {
         _logger.Debug("57527216-a481-4f7f-9700-05bb9961e403");
@@ -115,10 +117,11 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
         {
             _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
             if (string.IsNullOrWhiteSpace(tokensString))
+            {
                 result = ReturnDefaultTokenList();
+            }
             else
             {
-
                 var tokenList = ExecutionTokenList.Deserialize(tokensString);
 
                 result = tokenList;
@@ -130,9 +133,7 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
         {
             _logger.Debug("5f5e58bf-68ce-42da-a855-2324e0260171");
             _logger.Debug($"Retrieved tokens {Constants.Serialize(result)}");
-
         }
-
     }
 
     private bool AdjustTokenCount(ExecutionTokenList tokenList, int concurrencyCount)
@@ -210,7 +211,7 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
         return list;
     }
 
-    private async Task<string> GetTokensStringAsync(int taskDefinitionId,
+    private async Task<string> GetTokensStringAsync(long taskDefinitionId,
         TasklingDbContext dbContext)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
@@ -224,6 +225,7 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
             _logger.Debug("1a105fe2-3e3b-4c27-adeb-08f9222b2dd5");
             return tokens;
         }
+
         _logger.Debug("5c1db988-f600-4653-af45-9b383dd3cedf");
         return string.Empty;
     }
@@ -266,7 +268,7 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
         _logger.Debug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _logger.Debug("07545a25-612f-463d-93a8-7439a6871014");
         var tmp = executionTokenList.Any(x => x.Status == ExecutionTokenStatus.Available
-                                           || x.Status == ExecutionTokenStatus.Unlimited);
+                                              || x.Status == ExecutionTokenStatus.Unlimited);
         _logger.Debug($"{Constants.Serialize(executionTokenList)}");
         _logger.Debug($"{nameof(HasAvailableToken)}={tmp}");
         return tmp;
@@ -276,12 +278,12 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var tmp = executionTokenList.FirstOrDefault(x => x.Status == ExecutionTokenStatus.Available
-                                                      || x.Status == ExecutionTokenStatus.Unlimited);
+                                                         || x.Status == ExecutionTokenStatus.Unlimited);
         _logger.LogDebug($"Available token = {(tmp == null ? "null" : tmp.TokenId.ToString())}");
         return tmp;
     }
 
-    private async Task<List<TaskExecutionState>> GetTaskExecutionStatesAsync(List<int> taskExecutionIds,
+    private async Task<List<TaskExecutionState>> GetTaskExecutionStatesAsync(List<long> taskExecutionIds,
         TasklingDbContext dbContext)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
@@ -298,6 +300,7 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
                 _logger.Debug("645a2465-0b33-4a0d-9c04-6355f0f2b93c");
                 return teState;
             }
+
         _logger.Debug("8ecc12fb-3fe6-4b77-81e6-2f918c32dd53");
         return null;
     }
@@ -308,10 +311,10 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
         return _commonTokenRepository.HasExpired(taskExecutionState);
     }
 
-    private void AssignToken(ExecutionToken executionToken, int taskExecutionId)
+    private void AssignToken(ExecutionToken executionToken, long taskExecutionId)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
-        
+
         _executionTokenHelper.SetGrantedToExecution(executionToken, taskExecutionId);
         if (executionToken.Status != ExecutionTokenStatus.Unlimited)
         {
@@ -320,14 +323,14 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
         }
     }
 
-    private async Task PersistTokensAsync(int taskDefinitionId, ExecutionTokenList executionTokenList,
+    private async Task PersistTokensAsync(long taskDefinitionId, ExecutionTokenList executionTokenList,
         TasklingDbContext dbContext)
     {
         _logger.Debug("83dc1ee9-0eb9-45a8-b306-77636f795ab1");
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var tokenString = executionTokenList.Serialize();
         _logger.Debug($"Persisting token {taskDefinitionId} {tokenString}");
-        var taskDefinition = new Models.TaskDefinition() { TaskDefinitionId = taskDefinitionId, ExecutionTokens = tokenString };
+        var taskDefinition = new TaskDefinition { TaskDefinitionId = taskDefinitionId, ExecutionTokens = tokenString };
         var entityEntry = dbContext.TaskDefinitions.Attach(taskDefinition);
         entityEntry.Property(i => i.ExecutionTokens).IsModified = true;
         await dbContext.SaveChangesAsync();

@@ -6,7 +6,7 @@ namespace Taskling.InfrastructureContracts.Blocks.ListBlocks;
 public class ListBlockCreateRequest : BlockRequestBase
 {
     public ListBlockCreateRequest(TaskId taskId,
-        int taskExecutionId,
+        long taskExecutionId,
         List<string> serializedValues)
         : base(taskId, taskExecutionId, BlockType.List)
     {
@@ -14,7 +14,7 @@ public class ListBlockCreateRequest : BlockRequestBase
     }
 
     public ListBlockCreateRequest(TaskId taskId,
-        int taskExecutionId,
+        long taskExecutionId,
         List<string> serializedValues,
         string serializedHeader,
         int compressionThreshold)

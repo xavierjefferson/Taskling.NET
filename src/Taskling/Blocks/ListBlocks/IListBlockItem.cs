@@ -3,11 +3,15 @@ using System.Threading.Tasks;
 
 namespace Taskling.Blocks.ListBlocks;
 
-public interface IListBlockItem<T>
+public interface IItem
+{
+    ItemStatus Status { get; set; }
+}
+public interface IListBlockItem<T> : IItem
 {
     long ListBlockItemId { get; }
     T Value { get; }
-    ItemStatus Status { get; set; }
+
     string StatusReason { get; set; }
     DateTime LastUpdated { get; }
     int? Step { get; set; }

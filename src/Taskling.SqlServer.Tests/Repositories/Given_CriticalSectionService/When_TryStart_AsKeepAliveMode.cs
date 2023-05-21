@@ -24,9 +24,10 @@ public class When_TryStart_AsKeepAliveMode : TestBase
         ILogger<When_TryStart_AsKeepAliveMode> logger, ITaskRepository taskRepository,
         ICriticalSectionRepository criticalSectionRepository) : base(executionsHelper)
     {
+        _logger = logger;
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _executionsHelper = executionsHelper;
-        _logger = logger;
+
         _criticalSectionRepository = criticalSectionRepository;
 
 

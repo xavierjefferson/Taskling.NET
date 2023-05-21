@@ -10,7 +10,7 @@ public class Block
     }
 
     public long BlockId { get; set; }
-    public int TaskDefinitionId { get; set; }
+    public long TaskDefinitionId { get; set; }
     public DateTime? FromDate { get; set; }
     public DateTime? ToDate { get; set; }
     public long? FromNumber { get; set; }

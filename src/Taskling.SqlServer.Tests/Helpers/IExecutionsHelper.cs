@@ -8,40 +8,40 @@ public interface IExecutionsHelper
 {
     TaskId CurrentTaskId { get; }
     void DeleteRecordsOfApplication(string applicationName);
-    void SetKeepAlive(int taskExecutionId);
-    void SetKeepAlive(int taskExecutionId, DateTime keepAliveDateTime);
-    DateTime GetLastKeepAlive(int taskDefinitionId);
-    GetLastEventResponse GetLastEvent(int taskDefinitionId);
-    int InsertTask(string applicationName, string taskName);
-    int InsertTask(TaskId taskId);
-    void InsertUnlimitedExecutionToken(int taskDefinitionId);
-    void InsertUnavailableExecutionToken(int taskDefinitionId);
-    void InsertAvailableExecutionToken(int taskDefinitionId, int count = 1);
-    void InsertExecutionToken(int taskDefinitionId, ExecInfoList tokens);
+    void SetKeepAlive(long taskExecutionId);
+    void SetKeepAlive(long taskExecutionId, DateTime keepAliveDateTime);
+    DateTime GetLastKeepAlive(long taskDefinitionId);
+    GetLastEventResponse GetLastEvent(long taskDefinitionId);
+    long InsertTask(string applicationName, string taskName);
+    long InsertTask(TaskId taskId);
+    void InsertUnlimitedExecutionToken(long taskDefinitionId);
+    void InsertUnavailableExecutionToken(long taskDefinitionId);
+    void InsertAvailableExecutionToken(long taskDefinitionId, int count = 1);
+    void InsertExecutionToken(long taskDefinitionId, ExecInfoList tokens);
     ExecutionTokenList GetExecutionTokens(TaskId taskId);
     ExecutionTokenStatus GetExecutionTokenStatus(TaskId taskId);
-    int InsertKeepAliveTaskExecution(int taskDefinitionId);
+    long InsertKeepAliveTaskExecution(long taskDefinitionId);
 
-    int InsertKeepAliveTaskExecution(int taskDefinitionId, TimeSpan keepAliveInterval,
+    long InsertKeepAliveTaskExecution(long taskDefinitionId, TimeSpan keepAliveInterval,
         TimeSpan keepAliveDeathThreshold);
 
-    int InsertKeepAliveTaskExecution(int taskDefinitionId, TimeSpan keepAliveInterval,
+    long InsertKeepAliveTaskExecution(long taskDefinitionId, TimeSpan keepAliveInterval,
         TimeSpan keepAliveDeathThreshold, DateTime startedAt, DateTime? completedAt);
 
-    int InsertOverrideTaskExecution(int taskDefinitionId);
-    int InsertOverrideTaskExecution(int taskDefinitionId, TimeSpan overrideThreshold);
+    long InsertOverrideTaskExecution(long taskDefinitionId);
+    long InsertOverrideTaskExecution(long taskDefinitionId, TimeSpan overrideThreshold);
 
-    int InsertOverrideTaskExecution(int taskDefinitionId, TimeSpan overrideThreshold, DateTime startedAt,
+    long InsertOverrideTaskExecution(long taskDefinitionId, TimeSpan overrideThreshold, DateTime startedAt,
         DateTime? completedAt);
 
-    void SetTaskExecutionAsCompleted(int taskExecutionId);
-    void SetLastExecutionAsDead(int taskDefinitionId);
-    bool GetBlockedStatusOfLastExecution(int taskDefinitionId);
-    string GetLastExecutionVersion(int taskDefinitionId);
-    string GetLastExecutionHeader(int taskDefinitionId);
-    void InsertUnavailableCriticalSectionToken(int taskDefinitionId, int taskExecutionId);
-    void InsertAvailableCriticalSectionToken(int taskDefinitionId, int taskExecutionId);
-    int GetQueueCount(int taskExecutionId);
-    void InsertIntoCriticalSectionQueue(int taskDefinitionId, int queueIndex, int taskExecutionId);
+    void SetTaskExecutionAsCompleted(long taskExecutionId);
+    void SetLastExecutionAsDead(long taskDefinitionId);
+    bool GetBlockedStatusOfLastExecution(long taskDefinitionId);
+    string GetLastExecutionVersion(long taskDefinitionId);
+    string GetLastExecutionHeader(long taskDefinitionId);
+    void InsertUnavailableCriticalSectionToken(long taskDefinitionId, long taskExecutionId);
+    void InsertAvailableCriticalSectionToken(long taskDefinitionId, long taskExecutionId);
+    int GetQueueCount(long taskExecutionId);
+    void InsertIntoCriticalSectionQueue(long taskDefinitionId, int queueIndex, long taskExecutionId);
     int GetCriticalSectionTokenStatus(TaskId taskId);
 }

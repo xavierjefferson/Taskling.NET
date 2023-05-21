@@ -23,16 +23,17 @@ public class When_GetListBlocksFromExecutionContext : TestBase
     private readonly IExecutionsHelper _executionsHelper;
     private readonly ILogger<When_GetListBlocksFromExecutionContext> _logger;
     private readonly ILoggerFactory _loggerFactory;
-    private readonly int _taskDefinitionId;
+    private readonly long _taskDefinitionId;
 
     public When_GetListBlocksFromExecutionContext(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper,
         IClientHelper clientHelper, ILogger<When_GetListBlocksFromExecutionContext> logger,
         ITaskRepository taskRepository, ILoggerFactory loggerFactory) : base(executionsHelper)
-    {     _logger = logger;
+    {
+        _logger = logger;
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _blocksHelper = blocksHelper;
         _clientHelper = clientHelper;
-   
+
         _loggerFactory = loggerFactory;
         _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
         _executionsHelper = executionsHelper;

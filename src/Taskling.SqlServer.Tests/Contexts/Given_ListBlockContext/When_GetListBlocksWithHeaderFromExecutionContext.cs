@@ -23,7 +23,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
     private readonly IExecutionsHelper _executionsHelper;
     private readonly ILogger<When_GetListBlocksWithHeaderFromExecutionContext> _logger;
     private readonly ILoggerFactory _loggerFactory;
-    private readonly int _taskDefinitionId;
+    private readonly long _taskDefinitionId;
 
     public When_GetListBlocksWithHeaderFromExecutionContext(IBlocksHelper blocksHelper,
         IExecutionsHelper executionsHelper, IClientHelper clientHelper,

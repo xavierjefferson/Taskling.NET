@@ -17,7 +17,7 @@ public class TaskExecutionStartResponse : ResponseBase
         GrantStatus = grantStatus;
     }
 
-    public int TaskExecutionId { get; set; }
+    public long TaskExecutionId { get; set; }
     public Guid ExecutionTokenId { get; set; }
     public DateTime StartedAt { get; set; }
     public GrantStatus GrantStatus { get; set; }

@@ -21,7 +21,7 @@ public class When_GetLastNumericRangeBlock : TestBase
     private readonly ILogger<When_GetLastNumericRangeBlock> _logger;
     private readonly IRangeBlockRepository _rangeBlockRepository;
 
-    private readonly int _taskDefinitionId;
+    private readonly long _taskDefinitionId;
     private readonly ITestOutputHelper output;
     private DateTime _baseDateTime;
 
@@ -30,7 +30,7 @@ public class When_GetLastNumericRangeBlock : TestBase
     private long _block3;
     private long _block4;
     private long _block5;
-    private int _taskExecution1;
+    private long _taskExecution1;
 
     public When_GetLastNumericRangeBlock(ITestOutputHelper output, IBlocksHelper blocksHelper,
         ILogger<When_GetLastNumericRangeBlock> logger,

@@ -21,6 +21,9 @@ namespace Taskling.Blocks.ListBlocks;
 
 public class ListBlockContextBase<TItem, THeader> : BlockContextBase
 {
+    private static readonly ItemStatus[] OperationalStatuses =
+        { ItemStatus.Failed, ItemStatus.Pending, ItemStatus.Discarded, ItemStatus.Completed };
+
     private readonly bool _hasHeader;
     private readonly ILogger<ListBlockContextBase<TItem, THeader>> _logger;
     private readonly ILoggerFactory _loggerFactory;
@@ -48,7 +51,7 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
     private ListBlockContextBase(IListBlockRepository listBlockRepository,
         ITaskExecutionRepository taskExecutionRepository, IRetryService retryService,
         TaskId taskId,
-        int taskExecutionId,
+        long taskExecutionId,
         ListUpdateMode listUpdateMode,
         int uncommittedThreshold,
         long blockExecutionId,
@@ -77,7 +80,7 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
     public ListBlockContextBase(IListBlockRepository listBlockRepository,
         ITaskExecutionRepository taskExecutionRepository,
         TaskId taskId,
-        int taskExecutionId,
+        long taskExecutionId,
         ListUpdateMode listUpdateMode,
         int uncommittedThreshold,
         ListBlock<TItem> listBlock,
@@ -95,7 +98,7 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
     public ListBlockContextBase(IListBlockRepository listBlockRepository,
         ITaskExecutionRepository taskExecutionRepository,
         TaskId taskId,
-        int taskExecutionId,
+        long taskExecutionId,
         ListUpdateMode listUpdateMode,
         int uncommittedThreshold,
         ListBlock<TItem, THeader> listBlock,
@@ -293,6 +296,13 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
         _headerlessBlock.Items = items;
     }
 
+    private List<T> FilterWithOperationalStatuses<T>(ItemStatus[] statuses, IEnumerable<T> z) where T : IItem
+    {
+        var filter = statuses.Any(x => x == ItemStatus.All) ? OperationalStatuses : statuses;
+
+        return z.Where(x => filter.Contains(x.Status)).ToList();
+    }
+
     private async Task<IEnumerable<IListBlockItem<TItem>>> GetItemsFromHeaderlessBlockAsync(
         params ItemStatus[] statuses)
     {
@@ -308,17 +318,13 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
                     .GetListBlockItemsAsync(CurrentTaskId, ListBlockId).ConfigureAwait(false);
                 _headerlessBlock.Items = Convert(protoListBlockItems);
 
+
                 foreach (var item in _headerlessBlock.Items)
                     ((ListBlockItem<TItem>)item).SetParentContext(ItemCompletedAsync, ItemFailedAsync,
                         DiscardItemAsync);
             }
 
-            if (statuses.Any(x => x == ItemStatus.All))
-                return _headerlessBlock.Items.Where(x =>
-                    x.Status == ItemStatus.Failed || x.Status == ItemStatus.Pending ||
-                    x.Status == ItemStatus.Discarded || x.Status == ItemStatus.Completed).ToList();
-
-            return _headerlessBlock.Items.Where(x => statuses.Contains(x.Status)).ToList();
+            return FilterWithOperationalStatuses(statuses, _headerlessBlock.Items);
         }).ConfigureAwait(false);
     }
 
@@ -341,12 +347,7 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
                         DiscardItemAsync);
             }
 
-            if (statuses.Any(x => x == ItemStatus.All))
-                return _blockWithHeader.Items.Where(x =>
-                    x.Status == ItemStatus.Failed || x.Status == ItemStatus.Pending ||
-                    x.Status == ItemStatus.Discarded || x.Status == ItemStatus.Completed).ToList();
-
-            return _blockWithHeader.Items.Where(x => statuses.Contains(x.Status)).ToList();
+            return FilterWithOperationalStatuses(statuses, _blockWithHeader.Items);
         }).ConfigureAwait(false);
     }
 

@@ -1,5 +1,4 @@
-﻿using System.Linq.Expressions;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
@@ -32,6 +31,13 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
     private const string UnexpectedBlockTypeMessage =
         "This block type was not expected. This can occur when changing the block type of an existing process or combining different block types in a single process - which is not supported";
 
+    public static readonly int[] PendingOrFailedStatuses =
+    {
+        (int)BlockExecutionStatus.NotStarted,
+        (int)BlockExecutionStatus.NotDefined, (int)BlockExecutionStatus.Started,
+        (int)BlockExecutionStatus.Failed
+    };
+
     private readonly ILogger<BlockRepository> _logger;
     private readonly ILoggerFactory _loggerFactory;
 
@@ -40,8 +46,8 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
 
 
     public BlockRepository(ITaskRepository taskRepository, IConnectionStore connectionStore,
-        ILogger<BlockRepository> logger, IDbContextFactoryEx dbx, ILoggerFactory loggerFactory) : base(connectionStore,
-        dbx, loggerFactory.CreateLogger<DbOperationsService>())
+        ILogger<BlockRepository> logger, IDbContextFactoryEx dbContextFactoryEx, ILoggerFactory loggerFactory) : base(connectionStore,
+        dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
     {
         _taskRepository = taskRepository;
         _logger = logger;
@@ -90,26 +96,8 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
 
     public async Task<IList<RangeBlock>> FindRangeBlocksOfTaskAsync(FindBlocksOfTaskRequest blocksOfTaskRequest)
     {
-        _logger.Debug("4fac3bbe-9b32-4412-b8ca-b384c9d38280");
-        Func<BlocksOfTaskQueryParams,
-            Expression<Func<BlockQueryItem, bool>>> query;
-        switch (blocksOfTaskRequest.BlockType)
-        {
-            case BlockType.DateRange:
-                _logger.Debug("6f26bba4-79e8-4448-ab80-2be6ab47c917");
-                query = BlocksOfTaskQueryBuilder.GetFindDateRangeBlocksOfTaskQuery(blocksOfTaskRequest.ReprocessOption);
-                break;
-            case BlockType.NumericRange:
-                _logger.Debug("e7306f31-1521-4e58-acb4-1ff96c2c0e22");
-                query = BlocksOfTaskQueryBuilder.GetFindNumericRangeBlocksOfTaskQuery(blocksOfTaskRequest
-                    .ReprocessOption);
-                break;
-            default:
-                _logger.Debug("87970746-3a69-426b-8d1c-93dbe5723c58");
-                throw new NotSupportedException("This range type is not supported");
-        }
-
-        return await FindRangeBlocksOfTaskAsync(blocksOfTaskRequest, query).ConfigureAwait(false);
+        return await FindBlocksOfTaskAsync(blocksOfTaskRequest, new[] { BlockType.DateRange, BlockType.NumericRange },
+            (i, j) => GetRangeBlocks(j, i));
     }
 
     public async Task<RangeBlockCreateResponse> AddRangeBlockAsync(RangeBlockCreateRequest rangeBlockCreateRequest)
@@ -119,60 +107,51 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
             .ConfigureAwait(false);
 
         var response = new RangeBlockCreateResponse();
-        switch (rangeBlockCreateRequest.BlockType)
+
+        response.Block = await RetryHelper.WithRetryAsync(async () =>
         {
-            case BlockType.DateRange:
-                response.Block =
-                    await RetryHelper.WithRetryAsync(async () =>
-                    {
-                        using (var dbContext = await GetDbContextAsync(rangeBlockCreateRequest.TaskId))
+            using (var dbContext = await GetDbContextAsync(rangeBlockCreateRequest.TaskId))
 
+            {
+                Block block;
+                switch (rangeBlockCreateRequest.BlockType)
+                {
+                    case BlockType.DateRange:
+                        block = new Block
                         {
-                            var block = new Block
-                            {
-                                TaskDefinitionId = taskDefinition.TaskDefinitionId,
-                                FromDate = new DateTime(rangeBlockCreateRequest.From),
-                                ToDate = new DateTime(rangeBlockCreateRequest.To),
-                                BlockType = (int)BlockType.DateRange,
-                                CreatedDate = DateTime.UtcNow
-                            };
-                            await dbContext.Blocks.AddAsync(block).ConfigureAwait(false);
-                            await dbContext.SaveChangesAsync().ConfigureAwait(false);
+                            TaskDefinitionId = taskDefinition.TaskDefinitionId,
+                            FromDate = new DateTime(rangeBlockCreateRequest.From),
+                            ToDate = new DateTime(rangeBlockCreateRequest.To),
+                            BlockType = (int)BlockType.DateRange,
+                            CreatedDate = DateTime.UtcNow
+                        };
 
-                            return new RangeBlock(block.BlockId,
-                                0,
-                                rangeBlockCreateRequest.From,
-                                rangeBlockCreateRequest.To,
-                                rangeBlockCreateRequest.BlockType, _loggerFactory.CreateLogger<RangeBlock>());
-                        }
-                    }).ConfigureAwait(false);
-                break;
-            case BlockType.NumericRange:
-                response.Block =
-                    await RetryHelper.WithRetryAsync(async () =>
-                    {
-                        using (var dbContext = await GetDbContextAsync(rangeBlockCreateRequest.TaskId))
+                        break;
+                    case BlockType.NumericRange:
+                        block = new Block
                         {
-                            var block = new Block
-                            {
-                                TaskDefinitionId = taskDefinition.TaskDefinitionId,
-                                FromNumber = rangeBlockCreateRequest.From,
-                                ToNumber = rangeBlockCreateRequest.To,
-                                BlockType = (int)BlockType.NumericRange,
-                                CreatedDate = DateTime.UtcNow
-                            };
-                            await dbContext.Blocks.AddAsync(block).ConfigureAwait(false);
-                            await dbContext.SaveChangesAsync().ConfigureAwait(false);
+                            TaskDefinitionId = taskDefinition.TaskDefinitionId,
+                            FromNumber = rangeBlockCreateRequest.From,
+                            ToNumber = rangeBlockCreateRequest.To,
+                            BlockType = (int)BlockType.NumericRange,
+                            CreatedDate = DateTime.UtcNow
+                        };
 
-                            return new RangeBlock(block.BlockId, 0, rangeBlockCreateRequest.From,
-                                rangeBlockCreateRequest.To,
-                                rangeBlockCreateRequest.BlockType, _loggerFactory.CreateLogger<RangeBlock>());
-                        }
-                    }).ConfigureAwait(false);
-                break;
-            default:
-                throw new NotSupportedException(UnexpectedBlockTypeMessage);
-        }
+                        break;
+                    default:
+                        throw new NotSupportedException(UnexpectedBlockTypeMessage);
+                }
+
+                await dbContext.Blocks.AddAsync(block).ConfigureAwait(false);
+                await dbContext.SaveChangesAsync().ConfigureAwait(false);
+
+                return new RangeBlock(block.BlockId,
+                    0,
+                    rangeBlockCreateRequest.From,
+                    rangeBlockCreateRequest.To,
+                    rangeBlockCreateRequest.BlockType, _loggerFactory.CreateLogger<RangeBlock>());
+            }
+        }).ConfigureAwait(false);
 
         return response;
     }
@@ -182,17 +161,10 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
         return await AddBlockExecutionAsync(executionCreateRequest).ConfigureAwait(false);
     }
 
-
     public async Task<IList<ProtoListBlock>> FindListBlocksOfTaskAsync(FindBlocksOfTaskRequest blocksOfTaskRequest)
     {
-        if (blocksOfTaskRequest.BlockType == BlockType.List)
-        {
-            var query = BlocksOfTaskQueryBuilder.GetFindListBlocksOfTaskQuery(blocksOfTaskRequest.ReprocessOption);
-            return await FindListBlocksOfTaskAsync(blocksOfTaskRequest, query, blocksOfTaskRequest.ReprocessOption)
-                .ConfigureAwait(false);
-        }
-
-        throw new NotSupportedException(UnexpectedBlockTypeMessage);
+        return await FindBlocksOfTaskAsync(blocksOfTaskRequest, new[] { BlockType.List },
+            (i, j) => GetListBlocks(j, i));
     }
 
     public async Task<ListBlockCreateResponse> AddListBlockAsync(ListBlockCreateRequest createRequest)
@@ -230,11 +202,8 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
     public async Task<IList<ObjectBlock<T>>> FindObjectBlocksOfTaskAsync<T>(FindBlocksOfTaskRequest blocksOfTaskRequest)
     {
         if (blocksOfTaskRequest.BlockType == BlockType.Object)
-        {
-            var query = BlocksOfTaskQueryBuilder.GetFindObjectBlocksOfTaskQuery(blocksOfTaskRequest.ReprocessOption);
-            return await FindObjectBlocksOfTaskAsync<T>(blocksOfTaskRequest, query, blocksOfTaskRequest.ReprocessOption)
+            return await FindObjectBlocksOfTaskAsync<T>(blocksOfTaskRequest, blocksOfTaskRequest.ReprocessOption)
                 .ConfigureAwait(false);
-        }
 
         throw new NotSupportedException(UnexpectedBlockTypeMessage);
     }
@@ -268,76 +237,36 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
         throw new NotSupportedException(UnexpectedBlockTypeMessage);
     }
 
-
-    private async Task<IList<RangeBlock>> FindRangeBlocksOfTaskAsync(FindBlocksOfTaskRequest blocksOfTaskRequest,
-        Func<BlocksOfTaskQueryParams,
-            Expression<Func<BlockQueryItem, bool>>> query)
+    private async Task<IList<T>> FindBlocksOfTaskAsync<T>(FindBlocksOfTaskRequest blocksOfTaskRequest,
+        BlockType[] blockTypes, Func<List<BlockQueryItem>, FindBlocksOfTaskRequest, IList<T>> converter)
     {
-        return await RetryHelper.WithRetryAsync(async () =>
-        {
-            var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(blocksOfTaskRequest.TaskId)
-                .ConfigureAwait(false);
-
-            using (var dbContext = await GetDbContextAsync(blocksOfTaskRequest.TaskId))
+        if (blockTypes.Contains(blocksOfTaskRequest.BlockType))
+            return await RetryHelper.WithRetryAsync(async () =>
             {
-                _logger.Debug("ba90155a-3970-43b7-a488-63cf4c8adb1a");
-                var items = await BlocksOfTaskQueryBuilder.GetBlocksOfTaskQueryItems(dbContext,
-                    taskDefinition.TaskDefinitionId,
-                    blocksOfTaskRequest.ReferenceValueOfTask,
-                    query(new BlocksOfTaskQueryParams()));
-                var results = GetRangeBlocks(blocksOfTaskRequest, items);
-                _logger.Debug("2318000f-633c-4147-ae89-88ec44db3e26");
-                _logger.LogDebug($"{nameof(FindRangeBlocksOfTaskAsync)} is returning {results.Count} rows");
-                return results;
-            }
-        }).ConfigureAwait(false);
+                var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(blocksOfTaskRequest.TaskId)
+                    .ConfigureAwait(false);
+
+                using (var dbContext = await GetDbContextAsync(blocksOfTaskRequest.TaskId))
+                {
+                    var items = await GetBlocksOfTaskQueryItems(dbContext,
+                        taskDefinition.TaskDefinitionId,
+                        blocksOfTaskRequest.ReferenceValueOfTask, blocksOfTaskRequest.ReprocessOption);
+                    var results = converter(items, blocksOfTaskRequest);
+                    return results;
+                }
+            });
+
+        throw new NotSupportedException(UnexpectedBlockTypeMessage);
     }
 
 
-    private async Task<IList<ProtoListBlock>> FindListBlocksOfTaskAsync(FindBlocksOfTaskRequest blocksOfTaskRequest,
-        Func<BlocksOfTaskQueryParams,
-            Expression<Func<BlockQueryItem, bool>>> query,
-        ReprocessOption reprocessOption)
-    {
-        return await RetryHelper.WithRetryAsync(async () =>
-        {
-            var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(blocksOfTaskRequest.TaskId)
-                .ConfigureAwait(false);
-
-
-            using (var dbContext = await GetDbContextAsync(blocksOfTaskRequest.TaskId))
-            {
-                BlocksOfTaskQueryParams blocksOfTaskQueryParams;
-                if (reprocessOption == ReprocessOption.PendingOrFailed)
-
-                    blocksOfTaskQueryParams = new BlocksOfTaskQueryParams
-                    {
-                        StatusesToMatch = new List<int>
-                        {
-                            (int)BlockExecutionStatus.Started, (int)BlockExecutionStatus.NotStarted,
-                            (int)BlockExecutionStatus.Failed
-                        }
-                    };
-                else blocksOfTaskQueryParams = new BlocksOfTaskQueryParams();
-                var items = await BlocksOfTaskQueryBuilder.GetBlocksOfTaskQueryItems(dbContext,
-                    taskDefinition.TaskDefinitionId,
-                    blocksOfTaskRequest.ReferenceValueOfTask, query(blocksOfTaskQueryParams));
-                var results = GetListBlocks(blocksOfTaskRequest, items);
-                return results;
-                ;
-            }
-        });
-    }
-
-
-    private async Task<long> AddNewListBlockAsync(TaskId taskId, int taskDefinitionId, string header,
+    private async Task<long> AddNewListBlockAsync(TaskId taskId, long taskDefinitionId, string? header,
         int compressionThreshold)
     {
-        if (header == null)
-            header = string.Empty;
+        header ??= string.Empty;
 
         var isLargeTextValue = false;
-        byte[] compressedData = null;
+        byte[]? compressedData = null;
         if (header.Length > compressionThreshold)
         {
             isLargeTextValue = true;
@@ -382,7 +311,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
             using (var dbContext = await GetDbContextAsync(createRequest.TaskId).ConfigureAwait(false))
 
             {
-                foreach (var value in (List<string>)createRequest.SerializedValues)
+                foreach (var value in (List<string?>)createRequest.SerializedValues)
                 {
                     var item = new ListBlockItem
                     {
@@ -412,7 +341,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
     }
 
 
-    private async Task<long> AddNewObjectBlockAsync<T>(TaskId taskId, int taskDefinitionId, T objectData,
+    private async Task<long> AddNewObjectBlockAsync<T>(TaskId taskId, long taskDefinitionId, T objectData,
         int compressionThreshold)
     {
         var isLargeTextValue = false;
@@ -498,32 +427,10 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
 
     private async Task<IList<ObjectBlock<T>>> FindObjectBlocksOfTaskAsync<T>(
         FindBlocksOfTaskRequest blocksOfTaskRequest,
-        Func<BlocksOfTaskQueryParams,
-            Expression<Func<BlockQueryItem, bool>>> query,
         ReprocessOption reprocessOption)
     {
-        return await RetryHelper.WithRetryAsync(async () =>
-        {
-            var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(blocksOfTaskRequest.TaskId)
-                .ConfigureAwait(false);
-            using (var dbContext = await GetDbContextAsync(blocksOfTaskRequest.TaskId).ConfigureAwait(false))
-            {
-                var blockOfTypeQueryParams = new BlocksOfTaskQueryParams();
-
-
-                if (reprocessOption == ReprocessOption.PendingOrFailed)
-                    blockOfTypeQueryParams.StatusesToMatch = new List<int>
-                    {
-                        (int)BlockExecutionStatus.Started, (int)BlockExecutionStatus.NotStarted,
-                        (int)BlockExecutionStatus.Failed
-                    };
-
-                var items = await BlocksOfTaskQueryBuilder.GetBlocksOfTaskQueryItems(dbContext,
-                    taskDefinition.TaskDefinitionId,
-                    blocksOfTaskRequest.ReferenceValueOfTask, query(blockOfTypeQueryParams)).ConfigureAwait(false);
-                return GetObjectBlocks<T, BlockQueryItem>(blocksOfTaskRequest, items);
-            }
-        });
+        return await FindBlocksOfTaskAsync(blocksOfTaskRequest, new[] { BlockType.Object },
+            (i, j) => GetObjectBlocks<T, BlockQueryItem>(j, i));
     }
 
 

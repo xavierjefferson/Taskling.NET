@@ -6,7 +6,7 @@ namespace Taskling.SqlServer.Tokens;
 
 public class CommonTokenRepository : ICommonTokenRepository
 {
-    public async Task AcquireRowLockAsync(int taskDefinitionId, int taskExecutionId,
+    public async Task AcquireRowLockAsync(long taskDefinitionId, long taskExecutionId,
         TasklingDbContext dbContext)
     {
         try
@@ -22,24 +22,9 @@ public class CommonTokenRepository : ICommonTokenRepository
         {
             //do nothing
         }
-        //exampleEntity.ExampleProperty = "abc";
-        //dbcontext.Entry<TaskDefinition>(exampleEntity).Property(ee => ee.ExampleProperty).IsModified = true;
-        //dbcontext.Configuration.ValidateOnSaveEnabled = false;
-        //dbcontext.SaveChanges();
-
-
-        //var taskDefinitions =
-        //    await dbContext.TaskDefinitions.Where(i => i.TaskDefinitionId == taskDefinitionId).ToListAsync();
-        //foreach (var taskDefinition in taskDefinitions)
-        //{
-        //    taskDefinition.HoldLockTaskExecutionId = taskExecutionId;
-        //    dbContext.TaskDefinitions.Update(taskDefinition);
-        //}
-
-        //await dbContext.SaveChangesAsync();
     }
 
-    public async Task<List<TaskExecutionState>> GetTaskExecutionStatesAsync(List<int> taskExecutionIds,
+    public async Task<List<TaskExecutionState>> GetTaskExecutionStatesAsync(List<long> taskExecutionIds,
         TasklingDbContext dbContext)
     {
         var taskExecutions = await dbContext.TaskExecutions.Where(i => taskExecutionIds.Contains(i.TaskExecutionId))

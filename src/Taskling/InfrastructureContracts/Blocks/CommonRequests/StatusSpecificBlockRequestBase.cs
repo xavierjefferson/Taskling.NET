@@ -5,12 +5,12 @@ namespace Taskling.InfrastructureContracts.Blocks.CommonRequests;
 
 public abstract class StatusSpecificBlockRequestBase : BlockRequestBase
 {
-    protected StatusSpecificBlockRequestBase(TaskId taskId, int taskExecutionId, BlockType blockType) : base(taskId,
+    protected StatusSpecificBlockRequestBase(TaskId taskId, long taskExecutionId, BlockType blockType) : base(taskId,
         taskExecutionId, blockType)
     {
     }
 
-    protected StatusSpecificBlockRequestBase(TaskId taskId, int taskExecutionId, BlockType blockType,
+    protected StatusSpecificBlockRequestBase(TaskId taskId, long taskExecutionId, BlockType blockType,
         long blockExecutionId) : base(taskId, taskExecutionId, blockType, blockExecutionId)
     {
     }

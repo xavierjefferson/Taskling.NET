@@ -27,7 +27,7 @@ public class CleanUpService : ICleanUpService
         _taskExecutionRepository = taskExecutionRepository;
     }
 
-    public void CleanOldData(TaskId taskId, int taskExecutionId,
+    public void CleanOldData(TaskId taskId, long taskExecutionId,
         ITaskConfigurationRepository taskConfigurationRepository)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
@@ -36,7 +36,7 @@ public class CleanUpService : ICleanUpService
                 .ConfigureAwait(false));
     }
 
-    private async Task StartCleanOldDataAsync(TaskId taskId, int taskExecutionId,
+    private async Task StartCleanOldDataAsync(TaskId taskId, long taskExecutionId,
         ITaskConfigurationRepository taskConfigurationRepository)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
@@ -71,7 +71,6 @@ public class CleanUpService : ICleanUpService
 
     private async Task LogCleanupAsync(TaskExecutionCheckpointRequest checkpoint)
     {
-
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         _logger.Debug("683af1f0-a933-4134-896f-b087f700c148");
         try

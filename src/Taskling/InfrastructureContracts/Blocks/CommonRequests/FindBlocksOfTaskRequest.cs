@@ -7,7 +7,7 @@ namespace Taskling.InfrastructureContracts.Blocks.CommonRequests;
 public class FindBlocksOfTaskRequest : BlockRequestBase
 {
     public FindBlocksOfTaskRequest(TaskId taskId,
-        int taskExecutionId,
+        long taskExecutionId,
         BlockType blockType,
         Guid referenceValueOfTask,
         ReprocessOption reprocessOption)

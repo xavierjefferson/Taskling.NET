@@ -155,7 +155,8 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
     }
 
     private async Task UpdateTaskExecution<TProperty>(Action<Models.TaskExecution> action,
-        Expression<Func<Models.TaskExecution, TProperty>> changedPropertyExpression, int taskExecutionId, TaskId taskId)
+        Expression<Func<Models.TaskExecution, TProperty>> changedPropertyExpression, long taskExecutionId,
+        TaskId taskId)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await RetryHelper.WithRetryAsync(async () =>
@@ -190,7 +191,7 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
     }
 
     private async Task<TaskExecutionStartResponse> StartKeepAliveExecutionAsync(TaskExecutionStartRequest startRequest,
-        int taskDefinitionId)
+        long taskDefinitionId)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var taskExecutionId = await CreateKeepAliveTaskExecutionAsync(startRequest.TaskId,
@@ -222,7 +223,7 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
     }
 
     private async Task<TaskExecutionStartResponse> StartOverrideExecutionAsync(TaskExecutionStartRequest startRequest,
-        int taskDefinitionId)
+        long taskDefinitionId)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var taskExecutionId = await CreateOverrideTaskExecutionAsync(startRequest.TaskId, taskDefinitionId,
@@ -250,8 +251,8 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
         return tokenResponse;
     }
 
-    private async Task<TaskExecutionStartResponse> TryGetExecutionTokenAsync(TaskId taskId, int taskDefinitionId,
-        int taskExecutionId, int concurrencyLimit)
+    private async Task<TaskExecutionStartResponse> TryGetExecutionTokenAsync(TaskId taskId, long taskDefinitionId,
+        long taskExecutionId, int concurrencyLimit)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         var tokenRequest = new TokenRequest
@@ -288,7 +289,7 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
         }
     }
 
-    private async Task<int> CreateKeepAliveTaskExecutionAsync(TaskId taskId, int taskDefinitionId,
+    private async Task<long> CreateKeepAliveTaskExecutionAsync(TaskId taskId, long taskDefinitionId,
         TimeSpan keepAliveInterval, TimeSpan keepAliveDeathThreshold, Guid referenceValue,
         int failedTaskRetryLimit, int deadTaskRetryLimit, string tasklingVersion, string executionHeader)
     {
@@ -317,7 +318,7 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
         }
     }
 
-    private async Task<int> CreateOverrideTaskExecutionAsync(TaskId taskId, int taskDefinitionId,
+    private async Task<long> CreateOverrideTaskExecutionAsync(TaskId taskId, long taskDefinitionId,
         TimeSpan overrideThreshold, Guid referenceValue,
         int failedTaskRetryLimit, int deadTaskRetryLimit, string tasklingVersion, string executionHeader)
     {
@@ -371,25 +372,25 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
         return response;
     }
 
-    private async Task SetBlockedOnTaskExecutionAsync(TaskId taskId, int taskExecutionId)
+    private async Task SetBlockedOnTaskExecutionAsync(TaskId taskId, long taskExecutionId)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await UpdateTaskExecution(i => i.Blocked = true, i => i.Blocked, taskExecutionId, taskId);
     }
 
-    private async Task SetCompletedDateOnTaskExecutionAsync(TaskId taskId, int taskExecutionId)
+    private async Task SetCompletedDateOnTaskExecutionAsync(TaskId taskId, long taskExecutionId)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await UpdateTaskExecution(i => i.CompletedAt = DateTime.UtcNow, i => i.CompletedAt, taskExecutionId, taskId);
     }
 
-    private async Task SetTaskExecutionAsFailedAsync(TaskId taskId, int taskExecutionId)
+    private async Task SetTaskExecutionAsFailedAsync(TaskId taskId, long taskExecutionId)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await UpdateTaskExecution(i => i.Failed = true, i => i.Failed, taskExecutionId, taskId);
     }
 
-    private async Task RegisterEventAsync(TaskId taskId, int taskExecutionId, EventType eventType, string? message)
+    private async Task RegisterEventAsync(TaskId taskId, long taskExecutionId, EventType eventType, string? message)
     {
         _logger.LogDebug(Constants.GetEnteredMessage(MethodBase.GetCurrentMethod()));
         await _eventsRepository.LogEventAsync(taskId, taskExecutionId, eventType, message).ConfigureAwait(false);

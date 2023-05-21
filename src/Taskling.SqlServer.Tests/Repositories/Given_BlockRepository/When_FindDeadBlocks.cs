@@ -20,7 +20,7 @@ public class When_FindDeadBlocks : TestBase
 
     private readonly IExecutionsHelper _executionsHelper;
     private readonly ILogger<When_FindDeadBlocks> _logger;
-    private readonly int _taskDefinitionId;
+    private readonly long _taskDefinitionId;
     private readonly TimeSpan FiveMinuteSpan = new(0, 5, 0);
     private readonly TimeSpan OneMinuteSpan = new(0, 1, 0);
     private readonly TimeSpan TwentySecondSpan = new(0, 0, 20);
@@ -29,7 +29,7 @@ public class When_FindDeadBlocks : TestBase
     private long _block3;
     private long _block4;
     private long _block5;
-    private int _taskExecution1;
+    private long _taskExecution1;
 
     public When_FindDeadBlocks(IBlockRepository blockRepository, IBlocksHelper blocksHelper,
         IExecutionsHelper executionsHelper, ILogger<When_FindDeadBlocks> logger,

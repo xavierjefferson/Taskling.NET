@@ -13,7 +13,7 @@ public class When_Blocked : TestBase
     private readonly IClientHelper _clientHelper;
     private readonly IExecutionsHelper _executionsHelper;
     private readonly ILogger<When_Blocked> _logger;
-    private readonly int _taskDefinitionId;
+    private readonly long _taskDefinitionId;
 
     public When_Blocked(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper, IClientHelper clientHelper,
         ILogger<When_Blocked> logger, ITaskRepository taskRepository) : base(executionsHelper)

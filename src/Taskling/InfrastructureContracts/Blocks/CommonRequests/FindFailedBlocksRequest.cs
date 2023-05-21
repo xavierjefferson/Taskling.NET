@@ -8,7 +8,7 @@ public class FindFailedBlocksRequest : StatusSpecificBlockRequestBase, ISearchab
     private static readonly int[] Statuses = { (int)BlockExecutionStatus.Failed };
 
     public FindFailedBlocksRequest(TaskId taskId,
-        int taskExecutionId,
+        long taskExecutionId,
         BlockType blockType,
         DateTime searchPeriodBegin,
         DateTime searchPeriodEnd,
