@@ -1,13 +1,13 @@
 ﻿using System;
-using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using Taskling.EntityFrameworkCore.AncilliaryServices;
+using Taskling.EntityFrameworkCore.Models;
+using Taskling.EntityFrameworkCore.Tests.Helpers;
 using Taskling.InfrastructureContracts;
-using Taskling.SqlServer.AncilliaryServices;
-using Taskling.SqlServer.Models;
 
-namespace Taskling.SqlServer.Tests;
+namespace Taskling.EntityFrameworkCore.Tests;
 
 public class DbContextFactoryEx : IDbContextFactoryEx
 {

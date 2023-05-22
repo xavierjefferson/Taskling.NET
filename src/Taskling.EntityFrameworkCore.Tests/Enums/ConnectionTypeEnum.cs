@@ -1,4 +1,4 @@
-﻿namespace Taskling.SqlServer.Tests.Enums;
+﻿namespace Taskling.EntityFrameworkCore.Tests.Enums;
 
 public enum ConnectionTypeEnum
 {

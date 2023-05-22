@@ -1,18 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ObjectBlocks;
 using Taskling.Contexts;
+using Taskling.EntityFrameworkCore.Tests.Helpers;
 using Taskling.Events;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
-namespace Taskling.SqlServer.Tests.Contexts.Given_ObjectBlockContext;
+namespace Taskling.EntityFrameworkCore.Tests.Contexts.Given_ObjectBlockContext;
 
 [Collection(TestConstants.CollectionName)]
 public class When_GetObjectBlocksFromExecutionContext : TestBase

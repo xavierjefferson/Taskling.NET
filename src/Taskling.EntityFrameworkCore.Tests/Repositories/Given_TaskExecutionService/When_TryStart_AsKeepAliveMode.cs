@@ -1,18 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Taskling.EntityFrameworkCore.Tests.Helpers;
+using Taskling.EntityFrameworkCore.Tokens.Executions;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.SqlServer.Tests.Helpers;
-using Taskling.SqlServer.Tokens.Executions;
 using Taskling.Tasks;
 using Xunit;
 
-namespace Taskling.SqlServer.Tests.Repositories.Given_TaskExecutionService;
+namespace Taskling.EntityFrameworkCore.Tests.Repositories.Given_TaskExecutionService;
 
 [Collection(TestConstants.CollectionName)]
 public class When_TryStart_AsKeepAliveMode : TestBase
@@ -245,7 +244,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
 
     private async Task RequestAndReturnTokenWithKeepAliveModeAsync()
     {
-
         for (var i = 0; i < 100; i++)
         {
             var firstStartRequest = CreateKeepAliveStartRequest();

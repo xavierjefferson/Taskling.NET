@@ -1,14 +1,13 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Taskling.EntityFrameworkCore.Tests.Helpers;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
-namespace Taskling.SqlServer.Tests.Contexts.Given_TaskExecutionContext;
+namespace Taskling.EntityFrameworkCore.Tests.Contexts.Given_TaskExecutionContext;
 
 [Collection(TestConstants.CollectionName)]
 public class When_Start : TestBase

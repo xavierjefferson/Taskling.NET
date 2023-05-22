@@ -1,14 +1,13 @@
 ﻿using System;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Taskling.EntityFrameworkCore.Tests.Helpers;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 using TaskExecutionStatus = Taskling.Tasks.TaskExecutionStatus;
 
-namespace Taskling.SqlServer.Tests.Contexts.Given_TaskExecutionContext;
+namespace Taskling.EntityFrameworkCore.Tests.Contexts.Given_TaskExecutionContext;
 
 [Collection(TestConstants.CollectionName)]
 public class When_GetLastExecutionMeta : TestBase

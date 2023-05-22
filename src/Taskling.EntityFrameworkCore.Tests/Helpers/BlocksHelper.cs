@@ -1,17 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
+using Taskling.EntityFrameworkCore.Models;
 using Taskling.InfrastructureContracts;
 using Taskling.Serialization;
-using Taskling.SqlServer.Models;
-using TransactionScopeRetryHelper;
 
-namespace Taskling.SqlServer.Tests.Helpers;
+namespace Taskling.EntityFrameworkCore.Tests.Helpers;
 
 public class BlocksHelper : RepositoryBase, IBlocksHelper
 {

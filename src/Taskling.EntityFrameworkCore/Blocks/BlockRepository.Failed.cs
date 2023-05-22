@@ -2,13 +2,13 @@
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ObjectBlocks;
 using Taskling.Blocks.RangeBlocks;
+using Taskling.EntityFrameworkCore.Blocks.Models;
+using Taskling.EntityFrameworkCore.Models;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.Blocks.ListBlocks;
-using Taskling.SqlServer.Blocks.Models;
-using Taskling.SqlServer.Models;
 using Taskling.Tasks;
 
-namespace Taskling.SqlServer.Blocks;
+namespace Taskling.EntityFrameworkCore.Blocks;
 
 public partial class BlockRepository
 {

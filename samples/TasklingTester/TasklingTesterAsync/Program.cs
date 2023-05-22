@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Taskling.Configuration;
-using Taskling.SqlServer;
+using Taskling.EntityFrameworkCore;
 using TasklingTesterAsync.Configuration;
 using TasklingTesterAsync.ListBlocks;
 using TasklingTesterAsync.Repositories;

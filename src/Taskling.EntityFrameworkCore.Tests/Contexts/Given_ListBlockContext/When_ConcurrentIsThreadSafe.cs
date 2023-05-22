@@ -2,19 +2,19 @@
 using System.Collections.Async;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Taskling.Blocks.ListBlocks;
+using Taskling.EntityFrameworkCore.Tests.Helpers;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
-namespace Taskling.SqlServer.Tests.Contexts.Given_ListBlockContext;
+namespace Taskling.EntityFrameworkCore.Tests.Contexts.Given_ListBlockContext;
 
 [Collection(TestConstants.CollectionName)]
 public class When_ConcurrentIsThreadSafe : TestBase
 {
+    private const int ListSize = 10000;
     private readonly IBlocksHelper _blocksHelper;
     private readonly IClientHelper _clientHelper;
     private readonly IExecutionsHelper _executionsHelper;
@@ -36,7 +36,6 @@ public class When_ConcurrentIsThreadSafe : TestBase
         _executionsHelper.InsertUnlimitedExecutionToken(taskDefinitionId);
     }
 
-    private const int ListSize = 10000;
     [Fact]
     [Trait("Speed", "Slow")]
     [Trait("Area", "Blocks")]

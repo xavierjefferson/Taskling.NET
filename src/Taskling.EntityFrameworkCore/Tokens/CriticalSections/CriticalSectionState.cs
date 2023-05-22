@@ -1,19 +1,16 @@
-﻿using System.Reflection;
-using System.Text;
-using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
+﻿using Microsoft.Extensions.Logging;
 using Taskling.Extensions;
 
-namespace Taskling.SqlServer.Tokens.CriticalSections;
+namespace Taskling.EntityFrameworkCore.Tokens.CriticalSections;
 
 internal class CriticalSectionState
 {
-    private Queue<CriticalSectionQueueItem> _queue = new Queue<CriticalSectionQueueItem>();
     private readonly ILogger<CriticalSectionState> _logger;
     private long? _grantedToExecution;
 
     private bool _hasBeenModified;
     private bool _isGranted;
+    private Queue<CriticalSectionQueueItem> _queue = new();
 
     //private List<CriticalSectionQueueItem>? _queue;
 
@@ -62,29 +59,27 @@ internal class CriticalSectionState
 
     public void StartTrackingModifications()
     {
-
         HasBeenModified = false;
     }
 
     public bool HasQueuedExecutions()
     {
-        return this._queue != null && this._queue.Any();
+        return _queue != null && _queue.Any();
     }
 
     public void SetQueue(string? queueStr)
     {
-        _logger.Debug($"QueueString = {queueStr}");
-        _queue = new Queue<CriticalSectionQueueItem>(CsQueueSerializer.Deserialize(queueStr));
+        _logger.LogDebug($"QueueString = {queueStr}");
+        _queue = new Queue<CriticalSectionQueueItem>(CriticalSectionQueueSerializer.Deserialize(queueStr));
     }
 
     public string GetQueueString()
     {
-        return CsQueueSerializer.Serialize(_queue.ToArray());
+        return CriticalSectionQueueSerializer.Serialize(_queue.ToArray());
     }
 
     public List<CriticalSectionQueueItem> GetQueue()
     {
-
         return _queue.ToList();
     }
 
@@ -96,9 +91,7 @@ internal class CriticalSectionState
 
     public long? GetFirstExecutionIdInQueue()
     {
-
         return _queue?.Peek()?.TaskExecutionId;
-
     }
 
     public void RemoveFirstInQueue()
@@ -118,4 +111,3 @@ internal class CriticalSectionState
         HasBeenModified = true;
     }
 }
-

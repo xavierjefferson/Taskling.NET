@@ -1,6 +1,6 @@
-﻿using Taskling.SqlServer.Models;
+﻿using Taskling.EntityFrameworkCore.Models;
 
-namespace Taskling.SqlServer.Tests.Helpers;
+namespace Taskling.EntityFrameworkCore.Tests.Helpers;
 
 public abstract class RepositoryBase
 {

@@ -1,15 +1,14 @@
 ﻿using System;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Taskling.EntityFrameworkCore.Tests.Helpers;
 using Taskling.InfrastructureContracts.CriticalSections;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.SqlServer.Tests.Helpers;
 using Taskling.Tasks;
 using Xunit;
 
-namespace Taskling.SqlServer.Tests.Repositories.Given_CriticalSectionService;
+namespace Taskling.EntityFrameworkCore.Tests.Repositories.Given_CriticalSectionService;
 
 [Collection(TestConstants.CollectionName)]
 public class When_TryStart_AsKeepAliveMode : TestBase

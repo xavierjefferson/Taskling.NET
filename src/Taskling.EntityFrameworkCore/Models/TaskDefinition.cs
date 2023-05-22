@@ -1,4 +1,4 @@
-﻿namespace Taskling.SqlServer.Models;
+﻿namespace Taskling.EntityFrameworkCore.Models;
 
 public class TaskDefinition
 {

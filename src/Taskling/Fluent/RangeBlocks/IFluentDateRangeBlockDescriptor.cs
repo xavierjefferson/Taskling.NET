@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Taskling.Fluent;
+namespace Taskling.Fluent.RangeBlocks;
 
 public interface IFluentDateRangeBlockDescriptor
 {

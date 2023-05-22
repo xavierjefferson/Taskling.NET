@@ -53,7 +53,7 @@ public class TaskExecutionContext : ITaskExecutionContext
 
 
     private readonly ITaskExecutionRepository _taskExecutionRepository;
-    private readonly TasklingOptions _tasklingOptions;
+    private readonly StartupOptions _startupOptions;
     private ICriticalSectionContext _clientCriticalSectionContext;
     private bool _completeCalled;
 
@@ -75,7 +75,7 @@ public class TaskExecutionContext : ITaskExecutionContext
         IBlockFactory blockFactory,
         IRangeBlockRepository rangeBlockRepository, ILoggerFactory loggerFactory,
         IListBlockRepository listBlockRepository,
-        IObjectBlockRepository objectBlockRepository, TasklingOptions tasklingOptions,
+        IObjectBlockRepository objectBlockRepository, StartupOptions startupOptions,
         ICleanUpService cleanUpService, ILogger<TaskExecutionContext> logger, IServiceProvider serviceProvider)
     {
         _logger = logger;
@@ -93,7 +93,7 @@ public class TaskExecutionContext : ITaskExecutionContext
         ;
         _objectBlockRepository =
             objectBlockRepository ?? throw new ArgumentNullException(nameof(objectBlockRepository));
-        _tasklingOptions = tasklingOptions;
+        _startupOptions = startupOptions;
         ;
         _cleanUpService = cleanUpService ?? throw new ArgumentNullException(nameof(cleanUpService));
     }
@@ -128,7 +128,6 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     public void Dispose()
     {
-
         Dispose(true);
         GC.SuppressFinalize(this);
     }
@@ -273,7 +272,7 @@ public class TaskExecutionContext : ITaskExecutionContext
         _userCriticalSectionContext = new CriticalSectionContext(_criticalSectionRepository,
             _taskExecutionInstance,
             _taskExecutionOptions,
-            CriticalSectionType.User, _tasklingOptions, _loggerFactory.CreateLogger<CriticalSectionContext>());
+            CriticalSectionType.User, _startupOptions, _loggerFactory.CreateLogger<CriticalSectionContext>());
 
         return _userCriticalSectionContext;
     }
@@ -282,7 +281,7 @@ public class TaskExecutionContext : ITaskExecutionContext
         Func<IFluentDateRangeBlockDescriptor, object> fluentBlockRequest)
     {
         return await GetBlocksAsync<IDateRangeBlockContext, FluentRangeBlockDescriptor, DateRangeBlockRequest,
-            IBlockSettings>(BlockType.DateRange, fluentBlockRequest, ConvertToDateRangeBlockRequest,
+            IBlockSettings>(BlockType.DateRange, fluentBlockRequest, GetDateRangeBlockRequest,
             _blockFactory.GenerateDateRangeBlocksAsync);
     }
 
@@ -296,7 +295,7 @@ public class TaskExecutionContext : ITaskExecutionContext
         Func<IFluentNumericRangeBlockDescriptor, object> fluentBlockRequest)
     {
         return await GetBlocksAsync<INumericRangeBlockContext, FluentRangeBlockDescriptor, NumericRangeBlockRequest,
-            IBlockSettings>(BlockType.NumericRange, fluentBlockRequest, ConvertToNumericRangeBlockRequest,
+            IBlockSettings>(BlockType.NumericRange, fluentBlockRequest, GetNumericRangeBlockRequest,
             _blockFactory.GenerateNumericRangeBlocksAsync);
     }
 
@@ -503,21 +502,18 @@ public class TaskExecutionContext : ITaskExecutionContext
         return GetDateRangeBlocksAsync(fluentBlockRequest).WaitAndUnwrapException();
     }
 
-    public async Task<IList<T>> GetBlocksAsync<T, U, V, W>(BlockType blockType, Func<U, object> fluentBlockRequest,
-        Func<W, V> createRequestFunc,
-        Func<V, Task<IList<T>>> generateFunc)
-        where V : BlockRequest where U : new() where W : IBlockSettings
+    public async Task<IList<T>> GetBlocksAsync<T, U, TBlockRequest, TBlockSettings>(BlockType blockType, Func<U, object> fluentBlockRequest,
+        Func<TBlockSettings, TBlockRequest> createRequestFunc,
+        Func<TBlockRequest, Task<IList<T>>> generateFunc)
+        where TBlockRequest : BlockRequest where U : new() where TBlockSettings : IBlockSettings
     {
         _logger.LogDebug($"Entering block request for {typeof(T).Name}");
         try
         {
-            if (!IsExecutionContextActive)
-            {
-                throw new ExecutionException(NotActiveMessage);
-            }
+            if (!IsExecutionContextActive) throw new ExecutionException(NotActiveMessage);
 
             var fluentDescriptor = fluentBlockRequest(new U());
-            var settings = (W)fluentDescriptor;
+            var settings = (TBlockSettings)fluentDescriptor;
             if (settings.BlockType == blockType)
             {
                 var request = createRequestFunc(settings);
@@ -527,12 +523,9 @@ public class TaskExecutionContext : ITaskExecutionContext
                     var csContext = CreateClientCriticalSection();
                     try
                     {
-                        var csStarted = await csContext.TryStartAsync(_tasklingOptions.CriticalSectionRetry,
-                            _tasklingOptions.CriticalSectionAttemptCount).ConfigureAwait(false);
-                        if (csStarted)
-                        {
-                            return await generateFunc(request).ConfigureAwait(false);
-                        }
+                        var csStarted = await csContext.TryStartAsync(_startupOptions.CriticalSectionRetry,
+                            _startupOptions.CriticalSectionAttemptCount).ConfigureAwait(false);
+                        if (csStarted) return await generateFunc(request).ConfigureAwait(false);
 
                         throw new CriticalSectionException("Could not start a critical section in the alloted time");
                     }
@@ -541,15 +534,12 @@ public class TaskExecutionContext : ITaskExecutionContext
                         await csContext.CompleteAsync().ConfigureAwait(false);
                     }
                 }
-                else
-                {
-                }
 
                 _logger.LogDebug("Request is unprotected");
                 return await generateFunc(request).ConfigureAwait(false);
             }
 
-            throw new NotSupportedException("BlockType not supported");
+            throw new NotSupportedException($"BlockType {blockType} not supported");
         }
         finally
         {
@@ -571,7 +561,7 @@ public class TaskExecutionContext : ITaskExecutionContext
             _taskExecutionOptions.ConcurrencyLimit,
             _taskConfiguration.FailedTaskRetryLimit,
             _taskConfiguration.DeadTaskRetryLimit);
-        _logger.Debug($"{nameof(startRequest)}={Constants.Serialize(startRequest)}");
+        _logger.LogDebug($"{nameof(startRequest)}={Constants.Serialize(startRequest)}");
 
         SetStartRequestValues(startRequest, referenceValue);
         SetStartRequestTasklingVersion(startRequest);
@@ -620,9 +610,6 @@ public class TaskExecutionContext : ITaskExecutionContext
         {
             startRequest.TaskExecutionHeader = JsonGenericSerializer.Serialize(_taskExecutionHeader);
         }
-        else
-        {
-        }
     }
 
     private void StartKeepAlive()
@@ -638,7 +625,7 @@ public class TaskExecutionContext : ITaskExecutionContext
         _keepAliveDaemon.Run(keepAliveRequest, _taskExecutionOptions.KeepAliveInterval.Value);
     }
 
-    private DateRangeBlockRequest ConvertToDateRangeBlockRequest(IBlockSettings settings)
+    private DateRangeBlockRequest GetDateRangeBlockRequest(IBlockSettings settings)
     {
         var request = new DateRangeBlockRequest(_taskExecutionInstance.TaskId);
         request.TaskExecutionId = _taskExecutionInstance.TaskExecutionId;
@@ -660,7 +647,7 @@ public class TaskExecutionContext : ITaskExecutionContext
         return request;
     }
 
-    private NumericRangeBlockRequest ConvertToNumericRangeBlockRequest(IBlockSettings settings)
+    private NumericRangeBlockRequest GetNumericRangeBlockRequest(IBlockSettings settings)
     {
         var request = new NumericRangeBlockRequest(_taskExecutionInstance.TaskId);
         request.TaskExecutionId = _taskExecutionInstance.TaskExecutionId;
@@ -758,7 +745,7 @@ public class TaskExecutionContext : ITaskExecutionContext
     private bool IsUserCriticalSectionActive()
     {
         var tmp = _userCriticalSectionContext != null && _userCriticalSectionContext.IsActive();
-        _logger.Debug($"{nameof(IsUserCriticalSectionActive)} = {tmp}");
+        _logger.LogDebug($"{nameof(IsUserCriticalSectionActive)} = {tmp}");
         return tmp;
     }
 
@@ -766,7 +753,7 @@ public class TaskExecutionContext : ITaskExecutionContext
     {
         var tmp = (blockRequest.ReprocessDeadTasks || blockRequest.ReprocessFailedTasks) &&
                   !IsUserCriticalSectionActive();
-        _logger.Debug(tmp.ToString());
+        _logger.LogDebug(tmp.ToString());
         return tmp;
     }
 
@@ -778,7 +765,7 @@ public class TaskExecutionContext : ITaskExecutionContext
         _clientCriticalSectionContext = new CriticalSectionContext(_criticalSectionRepository,
             _taskExecutionInstance,
             _taskExecutionOptions,
-            CriticalSectionType.Client, _tasklingOptions, _loggerFactory.CreateLogger<CriticalSectionContext>());
+            CriticalSectionType.Client, _startupOptions, _loggerFactory.CreateLogger<CriticalSectionContext>());
 
         return _clientCriticalSectionContext;
     }

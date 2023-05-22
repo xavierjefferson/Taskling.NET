@@ -1,32 +1,16 @@
-﻿using System.Reflection;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
+using Taskling.EntityFrameworkCore.AncilliaryServices;
+using Taskling.EntityFrameworkCore.Models;
 using Taskling.Exceptions;
-using Taskling.Extensions;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.CriticalSections;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.SqlServer.AncilliaryServices;
-using Taskling.SqlServer.Models;
 using Taskling.Tasks;
-using TransactionScopeRetryHelper;
-using TaskDefinition = Taskling.SqlServer.Models.TaskDefinition;
+using TaskDefinition = Taskling.EntityFrameworkCore.Models.TaskDefinition;
 
-namespace Taskling.SqlServer.Tokens.CriticalSections;
+namespace Taskling.EntityFrameworkCore.Tokens.CriticalSections;
 
-public class CsQueueSerializer
-{
-    public static List<CriticalSectionQueueItem> Deserialize(string? json)
-    {
-        if (string.IsNullOrWhiteSpace(json)) return new List<CriticalSectionQueueItem>();
-        return JsonConvert.DeserializeObject<List<CriticalSectionQueueItem>>(json);
-    }
-    public static string Serialize(IEnumerable<CriticalSectionQueueItem> items)
-    {
-        return JsonConvert.SerializeObject(items);
-    }
-}
 public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRepository
 {
     private readonly ICommonTokenRepository _commonTokenRepository;
@@ -34,7 +18,7 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
     private readonly ILoggerFactory _loggerFactory;
     private readonly ITaskRepository _taskRepository;
 
-    public CriticalSectionRepository(ITaskRepository taskRepository, TasklingOptions tasklingOptions,
+    public CriticalSectionRepository(ITaskRepository taskRepository, StartupOptions startupOptions,
         ICommonTokenRepository commonTokenRepository, IConnectionStore connectionStore,
         ILogger<CriticalSectionRepository> logger,
         IDbContextFactoryEx dbContextFactoryEx, ILoggerFactory loggerFactory) : base(connectionStore,
@@ -48,7 +32,6 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
 
     public async Task<StartCriticalSectionResponse> StartAsync(StartCriticalSectionRequest startRequest)
     {
-
         ValidateStartRequest(startRequest);
         var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(startRequest.TaskId).ConfigureAwait(false);
         var granted = await TryAcquireCriticalSectionAsync(startRequest.TaskId, taskDefinition.TaskDefinitionId,
@@ -62,7 +45,6 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
 
     public async Task<CompleteCriticalSectionResponse> CompleteAsync(CompleteCriticalSectionRequest completeRequest)
     {
-
         var taskDefinition =
             await _taskRepository.EnsureTaskDefinitionAsync(completeRequest.TaskId).ConfigureAwait(false);
         return await ReturnCriticalSectionTokenAsync(completeRequest.TaskId, taskDefinition.TaskDefinitionId,
@@ -93,7 +75,6 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
     private async Task<CompleteCriticalSectionResponse> ReturnCriticalSectionTokenAsync(TaskId taskId,
         long taskDefinitionId, long taskExecutionId, CriticalSectionType criticalSectionType)
     {
-
         return await RetryHelper.WithRetryAsync(async () =>
         {
             var response = new CompleteCriticalSectionResponse();
@@ -123,7 +104,6 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
     private async Task<bool> TryAcquireCriticalSectionAsync(TaskId taskId, long taskDefinitionId, long taskExecutionId,
         CriticalSectionType criticalSectionType)
     {
-
         return await RetryHelper.WithRetryAsync(async () =>
         {
             var granted = false;
@@ -179,7 +159,6 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
     private async Task AcquireRowLockAsync(long taskDefinitionId, long taskExecutionId,
         TasklingDbContext dbContext)
     {
-
         await _commonTokenRepository.AcquireRowLockAsync(taskDefinitionId, taskExecutionId, dbContext)
             .ConfigureAwait(false);
     }
@@ -191,17 +170,13 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
 
         QueueItemInfo? tuple = null;
         if (criticalSectionType == CriticalSectionType.User)
-        {
             tuple = await tmp.Select(i => new QueueItemInfo
                     { Queue = i.UserCsQueue, Status = i.UserCsStatus, TaskExecutionId = i.UserCsTaskExecutionId })
                 .FirstOrDefaultAsync().ConfigureAwait(false);
-        }
         else
-        {
             tuple = await tmp.Select(i => new QueueItemInfo
                     { Queue = i.ClientCsQueue, Status = i.ClientCsStatus, TaskExecutionId = i.ClientCsTaskExecutionId })
                 .FirstOrDefaultAsync();
-        }
 
         if (tuple != null)
 
@@ -219,7 +194,6 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
 
     private List<long> GetActiveTaskExecutionIds(CriticalSectionState csState)
     {
-
         var taskExecutionIds = new List<long>();
 
         if (!HasEmptyGranteeValue(csState))
@@ -234,7 +208,6 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
     private async Task CleanseOfExpiredExecutionsAsync(CriticalSectionState csState,
         TasklingDbContext dbContext)
     {
-
         var csQueue = csState.GetQueue();
         var activeExecutionIds = GetActiveTaskExecutionIds(csState);
         if (activeExecutionIds.Any())
@@ -250,7 +223,6 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
     private void CleanseCurrentGranteeIfExpired(CriticalSectionState csState,
         List<TaskExecutionState> taskExecutionStates)
     {
-
         if (!HasEmptyGranteeValue(csState) && csState.IsGranted)
         {
             var csStateOfGranted = taskExecutionStates.First(x => x.TaskExecutionId == csState.GrantedToExecution);
@@ -261,27 +233,22 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
     private void CleanseQueueOfExpiredExecutions(CriticalSectionState csState,
         List<TaskExecutionState> taskExecutionStates, List<CriticalSectionQueueItem> csQueue)
     {
-
         var validQueuedExecutions = (from tes in taskExecutionStates
             join q in csQueue on tes.TaskExecutionId equals q.TaskExecutionId
             where HasCriticalSectionExpired(tes) == false
             select q).ToList();
 
         if (validQueuedExecutions.Count != csQueue.Count)
-        {
-            csState.UpdateQueue(validQueuedExecutions.OrderBy(i=>i.CreatedAt).ToList());
-        }
+            csState.UpdateQueue(validQueuedExecutions.OrderBy(i => i.CreatedAt).ToList());
     }
 
     private bool HasEmptyGranteeValue(CriticalSectionState csState)
     {
-
         return csState.GrantedToExecution == null || csState.GrantedToExecution == 0;
     }
 
     private void GrantCriticalSection(CriticalSectionState csState, long taskExecutionId)
     {
-
         csState.IsGranted = true;
         csState.GrantedToExecution = taskExecutionId;
     }
@@ -289,7 +256,6 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
     private async Task UpdateCriticalSectionStateAsync(long taskDefinitionId, CriticalSectionState csState,
         CriticalSectionType criticalSectionType, TasklingDbContext dbContext)
     {
-
         var taskDefinition = new TaskDefinition { TaskDefinitionId = taskDefinitionId };
         var entityEntry = dbContext.TaskDefinitions.Attach(taskDefinition);
 
@@ -319,14 +285,12 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
     private async Task<List<TaskExecutionState>> GetTaskExecutionStatesAsync(List<long> taskExecutionIds,
         TasklingDbContext dbContext)
     {
-
         return await _commonTokenRepository.GetTaskExecutionStatesAsync(taskExecutionIds, dbContext)
             .ConfigureAwait(false);
     }
 
     private bool HasCriticalSectionExpired(TaskExecutionState taskExecutionState)
     {
-
         return _commonTokenRepository.HasExpired(taskExecutionState);
     }
 

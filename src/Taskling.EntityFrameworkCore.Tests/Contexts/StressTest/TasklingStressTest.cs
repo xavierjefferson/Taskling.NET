@@ -1,14 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Taskling.Blocks.ListBlocks;
+using Taskling.EntityFrameworkCore.Tests.Helpers;
 using Taskling.InfrastructureContracts;
-using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
-namespace Taskling.SqlServer.Tests.Contexts.StressTest;
+namespace Taskling.EntityFrameworkCore.Tests.Contexts.StressTest;
 
 public class TasklingStressTest : TestBase
 {

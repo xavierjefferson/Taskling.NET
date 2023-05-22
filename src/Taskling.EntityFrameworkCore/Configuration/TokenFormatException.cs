@@ -1,4 +1,4 @@
-﻿namespace Taskling.SqlServer.Configuration;
+﻿namespace Taskling.EntityFrameworkCore.Configuration;
 
 [Serializable]
 public class TokenFormatException : Exception

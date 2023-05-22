@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
@@ -60,11 +59,10 @@ public class BlockFactory : IBlockFactory
         var blocks =
             await GenerateRangeBlocksAsync(blockRequest, i => i.RangeBegin != null, GenerateNewDateRangeBlocksAsync);
 
-   
 
         var dateRangeBlocks = blocks.Select(x => (IDateRangeBlockContext)x);
         var tmp = dateRangeBlocks.OrderBy(x => x.DateRangeBlock.RangeBlockId).ToList();
-        _logger.Debug($"Returning {tmp.Count} items");
+        _logger.LogDebug($"Returning {tmp.Count} items");
         return tmp;
     }
 
@@ -581,7 +579,7 @@ public class BlockFactory : IBlockFactory
         );
 
         var failedBlocks = await _blockRepository.FindFailedListBlocksAsync(failedBlockRequest).ConfigureAwait(false);
-        _logger.Debug($"Count={failedBlocks.Count}");
+        _logger.LogDebug($"Count={failedBlocks.Count}");
         return failedBlocks;
     }
 

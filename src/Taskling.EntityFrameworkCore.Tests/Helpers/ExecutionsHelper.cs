@@ -1,22 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using Bogus;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Taskling.EntityFrameworkCore.Tests.Repositories.Given_BlockRepository;
+using Taskling.EntityFrameworkCore.Tokens.CriticalSections;
+using Taskling.EntityFrameworkCore.Tokens.Executions;
 using Taskling.Events;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
-using Taskling.SqlServer.Tokens.CriticalSections;
-using Taskling.SqlServer.Tokens.Executions;
 using Taskling.Tasks;
-using TransactionScopeRetryHelper;
-using TaskDefinition = Taskling.SqlServer.Models.TaskDefinition;
+using TaskDefinition = Taskling.EntityFrameworkCore.Models.TaskDefinition;
 
-namespace Taskling.SqlServer.Tests.Helpers;
+namespace Taskling.EntityFrameworkCore.Tests.Helpers;
 
 public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
 {
@@ -106,7 +104,7 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
                 try
                 {
                     var z = dbContext.TaskExecutions.Attach(new Models.TaskExecution
-                    { TaskExecutionId = taskExecutionId, LastKeepAlive = keepAliveDateTime });
+                        { TaskExecutionId = taskExecutionId, LastKeepAlive = keepAliveDateTime });
                     z.Property(i => i.LastKeepAlive).IsModified = true;
                     dbContext.SaveChanges();
                 }
@@ -383,7 +381,7 @@ AND T.TaskName = @TaskName";
                 try
                 {
                     var entity = dbContext.TaskDefinitions.Attach(new TaskDefinition
-                    { TaskDefinitionId = taskDefinitionId });
+                        { TaskDefinitionId = taskDefinitionId });
                     entity.Entity.ExecutionTokens = tokenString;
                     entity.Property(i => i.ExecutionTokens).IsModified = true;
                     dbContext.SaveChanges();
@@ -650,7 +648,7 @@ AND T.TaskName = @TaskName";
             {
                 var userCsQueuesAsString = dbContext.TaskDefinitions.Select(i => i.UserCsQueue).ToList();
                 var countMatching = userCsQueuesAsString.Count(i =>
-                    CsQueueSerializer.Deserialize(i).Any(i => i.TaskExecutionId == taskExecutionId));
+                    CriticalSectionQueueSerializer.Deserialize(i).Any(i => i.TaskExecutionId == taskExecutionId));
                 return countMatching;
             }
         });
@@ -667,9 +665,9 @@ AND T.TaskName = @TaskName";
 
                 foreach (var taskDefinition in taskDefinitions)
                 {
-                    var list = CsQueueSerializer.Deserialize(taskDefinition.UserCsQueue);
+                    var list = CriticalSectionQueueSerializer.Deserialize(taskDefinition.UserCsQueue);
                     list.Add(new CriticalSectionQueueItem { TaskExecutionId = taskExecutionId });
-                    taskDefinition.UserCsQueue = CsQueueSerializer.Serialize(list);
+                    taskDefinition.UserCsQueue = CriticalSectionQueueSerializer.Serialize(list);
                     dbContext.TaskDefinitions.Update(taskDefinition);
                 }
 

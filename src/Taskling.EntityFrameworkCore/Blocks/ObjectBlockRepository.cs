@@ -2,14 +2,13 @@
 using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ObjectBlocks;
+using Taskling.EntityFrameworkCore.AncilliaryServices;
+using Taskling.EntityFrameworkCore.Blocks.Serialization;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.SqlServer.AncilliaryServices;
-using Taskling.SqlServer.Blocks.Serialization;
-using TransactionScopeRetryHelper;
 
-namespace Taskling.SqlServer.Blocks;
+namespace Taskling.EntityFrameworkCore.Blocks;
 
 public class ObjectBlockRepository : DbOperationsService, IObjectBlockRepository
 {

@@ -1,10 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Taskling.Blocks.Common;
+using Taskling.EntityFrameworkCore.Blocks.Models;
+using Taskling.EntityFrameworkCore.Models;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
-using Taskling.SqlServer.Blocks.Models;
-using Taskling.SqlServer.Models;
 
-namespace Taskling.SqlServer.Blocks.QueryBuilders;
+namespace Taskling.EntityFrameworkCore.Blocks.QueryBuilders;
 
 public class DeadBlocksQueryBuilder
 {

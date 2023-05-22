@@ -1,12 +1,10 @@
-﻿using System.Reflection;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
+using Taskling.EntityFrameworkCore.AncilliaryServices;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.CleanUp;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.SqlServer.AncilliaryServices;
-using TransactionScopeRetryHelper;
 
-namespace Taskling.SqlServer.TaskExecution;
+namespace Taskling.EntityFrameworkCore.TaskExecution;
 
 public class CleanUpRepository : DbOperationsService, ICleanUpRepository
 {
@@ -24,12 +22,11 @@ public class CleanUpRepository : DbOperationsService, ICleanUpRepository
 
     public async Task<bool> CleanOldDataAsync(CleanUpRequest cleanUpRequest)
     {
-
         var lastCleaned =
             await _taskRepository.GetLastTaskCleanUpTimeAsync(cleanUpRequest.TaskId).ConfigureAwait(false);
         var periodSinceLastClean = DateTime.UtcNow - lastCleaned;
 
-        if (periodSinceLastClean > cleanUpRequest.TimeSinceLastCleaningThreashold)
+        if (periodSinceLastClean > cleanUpRequest.TimeSinceLastCleaningThreshold)
         {
             await _taskRepository.SetLastCleanedAsync(cleanUpRequest.TaskId).ConfigureAwait(false);
             var taskDefinition =
@@ -46,7 +43,6 @@ public class CleanUpRepository : DbOperationsService, ICleanUpRepository
 
     private async Task CleanListItemsAsync(TaskId taskId, long taskDefinitionId, DateTime listItemDateThreshold)
     {
-
         await RetryHelper.WithRetryAsync(async () =>
         {
             using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
@@ -60,7 +56,6 @@ public class CleanUpRepository : DbOperationsService, ICleanUpRepository
 
     private async Task CleanOldDataAsync(TaskId taskId, long taskDefinitionId, DateTime generalDateThreshold)
     {
-
         await RetryHelper.WithRetryAsync(async () =>
         {
             using (var dbContext = await GetDbContextAsync(taskId))

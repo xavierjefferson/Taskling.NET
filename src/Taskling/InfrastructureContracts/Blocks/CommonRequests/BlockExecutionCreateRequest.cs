@@ -1,6 +1,6 @@
 ﻿using Taskling.Blocks.Common;
 
-namespace Taskling.InfrastructureContracts.Blocks.RangeBlocks;
+namespace Taskling.InfrastructureContracts.Blocks.CommonRequests;
 
 public class BlockExecutionCreateRequest : BlockRequestBase
 {

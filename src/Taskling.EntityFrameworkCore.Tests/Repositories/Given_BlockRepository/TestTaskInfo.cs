@@ -1,4 +1,4 @@
-﻿namespace Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
+﻿namespace Taskling.EntityFrameworkCore.Tests.Repositories.Given_BlockRepository;
 
 public class TestTaskInfo
 {

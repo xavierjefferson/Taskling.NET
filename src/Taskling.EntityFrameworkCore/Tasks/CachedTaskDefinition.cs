@@ -1,6 +1,6 @@
 ﻿using Taskling.InfrastructureContracts.TaskExecution;
 
-namespace Taskling.SqlServer.Tasks;
+namespace Taskling.EntityFrameworkCore.Tasks;
 
 internal class CachedTaskDefinition
 {

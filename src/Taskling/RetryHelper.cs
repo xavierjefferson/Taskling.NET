@@ -3,7 +3,6 @@ using System.Data.Common;
 using System.Threading.Tasks;
 using System.Transactions;
 using Polly;
-using TransactionScopeRetryHelper;
 
 namespace Taskling;
 
@@ -13,7 +12,6 @@ public class RetryHelper
     private const int DefaultMaxRetries = 10;
     private const int DefaultDelayMilliseconds = 5000;
 
-    
 
     public static async Task WithRetryAsync(Func<Task> action,
         int maxRetries = DefaultMaxRetries, int maxDelayMilliseconds = DefaultMaxDelayMilliseconds,
@@ -70,7 +68,6 @@ public class RetryHelper
     {
         var policyBuilder = Policy.Handle<DbException>(i => i.IsTransient).OrInner<DbException>(i => i.IsTransient);
 
-        
 
         return policyBuilder;
     }
@@ -79,7 +76,6 @@ public class RetryHelper
     {
         var policyBuilder = Policy<T>.Handle<DbException>(i => i.IsTransient).OrInner<DbException>(i => i.IsTransient);
 
-         
 
         return policyBuilder;
     }

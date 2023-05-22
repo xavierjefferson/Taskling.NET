@@ -2,17 +2,16 @@
 using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
+using Taskling.EntityFrameworkCore.AncilliaryServices;
+using Taskling.EntityFrameworkCore.Blocks.Serialization;
+using Taskling.EntityFrameworkCore.Models;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.Blocks.ListBlocks;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.SqlServer.AncilliaryServices;
-using Taskling.SqlServer.Blocks.Serialization;
-using Taskling.SqlServer.Models;
-using TransactionScopeRetryHelper;
 
-namespace Taskling.SqlServer.Blocks;
+namespace Taskling.EntityFrameworkCore.Blocks;
 
 public class ListBlockRepository : DbOperationsService, IListBlockRepository
 {

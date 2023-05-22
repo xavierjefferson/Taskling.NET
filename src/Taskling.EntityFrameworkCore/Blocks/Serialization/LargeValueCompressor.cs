@@ -1,7 +1,7 @@
 ﻿using System.IO.Compression;
 using System.Text;
 
-namespace Taskling.SqlServer.Blocks.Serialization;
+namespace Taskling.EntityFrameworkCore.Blocks.Serialization;
 
 public class LargeValueCompressor
 {

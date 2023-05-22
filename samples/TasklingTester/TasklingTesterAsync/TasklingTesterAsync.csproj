@@ -8,6 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="system.data.sqlclient" Version="4.8.5" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\..\src\Taskling.EntityFrameworkCore\Taskling.EntityFrameworkCore.csproj" />
     <ProjectReference Include="..\..\..\src\Taskling\Taskling.csproj" />
     <ProjectReference Include="..\..\TasklingTester.Common\TasklingTester.Common.csproj" />

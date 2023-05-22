@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Polly;
-using Taskling.Extensions;
 
 namespace Taskling.Retries;
 

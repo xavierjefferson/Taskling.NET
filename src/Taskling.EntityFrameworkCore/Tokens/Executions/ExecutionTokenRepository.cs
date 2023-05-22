@@ -1,14 +1,12 @@
-﻿using System.Reflection;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Taskling.EntityFrameworkCore.AncilliaryServices;
+using Taskling.EntityFrameworkCore.Models;
 using Taskling.Extensions;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.SqlServer.AncilliaryServices;
-using Taskling.SqlServer.Models;
-using TransactionScopeRetryHelper;
-using TaskDefinition = Taskling.SqlServer.Models.TaskDefinition;
+using TaskDefinition = Taskling.EntityFrameworkCore.Models.TaskDefinition;
 
-namespace Taskling.SqlServer.Tokens.Executions;
+namespace Taskling.EntityFrameworkCore.Tokens.Executions;
 
 public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepository
 {
@@ -123,7 +121,7 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
         }
         finally
         {
-            _logger.Debug($"Retrieved tokens {Constants.Serialize(result)}");
+            _logger.LogDebug($"Retrieved tokens {Constants.Serialize(result)}");
         }
     }
 
@@ -153,18 +151,15 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
 
             // the current token count is less than the limit then add new tokens
             if (tokenList.Count < concurrencyCount)
-            {
                 while (tokenList.Count < concurrencyCount)
                 {
                     tokenList.Add(_executionTokenHelper.Create(ExecutionTokenStatus.Available));
 
                     modified = true;
                 }
-            }
             // if the current token count is greater than the limit then
             // start removing tokens. Remove Available tokens preferentially.
             else if (tokenList.Count > concurrencyCount)
-            {
                 while (tokenList.Count > concurrencyCount)
                 {
                     if (tokenList.Any(x => x.Status == ExecutionTokenStatus.Available))
@@ -179,7 +174,6 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
 
                     modified = true;
                 }
-            }
         }
 
         return modified;
@@ -198,14 +192,11 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
     private async Task<string> GetTokensStringAsync(long taskDefinitionId,
         TasklingDbContext dbContext)
     {
-        _logger.Debug($"Fetching token string {taskDefinitionId}");
+        _logger.LogDebug($"Fetching token string {taskDefinitionId}");
         var tokens = await dbContext.TaskDefinitions.Where(i => i.TaskDefinitionId == taskDefinitionId)
             .Select(i => i.ExecutionTokens)
             .FirstOrDefaultAsync().ConfigureAwait(false);
-        if (tokens != null)
-        {
-            return tokens;
-        }
+        if (tokens != null) return tokens;
 
         return string.Empty;
     }
@@ -213,27 +204,18 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
     private async Task<ExecutionToken?> GetAssignableTokenAsync(ExecutionTokenList executionTokenList,
         TasklingDbContext dbContext)
     {
-        if (HasAvailableToken(executionTokenList))
-        {
-            return GetAvailableToken(executionTokenList);
-        }
+        if (HasAvailableToken(executionTokenList)) return GetAvailableToken(executionTokenList);
 
         var executionIds = executionTokenList
             .Where(x => x.Status != ExecutionTokenStatus.Disabled && x.GrantedToExecution != 0)
             .Select(x => x.GrantedToExecution)
             .ToList();
 
-        if (!executionIds.Any())
-        {
-            return null;
-        }
+        if (!executionIds.Any()) return null;
 
         var executionStates = await GetTaskExecutionStatesAsync(executionIds, dbContext).ConfigureAwait(false);
         var expiredExecution = FindExpiredExecution(executionStates);
-        if (expiredExecution == null)
-        {
-            return null;
-        }
+        if (expiredExecution == null) return null;
 
         return executionTokenList.First(x => x.GrantedToExecution == expiredExecution.TaskExecutionId);
     }
@@ -242,8 +224,8 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
     {
         var tmp = executionTokenList.Any(x => x.Status == ExecutionTokenStatus.Available
                                               || x.Status == ExecutionTokenStatus.Unlimited);
-        _logger.Debug($"{Constants.Serialize(executionTokenList)}");
-        _logger.Debug($"{nameof(HasAvailableToken)}={tmp}");
+        _logger.LogDebug($"{Constants.Serialize(executionTokenList)}");
+        _logger.LogDebug($"{nameof(HasAvailableToken)}={tmp}");
         return tmp;
     }
 
@@ -266,9 +248,7 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
     {
         foreach (var teState in executionStates)
             if (HasExpired(teState))
-            {
                 return teState;
-            }
 
         return null;
     }
@@ -280,19 +260,16 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
 
     private void AssignToken(ExecutionToken executionToken, long taskExecutionId)
     {
-
         _executionTokenHelper.SetGrantedToExecution(executionToken, taskExecutionId);
         if (executionToken.Status != ExecutionTokenStatus.Unlimited)
-        {
             _executionTokenHelper.SetStatus(executionToken, ExecutionTokenStatus.Unavailable);
-        }
     }
 
     private async Task PersistTokensAsync(long taskDefinitionId, ExecutionTokenList executionTokenList,
         TasklingDbContext dbContext)
     {
         var tokenString = executionTokenList.Serialize();
-        _logger.Debug($"Persisting token {taskDefinitionId} {tokenString}");
+        _logger.LogDebug($"Persisting token {taskDefinitionId} {tokenString}");
         var taskDefinition = new TaskDefinition { TaskDefinitionId = taskDefinitionId, ExecutionTokens = tokenString };
         var entityEntry = dbContext.TaskDefinitions.Attach(taskDefinition);
         entityEntry.Property(i => i.ExecutionTokens).IsModified = true;
@@ -306,9 +283,6 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
         if (executionToken != null && executionToken.Status == ExecutionTokenStatus.Unavailable)
         {
             executionToken.Status = ExecutionTokenStatus.Available;
-        }
-        else
-        {
         }
     }
 }

@@ -1,19 +1,16 @@
 ﻿using System.Linq.Expressions;
-using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Taskling.EntityFrameworkCore.AncilliaryServices;
+using Taskling.EntityFrameworkCore.Events;
+using Taskling.EntityFrameworkCore.Tokens.Executions;
 using Taskling.Events;
 using Taskling.Exceptions;
-using Taskling.Extensions;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.SqlServer.AncilliaryServices;
-using Taskling.SqlServer.Events;
-using Taskling.SqlServer.Tokens.Executions;
 using Taskling.Tasks;
-using TransactionScopeRetryHelper;
 
-namespace Taskling.SqlServer.TaskExecution;
+namespace Taskling.EntityFrameworkCore.TaskExecution;
 
 public class TaskExecutionRepository : DbOperationsService, ITaskExecutionRepository
 {

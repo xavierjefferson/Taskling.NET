@@ -7,6 +7,8 @@ using Taskling.Blocks.ObjectBlocks;
 using Taskling.Blocks.RangeBlocks;
 using Taskling.Configuration;
 using Taskling.Fluent;
+using Taskling.Fluent.ListBlocks;
+using Taskling.Fluent.ObjectBlocks;
 using Taskling.Fluent.RangeBlocks;
 using Taskling.InfrastructureContracts;
 using Taskling.Tasks;

@@ -1,13 +1,12 @@
 ﻿using System;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Taskling.SqlServer.Tests.Helpers;
-using Taskling.SqlServer.Tokens.Executions;
+using Taskling.EntityFrameworkCore.Tests.Helpers;
+using Taskling.EntityFrameworkCore.Tokens.Executions;
 using Xunit;
 
-namespace Taskling.SqlServer.Tests.Contexts.Given_TaskExecutionContext;
+namespace Taskling.EntityFrameworkCore.Tests.Contexts.Given_TaskExecutionContext;
 
 [Collection(TestConstants.CollectionName)]
 public class WhenDisposed : TestBase

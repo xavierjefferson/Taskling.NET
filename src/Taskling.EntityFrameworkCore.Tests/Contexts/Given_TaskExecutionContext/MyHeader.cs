@@ -1,4 +1,4 @@
-﻿namespace Taskling.SqlServer.Tests.Contexts.Given_TaskExecutionContext;
+﻿namespace Taskling.EntityFrameworkCore.Tests.Contexts.Given_TaskExecutionContext;
 
 public class MyHeader
 {

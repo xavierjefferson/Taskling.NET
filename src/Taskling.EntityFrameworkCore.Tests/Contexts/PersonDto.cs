@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Taskling.SqlServer.Tests.Contexts;
+namespace Taskling.EntityFrameworkCore.Tests.Contexts;
 
 public class PersonDto
 {

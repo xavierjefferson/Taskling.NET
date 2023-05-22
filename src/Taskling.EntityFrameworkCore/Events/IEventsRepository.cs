@@ -1,7 +1,7 @@
 ﻿using Taskling.Events;
 using Taskling.InfrastructureContracts;
 
-namespace Taskling.SqlServer.Events;
+namespace Taskling.EntityFrameworkCore.Events;
 
 public interface IEventsRepository
 {

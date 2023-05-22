@@ -1,6 +1,6 @@
 ﻿using Taskling.InfrastructureContracts.TaskExecution;
 
-namespace Taskling.SqlServer.Tokens.Executions;
+namespace Taskling.EntityFrameworkCore.Tokens.Executions;
 
 public class TokenResponse
 {

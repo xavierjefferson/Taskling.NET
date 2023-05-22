@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using Taskling.Blocks.ListBlocks;
 
-namespace Taskling.Fluent;
+namespace Taskling.Fluent.ListBlocks;
 
 public interface IFluentListBlockDescriptorBase<T>
 {

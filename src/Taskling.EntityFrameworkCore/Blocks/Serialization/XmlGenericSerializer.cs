@@ -1,7 +1,7 @@
 ﻿using System.Xml.Serialization;
 using Taskling.Exceptions;
 
-namespace Taskling.SqlServer.Blocks.Serialization;
+namespace Taskling.EntityFrameworkCore.Blocks.Serialization;
 
 public class XmlGenericSerializer
 {

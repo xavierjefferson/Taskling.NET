@@ -1,4 +1,4 @@
-﻿namespace Taskling.SqlServer.Blocks.Models;
+﻿namespace Taskling.EntityFrameworkCore.Blocks.Models;
 
 public interface IBlockQueryItem
 {

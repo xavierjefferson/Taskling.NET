@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Taskling.EntityFrameworkCore.Tests.Helpers;
 using Taskling.InfrastructureContracts;
-using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
-namespace Taskling.SqlServer.Tests;
+namespace Taskling.EntityFrameworkCore.Tests;
 
 public abstract class TestBase
 {

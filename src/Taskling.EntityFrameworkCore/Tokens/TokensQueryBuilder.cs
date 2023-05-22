@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace Taskling.SqlServer.Tokens;
+namespace Taskling.EntityFrameworkCore.Tokens;
 
 public class TokensQueryBuilder
 {

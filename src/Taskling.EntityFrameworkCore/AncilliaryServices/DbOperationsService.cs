@@ -1,10 +1,8 @@
-﻿using System.Reflection;
-using Microsoft.Extensions.Logging;
-using Taskling.Extensions;
+﻿using Microsoft.Extensions.Logging;
+using Taskling.EntityFrameworkCore.Models;
 using Taskling.InfrastructureContracts;
-using Taskling.SqlServer.Models;
 
-namespace Taskling.SqlServer.AncilliaryServices;
+namespace Taskling.EntityFrameworkCore.AncilliaryServices;
 
 public interface IDbContextFactoryEx
 {

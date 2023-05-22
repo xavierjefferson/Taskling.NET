@@ -11,5 +11,5 @@ public class CleanUpRequest : RequestBase
 
     public DateTime GeneralDateThreshold { get; set; }
     public DateTime ListItemDateThreshold { get; set; }
-    public TimeSpan TimeSinceLastCleaningThreashold { get; set; }
+    public TimeSpan TimeSinceLastCleaningThreshold { get; set; }
 }

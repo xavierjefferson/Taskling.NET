@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Taskling.SqlServer.Tests.Contexts.Given_ObjectBlockContext;
+namespace Taskling.EntityFrameworkCore.Tests.Contexts.Given_ObjectBlockContext;
 
 public class MyComplexClass
 {

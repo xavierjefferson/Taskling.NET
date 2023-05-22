@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
-namespace Taskling; 
+namespace Taskling;
 
 public class OrderedContractResolver : DefaultContractResolver
 {

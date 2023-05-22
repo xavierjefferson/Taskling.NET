@@ -2,7 +2,6 @@
 using Taskling.Blocks.Common;
 using Taskling.Builders;
 using Taskling.Contexts;
-using Taskling.Extensions;
 using TasklingTester.Common.Entities;
 using TasklingTesterAsync.Configuration;
 using TasklingTesterAsync.Repositories;
@@ -29,19 +28,22 @@ public class TravelInsightsAnalysisService
 
     public async Task RunBatchJobAsync()
     {
-        
-        await _tasklingClient.StartDateRange("MyApplication", "MyDateBasedBatchJob", async taskExecutionContext =>
-        {
-            DateTime startDate;
-            var lastBlock = await taskExecutionContext.GetLastDateRangeBlockAsync(LastBlockOrder.LastCreated);
-            if (lastBlock == null)
-                startDate = _configuration.FirstRunDate;
-            else startDate = lastBlock.EndDate;
+        var builder = new DateRangeJobBuilder().WithClient(_tasklingClient).WithApplication("MyApplication")
+            .WithTaskName("MyDateBasedBatchJob")
+            .WithRange((Func<ITaskExecutionContext, Task<DateRange>>)(async taskExecutionContext =>
+            {
+                DateTime startDate;
+                var lastBlock = await taskExecutionContext.GetLastDateRangeBlockAsync(LastBlockOrder.LastCreated);
+                if (lastBlock == null)
+                    startDate = _configuration.FirstRunDate;
+                else startDate = lastBlock.EndDate;
 
 
-            var endDate = DateTime.Now;
-            return new DateRange(startDate, endDate, TimeSpan.FromMinutes(30));
-        }, ProcessBlockAsync);
+                var endDate = DateTime.Now;
+                return new DateRange(startDate, endDate, TimeSpan.FromMinutes(30));
+            })).WithProcessFunc((Func<IDateRangeBlockContext, Task>)ProcessBlockAsync);
+
+        await builder.Build().Execute();
     }
 
     private async Task ProcessBlockAsync(IDateRangeBlockContext blockContext)

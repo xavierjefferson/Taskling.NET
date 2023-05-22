@@ -1,7 +1,7 @@
 ﻿using System;
-using Taskling.SqlServer.Tests.Enums;
+using Taskling.EntityFrameworkCore.Tests.Enums;
 
-namespace Taskling.SqlServer.Tests.Helpers;
+namespace Taskling.EntityFrameworkCore.Tests.Helpers;
 
 internal class TestConstants
 {

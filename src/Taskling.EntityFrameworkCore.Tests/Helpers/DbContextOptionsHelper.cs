@@ -1,8 +1,9 @@
 using System;
 using Microsoft.EntityFrameworkCore;
-using Taskling.SqlServer.Models;
-using Taskling.SqlServer.Tests.Enums;
-using Taskling.SqlServer.Tests.Helpers;
+using Taskling.EntityFrameworkCore.Models;
+using Taskling.EntityFrameworkCore.Tests.Enums;
+
+namespace Taskling.EntityFrameworkCore.Tests.Helpers;
 
 internal static class DbContextOptionsHelper
 {

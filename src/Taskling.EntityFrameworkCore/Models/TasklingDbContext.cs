@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
-namespace Taskling.SqlServer.Models;
+namespace Taskling.EntityFrameworkCore.Models;
 
 public partial class TasklingDbContext : DbContext
 {

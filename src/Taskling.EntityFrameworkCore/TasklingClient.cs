@@ -10,7 +10,7 @@ using Taskling.InfrastructureContracts.CriticalSections;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.Tasks;
 
-namespace Taskling.SqlServer;
+namespace Taskling.EntityFrameworkCore;
 
 public class TasklingClient : ITasklingClient
 {

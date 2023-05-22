@@ -1,9 +1,8 @@
-﻿using System.Reflection;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Taskling.Configuration;
 using Taskling.InfrastructureContracts;
 
-namespace Taskling.SqlServer.Tests.Helpers;
+namespace Taskling.EntityFrameworkCore.Tests.Helpers;
 
 public class TestConfigurationReader : IConfigurationReader
 {

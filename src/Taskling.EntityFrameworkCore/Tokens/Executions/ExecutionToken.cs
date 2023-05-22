@@ -2,7 +2,7 @@
 using Newtonsoft.Json;
 using Taskling.Extensions;
 
-namespace Taskling.SqlServer.Tokens.Executions;
+namespace Taskling.EntityFrameworkCore.Tokens.Executions;
 
 public class ExecutionToken
 {
@@ -36,13 +36,13 @@ public class ExecutionTokenHelper : IExecutionTokenHelper
 
     public void SetStatus(ExecutionToken execution, ExecutionTokenStatus status)
     {
-        _logger.Debug($"Setting token status to {status}");
+        _logger.LogDebug($"Setting token status to {status}");
         execution.Status = status;
     }
 
     public void SetGrantedToExecution(ExecutionToken execution, long g)
     {
-        _logger.Debug($"Setting token g to {g}");
+        _logger.LogDebug($"Setting token g to {g}");
         execution.GrantedToExecution = g;
     }
 }

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Taskling.SqlServer.Tests.Repositories.Given_ListBlockRepository;
+namespace Taskling.EntityFrameworkCore.Tests.Repositories.Given_ListBlockRepository;
 
 internal class DateRange
 {

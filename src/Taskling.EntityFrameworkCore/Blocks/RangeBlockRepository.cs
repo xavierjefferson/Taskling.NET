@@ -2,14 +2,13 @@
 using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.RangeBlocks;
+using Taskling.EntityFrameworkCore.AncilliaryServices;
 using Taskling.Extensions;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.SqlServer.AncilliaryServices;
-using TransactionScopeRetryHelper;
 
-namespace Taskling.SqlServer.Blocks;
+namespace Taskling.EntityFrameworkCore.Blocks;
 
 public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
 {
@@ -29,7 +28,7 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
 
     public async Task ChangeStatusAsync(BlockExecutionChangeStatusRequest changeStatusRequest)
     {
-        _logger.Debug($"Called {nameof(ChangeStatusAsync)} where blocktype={changeStatusRequest.BlockType}");
+        _logger.LogDebug($"Called {nameof(ChangeStatusAsync)} where blocktype={changeStatusRequest.BlockType}");
         switch (changeStatusRequest.BlockType)
         {
             case BlockType.DateRange:
@@ -128,8 +127,7 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
 
     private async Task ChangeStatusOfNumericRangeExecutionAsync(BlockExecutionChangeStatusRequest changeStatusRequest)
     {
-        _logger.Debug(
-            $"Called {nameof(ChangeStatusOfNumericRangeExecutionAsync)} to change blockexecutionid {changeStatusRequest.BlockExecutionId}, status={changeStatusRequest.BlockExecutionStatus}, itemsCount={changeStatusRequest.ItemsProcessed}");
+        _logger.LogDebug($"Called {nameof(ChangeStatusOfNumericRangeExecutionAsync)} to change blockexecutionid {changeStatusRequest.BlockExecutionId}, status={changeStatusRequest.BlockExecutionStatus}, itemsCount={changeStatusRequest.ItemsProcessed}");
         await RetryHelper.WithRetryAsync(async () =>
         {
             using (var dbContext = await GetDbContextAsync(changeStatusRequest.TaskId).ConfigureAwait(false))

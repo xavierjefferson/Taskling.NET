@@ -1,8 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Taskling.SqlServer.Models;
+using Taskling.EntityFrameworkCore.Models;
 using Taskling.Tasks;
 
-namespace Taskling.SqlServer.Tokens;
+namespace Taskling.EntityFrameworkCore.Tokens;
 
 public class CommonTokenRepository : ICommonTokenRepository
 {

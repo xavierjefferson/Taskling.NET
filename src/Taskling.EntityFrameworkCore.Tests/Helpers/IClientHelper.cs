@@ -1,7 +1,7 @@
 ﻿using Taskling.Contexts;
 using Taskling.InfrastructureContracts;
 
-namespace Taskling.SqlServer.Tests.Helpers;
+namespace Taskling.EntityFrameworkCore.Tests.Helpers;
 
 public interface IClientHelper
 {

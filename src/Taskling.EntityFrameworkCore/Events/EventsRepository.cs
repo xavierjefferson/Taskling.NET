@@ -1,11 +1,10 @@
 ﻿using Microsoft.Extensions.Logging;
+using Taskling.EntityFrameworkCore.AncilliaryServices;
+using Taskling.EntityFrameworkCore.Models;
 using Taskling.Events;
 using Taskling.InfrastructureContracts;
-using Taskling.SqlServer.AncilliaryServices;
-using Taskling.SqlServer.Models;
-using TransactionScopeRetryHelper;
 
-namespace Taskling.SqlServer.Events;
+namespace Taskling.EntityFrameworkCore.Events;
 
 public class EventsRepository : DbOperationsService, IEventsRepository
 {

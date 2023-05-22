@@ -1,15 +1,11 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Taskling.SqlServer.AncilliaryServices;
-using Taskling.SqlServer.Tests.Helpers;
-using TransactionScopeRetryHelper;
-using TransactionScopeRetryHelper.MicrosoftDataSqlClient;
-using TransactionScopeRetryHelper.MySqlClient;
-using TransactionScopeRetryHelper.SystemDataSqlClient;
+using Taskling.EntityFrameworkCore.AncilliaryServices;
+using Taskling.EntityFrameworkCore.Tests.Helpers;
 using Xunit.DependencyInjection;
 using Xunit.DependencyInjection.Logging;
 
-namespace Taskling.SqlServer.Tests;
+namespace Taskling.EntityFrameworkCore.Tests;
 
 public class Startup
 {
@@ -23,8 +19,6 @@ public class Startup
 
     public void ConfigureServices(IServiceCollection services)
     {
-        
-
         services.AddSingleton<IDbContextFactoryEx, DbContextFactoryEx>();
         services.AddLogging(configure =>
         {

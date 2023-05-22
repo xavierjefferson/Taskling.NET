@@ -1,4 +1,4 @@
-﻿namespace Taskling.Fluent;
+﻿namespace Taskling.Fluent.ObjectBlocks;
 
 public interface IFluentObjectBlockDescriptorBase<T>
 {

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx.Synchronous;
@@ -19,7 +18,7 @@ public class CriticalSectionContext : ICriticalSectionContext
     private readonly ILogger<CriticalSectionContext> _logger;
     private readonly TaskExecutionInstance _taskExecutionInstance;
     private readonly TaskExecutionOptions _taskExecutionOptions;
-    private readonly TasklingOptions _tasklingOptions;
+    private readonly StartupOptions _startupOptions;
     private bool _completeCalled;
 
     private bool _started;
@@ -29,7 +28,7 @@ public class CriticalSectionContext : ICriticalSectionContext
     public CriticalSectionContext(ICriticalSectionRepository criticalSectionRepository,
         TaskExecutionInstance taskExecutionInstance,
         TaskExecutionOptions taskExecutionOptions,
-        CriticalSectionType criticalSectionType, TasklingOptions tasklingOptions,
+        CriticalSectionType criticalSectionType, StartupOptions startupOptions,
         ILogger<CriticalSectionContext> logger)
     {
         _logger = logger;
@@ -37,7 +36,7 @@ public class CriticalSectionContext : ICriticalSectionContext
         _taskExecutionInstance = taskExecutionInstance;
         _taskExecutionOptions = taskExecutionOptions;
         _criticalSectionType = criticalSectionType;
-        _tasklingOptions = tasklingOptions;
+        _startupOptions = startupOptions;
 
 
         ValidateOptions();
@@ -50,7 +49,7 @@ public class CriticalSectionContext : ICriticalSectionContext
 
     public async Task<bool> TryStartAsync()
     {
-        return await TryStartAsync(_tasklingOptions.CriticalSectionRetry, _tasklingOptions.CriticalSectionAttemptCount)
+        return await TryStartAsync(_startupOptions.CriticalSectionRetry, _startupOptions.CriticalSectionAttemptCount)
             .ConfigureAwait(false);
     }
 

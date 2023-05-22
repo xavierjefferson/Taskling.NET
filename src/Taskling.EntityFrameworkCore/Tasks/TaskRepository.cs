@@ -1,16 +1,13 @@
-﻿using System.Reflection;
-using System.Transactions;
+﻿using System.Transactions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Taskling.Extensions;
+using Taskling.EntityFrameworkCore.AncilliaryServices;
+using Taskling.EntityFrameworkCore.Models;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.SqlServer.AncilliaryServices;
-using Taskling.SqlServer.Models;
-using TransactionScopeRetryHelper;
 using TaskDefinition = Taskling.InfrastructureContracts.TaskExecution.TaskDefinition;
 
-namespace Taskling.SqlServer.Tasks;
+namespace Taskling.EntityFrameworkCore.Tasks;
 
 public class TaskRepository : DbOperationsService, ITaskRepository
 {
@@ -152,21 +149,17 @@ public class TaskRepository : DbOperationsService, ITaskRepository
     private void CacheTaskDefinition(string taskKey, TaskDefinition taskDefinition)
     {
         if (CachedTaskDefinitions.ContainsKey(taskKey))
-        {
             CachedTaskDefinitions[taskKey] = new CachedTaskDefinition
             {
                 TaskDefinition = taskDefinition,
                 CachedAt = DateTime.UtcNow
             };
-        }
         else
-        {
             CachedTaskDefinitions.Add(taskKey, new CachedTaskDefinition
             {
                 TaskDefinition = taskDefinition,
                 CachedAt = DateTime.UtcNow
             });
-        }
     }
 
     private async Task<TaskDefinition> InsertNewTaskAsync(TaskId taskId)

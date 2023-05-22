@@ -1,4 +1,4 @@
-﻿namespace Taskling.SqlServer.Tests.Helpers;
+﻿namespace Taskling.EntityFrameworkCore.Tests.Helpers;
 
 public enum TaskExecutionStatus
 {

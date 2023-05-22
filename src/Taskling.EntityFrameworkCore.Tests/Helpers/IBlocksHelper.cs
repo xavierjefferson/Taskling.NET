@@ -5,7 +5,7 @@ using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
 using Taskling.InfrastructureContracts;
 
-namespace Taskling.SqlServer.Tests.Helpers;
+namespace Taskling.EntityFrameworkCore.Tests.Helpers;
 
 public interface IBlocksHelper
 {

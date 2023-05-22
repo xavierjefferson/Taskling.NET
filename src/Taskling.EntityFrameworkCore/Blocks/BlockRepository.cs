@@ -4,6 +4,11 @@ using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
 using Taskling.Blocks.ObjectBlocks;
 using Taskling.Blocks.RangeBlocks;
+using Taskling.EntityFrameworkCore.AncilliaryServices;
+using Taskling.EntityFrameworkCore.Blocks.Models;
+using Taskling.EntityFrameworkCore.Blocks.QueryBuilders;
+using Taskling.EntityFrameworkCore.Blocks.Serialization;
+using Taskling.EntityFrameworkCore.Models;
 using Taskling.Exceptions;
 using Taskling.Extensions;
 using Taskling.InfrastructureContracts;
@@ -15,16 +20,10 @@ using Taskling.InfrastructureContracts.Blocks.ObjectBlocks;
 using Taskling.InfrastructureContracts.Blocks.RangeBlocks;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.Serialization;
-using Taskling.SqlServer.AncilliaryServices;
-using Taskling.SqlServer.Blocks.Models;
-using Taskling.SqlServer.Blocks.QueryBuilders;
-using Taskling.SqlServer.Blocks.Serialization;
-using Taskling.SqlServer.Models;
 using Taskling.Tasks;
-using TransactionScopeRetryHelper;
 using TaskDefinition = Taskling.InfrastructureContracts.TaskExecution.TaskDefinition;
 
-namespace Taskling.SqlServer.Blocks;
+namespace Taskling.EntityFrameworkCore.Blocks;
 
 public partial class BlockRepository : DbOperationsService, IBlockRepository
 {
@@ -46,7 +45,8 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
 
 
     public BlockRepository(ITaskRepository taskRepository, IConnectionStore connectionStore,
-        ILogger<BlockRepository> logger, IDbContextFactoryEx dbContextFactoryEx, ILoggerFactory loggerFactory) : base(connectionStore,
+        ILogger<BlockRepository> logger, IDbContextFactoryEx dbContextFactoryEx, ILoggerFactory loggerFactory) : base(
+        connectionStore,
         dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
     {
         _taskRepository = taskRepository;
@@ -62,11 +62,11 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
         {
             case BlockType.DateRange:
                 var tmp = await GetForcedDateRangeBlocksAsync(queuedForcedBlocksRequest).ConfigureAwait(false);
-                _logger.Debug($"Returning {tmp.Count}");
+                _logger.LogDebug($"Returning {tmp.Count}");
                 return tmp;
             case BlockType.NumericRange:
                 var tmp2 = await GetForcedNumericRangeBlocksAsync(queuedForcedBlocksRequest).ConfigureAwait(false);
-                _logger.Debug($"Returning {tmp2.Count}");
+                _logger.LogDebug($"Returning {tmp2.Count}");
                 return tmp2;
             default:
                 throw new NotSupportedException("This range type is not supported");

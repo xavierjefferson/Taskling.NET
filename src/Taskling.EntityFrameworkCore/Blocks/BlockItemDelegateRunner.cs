@@ -1,10 +1,10 @@
 ﻿using Taskling.Blocks.Common;
+using Taskling.EntityFrameworkCore.Blocks.Models;
+using Taskling.EntityFrameworkCore.Blocks.QueryBuilders;
+using Taskling.EntityFrameworkCore.Models;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
-using Taskling.SqlServer.Blocks.Models;
-using Taskling.SqlServer.Blocks.QueryBuilders;
-using Taskling.SqlServer.Models;
 
-namespace Taskling.SqlServer.Blocks;
+namespace Taskling.EntityFrameworkCore.Blocks;
 
 public class BlockItemDelegateRunner
 {

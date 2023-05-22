@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace Taskling.SqlServer.Tokens.Executions;
+namespace Taskling.EntityFrameworkCore.Tokens.Executions;
 
 public class ExecutionTokenList : List<ExecutionToken>
 {

@@ -1,15 +1,14 @@
 ﻿using System;
-using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
+using Taskling.EntityFrameworkCore.Tests.Helpers;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
-namespace Taskling.SqlServer.Tests.Repositories.Given_RangeBlockRepository;
+namespace Taskling.EntityFrameworkCore.Tests.Repositories.Given_RangeBlockRepository;
 
 [Collection(TestConstants.CollectionName)]
 public class When_ChangeStatus : TestBase

@@ -1,6 +1,6 @@
-﻿using Taskling.SqlServer.Blocks.Models;
+﻿using Taskling.EntityFrameworkCore.Blocks.Models;
 
-namespace Taskling.SqlServer.Blocks.QueryBuilders;
+namespace Taskling.EntityFrameworkCore.Blocks.QueryBuilders;
 
 public class FailedBlocksQueryBuilder
 {

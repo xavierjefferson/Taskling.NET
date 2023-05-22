@@ -1,6 +1,6 @@
-﻿using Taskling.SqlServer.Models;
+﻿using Taskling.EntityFrameworkCore.Models;
 
-namespace Taskling.SqlServer.Tokens;
+namespace Taskling.EntityFrameworkCore.Tokens;
 
 public interface ICommonTokenRepository
 {

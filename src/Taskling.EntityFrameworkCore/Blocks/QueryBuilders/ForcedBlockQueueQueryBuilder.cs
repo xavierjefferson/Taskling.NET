@@ -1,8 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Taskling.Blocks.Common;
-using Taskling.SqlServer.Models;
+using Taskling.EntityFrameworkCore.Models;
 
-namespace Taskling.SqlServer.Blocks.QueryBuilders;
+namespace Taskling.EntityFrameworkCore.Blocks.QueryBuilders;
 
 public class ForcedBlockQueueQueryBuilder
 {

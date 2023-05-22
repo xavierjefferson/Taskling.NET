@@ -1,19 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
 using Taskling.Contexts;
+using Taskling.EntityFrameworkCore.Tests.Helpers;
 using Taskling.Events;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.SqlServer.Tests.Helpers;
 using Xunit;
 
-namespace Taskling.SqlServer.Tests.Contexts.Given_ListBlockContext;
+namespace Taskling.EntityFrameworkCore.Tests.Contexts.Given_ListBlockContext;
 
 [Collection(TestConstants.CollectionName)]
 public class When_GetListBlocksFromExecutionContext : TestBase

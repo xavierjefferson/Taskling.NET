@@ -1,11 +1,10 @@
 ﻿using System;
-using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Taskling.Contexts;
 using Taskling.InfrastructureContracts;
 
-namespace Taskling.SqlServer.Tests.Helpers;
+namespace Taskling.EntityFrameworkCore.Tests.Helpers;
 
 public class ClientHelper : IClientHelper
 {

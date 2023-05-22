@@ -1,4 +1,4 @@
-﻿namespace Taskling.SqlServer.TaskExecution.QueryBuilders;
+﻿namespace Taskling.EntityFrameworkCore.TaskExecution.QueryBuilders;
 
 internal class CleanUpQueryBuilder
 {

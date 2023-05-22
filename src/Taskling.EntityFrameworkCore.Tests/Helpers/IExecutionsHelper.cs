@@ -1,8 +1,8 @@
 ﻿using System;
+using Taskling.EntityFrameworkCore.Tokens.Executions;
 using Taskling.InfrastructureContracts;
-using Taskling.SqlServer.Tokens.Executions;
 
-namespace Taskling.SqlServer.Tests.Helpers;
+namespace Taskling.EntityFrameworkCore.Tests.Helpers;
 
 public interface IExecutionsHelper
 {

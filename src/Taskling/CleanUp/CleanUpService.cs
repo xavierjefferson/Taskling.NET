@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Taskling.Configuration;
-using Taskling.Extensions;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.CleanUp;
 using Taskling.InfrastructureContracts.TaskExecution;
@@ -49,7 +47,7 @@ public class CleanUpService : ICleanUpService
             {
                 GeneralDateThreshold = DateTime.UtcNow.AddDays(-1 * configuration.KeepGeneralDataForDays),
                 ListItemDateThreshold = DateTime.UtcNow.AddDays(-1 * configuration.KeepListItemsForDays),
-                TimeSinceLastCleaningThreashold = new TimeSpan(configuration.MinimumCleanUpIntervalHours, 0, 0)
+                TimeSinceLastCleaningThreshold = new TimeSpan(configuration.MinimumCleanUpIntervalHours, 0, 0)
             };
             var cleaned = await _cleanUpRepository.CleanOldDataAsync(request).ConfigureAwait(false);
 

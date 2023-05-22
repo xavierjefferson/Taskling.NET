@@ -2,27 +2,27 @@
 using Taskling.Blocks.Factories;
 using Taskling.CleanUp;
 using Taskling.Contexts;
+using Taskling.EntityFrameworkCore.Blocks;
+using Taskling.EntityFrameworkCore.Events;
+using Taskling.EntityFrameworkCore.TaskExecution;
+using Taskling.EntityFrameworkCore.Tasks;
+using Taskling.EntityFrameworkCore.Tokens;
+using Taskling.EntityFrameworkCore.Tokens.CriticalSections;
+using Taskling.EntityFrameworkCore.Tokens.Executions;
 using Taskling.ExecutionContext;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.CleanUp;
 using Taskling.InfrastructureContracts.CriticalSections;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.Retries;
-using Taskling.SqlServer.Blocks;
-using Taskling.SqlServer.Events;
-using Taskling.SqlServer.TaskExecution;
-using Taskling.SqlServer.Tasks;
-using Taskling.SqlServer.Tokens;
-using Taskling.SqlServer.Tokens.CriticalSections;
-using Taskling.SqlServer.Tokens.Executions;
 
-namespace Taskling.SqlServer;
+namespace Taskling.EntityFrameworkCore;
 
 public static class TasklingServiceCollectionExtensions
 {
     public static IServiceCollection AddTaskling(this IServiceCollection services)
     {
-        services.AddSingleton(new TasklingOptions());
+        services.AddSingleton(new StartupOptions());
         services.AddSingleton<IRetryService, RetryService>();
         services.AddSingleton<ITaskRepository, TaskRepository>();
         services.AddScoped<ITaskExecutionRepository, TaskExecutionRepository>();

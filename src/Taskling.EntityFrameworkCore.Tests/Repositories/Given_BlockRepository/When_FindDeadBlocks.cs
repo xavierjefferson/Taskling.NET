@@ -1,16 +1,15 @@
 ﻿using System;
-using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Common;
+using Taskling.EntityFrameworkCore.Tests.Helpers;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.SqlServer.Tests.Helpers;
 using Taskling.Tasks;
 using Xunit;
 
-namespace Taskling.SqlServer.Tests.Repositories.Given_BlockRepository;
+namespace Taskling.EntityFrameworkCore.Tests.Repositories.Given_BlockRepository;
 
 [Collection(TestConstants.CollectionName)]
 public class When_FindDeadBlocks : TestBase
@@ -815,7 +814,6 @@ public class When_FindDeadBlocks : TestBase
     public async Task
         When_OverrideModeAndObject_DeadTasksInTargetPeriodAndLessThanBlockCountLimit_ThenReturnAllDeadBlocks()
     {
-
         await InSemaphoreAsync(async () =>
         {
             // ARRANGE

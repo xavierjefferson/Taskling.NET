@@ -1,7 +1,7 @@
 ﻿using Taskling.Exceptions;
 using Taskling.Serialization;
 
-namespace Taskling.SqlServer.Blocks.Serialization;
+namespace Taskling.EntityFrameworkCore.Blocks.Serialization;
 
 public class SerializedValueReader
 {
