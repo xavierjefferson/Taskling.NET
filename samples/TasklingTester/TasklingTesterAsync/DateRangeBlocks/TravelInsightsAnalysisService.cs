@@ -1,6 +1,8 @@
 ﻿using Taskling;
 using Taskling.Blocks.Common;
+using Taskling.Builders;
 using Taskling.Contexts;
+using Taskling.Extensions;
 using TasklingTester.Common.Entities;
 using TasklingTesterAsync.Configuration;
 using TasklingTesterAsync.Repositories;
@@ -27,53 +29,19 @@ public class TravelInsightsAnalysisService
 
     public async Task RunBatchJobAsync()
     {
-        using (var taskExecutionContext =
-               _tasklingClient.CreateTaskExecutionContext("MyApplication", "MyDateBasedBatchJob"))
+        
+        await _tasklingClient.StartDateRange("MyApplication", "MyDateBasedBatchJob", async taskExecutionContext =>
         {
-            if (await taskExecutionContext.TryStartAsync()) await RunTaskAsync(taskExecutionContext);
-        }
-    }
+            DateTime startDate;
+            var lastBlock = await taskExecutionContext.GetLastDateRangeBlockAsync(LastBlockOrder.LastCreated);
+            if (lastBlock == null)
+                startDate = _configuration.FirstRunDate;
+            else startDate = lastBlock.EndDate;
 
-    private async Task RunTaskAsync(ITaskExecutionContext taskExecutionContext)
-    {
-        try
-        {
-            var dateRangeBlocks = await GetDateRangeBlocksAsync(taskExecutionContext);
-            foreach (var block in dateRangeBlocks)
-                await ProcessBlockAsync(block);
 
-            await taskExecutionContext.CompleteAsync();
-        }
-        catch (Exception ex)
-        {
-            await taskExecutionContext.ErrorAsync(ex.ToString(), true);
-        }
-    }
-
-    private async Task<IList<IDateRangeBlockContext>> GetDateRangeBlocksAsync(
-        ITaskExecutionContext taskExecutionContext)
-    {
-        using (var cs = taskExecutionContext.CreateCriticalSection())
-        {
-            if (await cs.TryStartAsync())
-            {
-                var startDate = await GetDateRangeStartDateAsync(taskExecutionContext);
-                var endDate = DateTime.Now;
-
-                return await taskExecutionContext.GetDateRangeBlocksAsync(x =>
-                    x.WithRange(startDate, endDate, TimeSpan.FromMinutes(30)));
-            }
-
-            throw new Exception("Could not acquire a critical section, aborted task");
-        }
-    }
-
-    private async Task<DateTime> GetDateRangeStartDateAsync(ITaskExecutionContext taskExecutionContext)
-    {
-        var lastBlock = await taskExecutionContext.GetLastDateRangeBlockAsync(LastBlockOrder.LastCreated);
-        if (lastBlock == null)
-            return _configuration.FirstRunDate;
-        return lastBlock.EndDate;
+            var endDate = DateTime.Now;
+            return new DateRange(startDate, endDate, TimeSpan.FromMinutes(30));
+        }, ProcessBlockAsync);
     }
 
     private async Task ProcessBlockAsync(IDateRangeBlockContext blockContext)

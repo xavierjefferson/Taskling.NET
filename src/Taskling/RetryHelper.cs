@@ -1,8 +1,11 @@
-﻿using System.Data.Common;
+﻿using System;
+using System.Data.Common;
+using System.Threading.Tasks;
 using System.Transactions;
 using Polly;
+using TransactionScopeRetryHelper;
 
-namespace TransactionScopeRetryHelper;
+namespace Taskling;
 
 public class RetryHelper
 {
@@ -10,8 +13,7 @@ public class RetryHelper
     private const int DefaultMaxRetries = 10;
     private const int DefaultDelayMilliseconds = 5000;
 
-    public static ExceptionChecklist TransientCheckFunctions { get; } = new();
-    public static PollyExtension Extensions { get; } = new();
+    
 
     public static async Task WithRetryAsync(Func<Task> action,
         int maxRetries = DefaultMaxRetries, int maxDelayMilliseconds = DefaultMaxDelayMilliseconds,
@@ -68,7 +70,7 @@ public class RetryHelper
     {
         var policyBuilder = Policy.Handle<DbException>(i => i.IsTransient).OrInner<DbException>(i => i.IsTransient);
 
-        foreach (var extension in Extensions) policyBuilder = extension.Add(policyBuilder);
+        
 
         return policyBuilder;
     }
@@ -77,7 +79,7 @@ public class RetryHelper
     {
         var policyBuilder = Policy<T>.Handle<DbException>(i => i.IsTransient).OrInner<DbException>(i => i.IsTransient);
 
-        foreach (var extension in Extensions) policyBuilder = extension.Add(policyBuilder);
+         
 
         return policyBuilder;
     }

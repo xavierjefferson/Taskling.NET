@@ -23,7 +23,7 @@ public class Startup
 
     public void ConfigureServices(IServiceCollection services)
     {
-        RetryHelper.Extensions.AddMicrosoftDataSqlClient().AddMySqlClient().AddSystemDataSqlClient();
+        
 
         services.AddSingleton<IDbContextFactoryEx, DbContextFactoryEx>();
         services.AddLogging(configure =>
