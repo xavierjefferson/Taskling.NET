@@ -31,7 +31,6 @@ public class LargeValueCompressor
         }
     }
 
-
     public static string Unzip(byte[] bytes)
     {
         MemoryStream originalMemoryStream = null;

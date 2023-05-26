@@ -1,6 +1,6 @@
-﻿namespace Taskling.Blocks.ListBlocks;
+﻿namespace Taskling.Enums;
 
-public enum ListUpdateMode
+public enum ListUpdateModeEnum
 {
     SingleItemCommit,
     PeriodicBatchCommit,

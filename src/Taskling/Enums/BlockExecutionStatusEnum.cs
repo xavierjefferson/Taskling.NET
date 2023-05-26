@@ -1,6 +1,6 @@
-﻿namespace Taskling.Blocks.Common;
+﻿namespace Taskling.Enums;
 
-public enum BlockExecutionStatus
+public enum BlockExecutionStatusEnum
 {
     NotDefined = 0,
     NotStarted = 1,

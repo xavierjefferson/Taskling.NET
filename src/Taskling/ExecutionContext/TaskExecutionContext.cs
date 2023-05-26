@@ -5,8 +5,8 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using Nito.AsyncEx.Synchronous;
-using Taskling.Blocks.Common;
 using Taskling.Blocks.Factories;
 using Taskling.Blocks.ListBlocks;
 using Taskling.Blocks.ObjectBlocks;
@@ -16,9 +16,8 @@ using Taskling.CleanUp;
 using Taskling.Configuration;
 using Taskling.Contexts;
 using Taskling.CriticalSection;
+using Taskling.Enums;
 using Taskling.Exceptions;
-using Taskling.Extensions;
-using Taskling.Fluent;
 using Taskling.Fluent.ListBlocks;
 using Taskling.Fluent.ObjectBlocks;
 using Taskling.Fluent.RangeBlocks;
@@ -50,10 +49,8 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     private readonly IObjectBlockRepository _objectBlockRepository;
     private readonly IRangeBlockRepository _rangeBlockRepository;
-
-
-    private readonly ITaskExecutionRepository _taskExecutionRepository;
     private readonly StartupOptions _startupOptions;
+    private readonly ITaskExecutionRepository _taskExecutionRepository;
     private ICriticalSectionContext _clientCriticalSectionContext;
     private bool _completeCalled;
 
@@ -98,9 +95,7 @@ public class TaskExecutionContext : ITaskExecutionContext
         _cleanUpService = cleanUpService ?? throw new ArgumentNullException(nameof(cleanUpService));
     }
 
-
     private bool IsExecutionContextActive => _startedCalled && !_completeCalled;
-
 
     public IList<IDateRangeBlockContext> GetDateRangeBlocks(
         Func<IFluentDateRangeBlockDescriptor, object> fluentBlockRequest)
@@ -109,7 +104,6 @@ public class TaskExecutionContext : ITaskExecutionContext
     }
 
     public bool IsStarted => IsExecutionContextActive;
-
 
     public void SetOptions(TaskId taskId,
         TaskExecutionOptions taskExecutionOptions, ITaskConfigurationRepository taskConfigurationRepository)
@@ -131,7 +125,6 @@ public class TaskExecutionContext : ITaskExecutionContext
         Dispose(true);
         GC.SuppressFinalize(this);
     }
-
 
     public async Task<bool> TryStartAsync()
     {
@@ -158,13 +151,13 @@ public class TaskExecutionContext : ITaskExecutionContext
                 _taskExecutionInstance.TaskExecutionId = response.TaskExecutionId;
                 _taskExecutionInstance.ExecutionTokenId = response.ExecutionTokenId;
 
-                if (response.GrantStatus == GrantStatus.Denied)
+                if (response.GrantStatus == GrantStatusEnum.Denied)
                 {
                     await CompleteAsync().ConfigureAwait(false);
                     return false;
                 }
 
-                if (_taskExecutionOptions.TaskDeathMode == TaskDeathMode.KeepAlive)
+                if (_taskExecutionOptions.TaskDeathMode == TaskDeathModeEnum.KeepAlive)
                     StartKeepAlive();
             }
             catch (Exception)
@@ -172,7 +165,6 @@ public class TaskExecutionContext : ITaskExecutionContext
                 _completeCalled = true;
                 throw;
             }
-
 
             return true;
         }
@@ -211,8 +203,6 @@ public class TaskExecutionContext : ITaskExecutionContext
                     _taskExecutionInstance.TaskExecutionId,
                     _taskExecutionInstance.ExecutionTokenId);
                 completeRequest.Failed = _executionHasFailed;
-
-
                 var response = await _taskExecutionRepository.CompleteAsync(completeRequest).ConfigureAwait(false);
                 _taskExecutionInstance.CompletedAt = response.CompletedAt;
             }
@@ -272,7 +262,7 @@ public class TaskExecutionContext : ITaskExecutionContext
         _userCriticalSectionContext = new CriticalSectionContext(_criticalSectionRepository,
             _taskExecutionInstance,
             _taskExecutionOptions,
-            CriticalSectionType.User, _startupOptions, _loggerFactory.CreateLogger<CriticalSectionContext>());
+            CriticalSectionTypeEnum.User, _startupOptions, _loggerFactory.CreateLogger<CriticalSectionContext>());
 
         return _userCriticalSectionContext;
     }
@@ -281,7 +271,7 @@ public class TaskExecutionContext : ITaskExecutionContext
         Func<IFluentDateRangeBlockDescriptor, object> fluentBlockRequest)
     {
         return await GetBlocksAsync<IDateRangeBlockContext, FluentRangeBlockDescriptor, DateRangeBlockRequest,
-            IBlockSettings>(BlockType.DateRange, fluentBlockRequest, GetDateRangeBlockRequest,
+            IBlockSettings>(BlockTypeEnum.DateRange, fluentBlockRequest, GetDateRangeBlockRequest,
             _blockFactory.GenerateDateRangeBlocksAsync);
     }
 
@@ -295,7 +285,7 @@ public class TaskExecutionContext : ITaskExecutionContext
         Func<IFluentNumericRangeBlockDescriptor, object> fluentBlockRequest)
     {
         return await GetBlocksAsync<INumericRangeBlockContext, FluentRangeBlockDescriptor, NumericRangeBlockRequest,
-            IBlockSettings>(BlockType.NumericRange, fluentBlockRequest, GetNumericRangeBlockRequest,
+            IBlockSettings>(BlockTypeEnum.NumericRange, fluentBlockRequest, GetNumericRangeBlockRequest,
             _blockFactory.GenerateNumericRangeBlocksAsync);
     }
 
@@ -303,7 +293,7 @@ public class TaskExecutionContext : ITaskExecutionContext
         Func<IFluentListBlockDescriptorBase<T>, object> fluentBlockRequest)
     {
         return await GetBlocksAsync<IListBlockContext<T>, FluentListBlockDescriptorBase<T>, ListBlockRequest,
-            IBlockSettings>(BlockType.List, fluentBlockRequest, GetListBlockRequest,
+            IBlockSettings>(BlockTypeEnum.List, fluentBlockRequest, GetListBlockRequest,
             _blockFactory.GenerateListBlocksAsync<T>);
     }
 
@@ -311,7 +301,7 @@ public class TaskExecutionContext : ITaskExecutionContext
         Func<IFluentListBlockDescriptorBase<TItem, THeader>, object> fluentBlockRequest)
     {
         return await GetBlocksAsync<IListBlockContext<TItem, THeader>, FluentListBlockDescriptorBase<TItem, THeader>,
-            ListBlockRequest, IBlockSettings>(BlockType.List, fluentBlockRequest, GetListBlockRequest,
+            ListBlockRequest, IBlockSettings>(BlockTypeEnum.List, fluentBlockRequest, GetListBlockRequest,
             _blockFactory.GenerateListBlocksAsync<TItem, THeader>);
     }
 
@@ -319,37 +309,37 @@ public class TaskExecutionContext : ITaskExecutionContext
         Func<IFluentObjectBlockDescriptorBase<T>, object> fluentBlockRequest)
     {
         return await GetBlocksAsync<IObjectBlockContext<T>, FluentObjectBlockDescriptorBase<T>, ObjectBlockRequest<T>,
-            IObjectBlockSettings<T>>(BlockType.Object, fluentBlockRequest, GetObjectBlockRequest,
+            IObjectBlockSettings<T>>(BlockTypeEnum.Object, fluentBlockRequest, GetObjectBlockRequest,
             _blockFactory.GenerateObjectBlocksAsync);
     }
 
-    public async Task<IDateRangeBlock> GetLastDateRangeBlockAsync(LastBlockOrder lastBlockOrder)
+    public async Task<IDateRangeBlock> GetLastDateRangeBlockAsync(LastBlockOrderEnum lastBlockOrder)
     {
         if (!IsExecutionContextActive)
             throw new ExecutionException(NotActiveMessage);
 
         var request = new LastBlockRequest(
             _taskExecutionInstance.TaskId,
-            BlockType.DateRange);
+            BlockTypeEnum.DateRange);
         request.LastBlockOrder = lastBlockOrder;
 
         return await _rangeBlockRepository.GetLastRangeBlockAsync(request).ConfigureAwait(false);
     }
 
-    public async Task<INumericRangeBlock> GetLastNumericRangeBlockAsync(LastBlockOrder lastBlockOrder)
+    public async Task<INumericRangeBlock> GetLastNumericRangeBlockAsync(LastBlockOrderEnum lastBlockOrder)
     {
         if (!IsExecutionContextActive)
             throw new ExecutionException(NotActiveMessage);
 
         var request = new LastBlockRequest(
             _taskExecutionInstance.TaskId,
-            BlockType.NumericRange);
+            BlockTypeEnum.NumericRange);
         request.LastBlockOrder = lastBlockOrder;
 
         return await _rangeBlockRepository.GetLastRangeBlockAsync(request).ConfigureAwait(false);
     }
 
-    public INumericRangeBlock GetLastNumericRangeBlock(LastBlockOrder lastBlockOrder)
+    public INumericRangeBlock GetLastNumericRangeBlock(LastBlockOrderEnum lastBlockOrder)
     {
         return GetLastNumericRangeBlockAsync(lastBlockOrder).WaitAndUnwrapException();
     }
@@ -361,7 +351,7 @@ public class TaskExecutionContext : ITaskExecutionContext
 
         var request = new LastBlockRequest(
             _taskExecutionInstance.TaskId,
-            BlockType.List);
+            BlockTypeEnum.List);
 
         return await _blockFactory.GetLastListBlockAsync<T>(request).ConfigureAwait(false);
     }
@@ -373,7 +363,7 @@ public class TaskExecutionContext : ITaskExecutionContext
 
         var request = new LastBlockRequest(
             _taskExecutionInstance.TaskId,
-            BlockType.List);
+            BlockTypeEnum.List);
 
         return await _blockFactory.GetLastListBlockAsync<TItem, THeader>(request).ConfigureAwait(false);
     }
@@ -385,7 +375,7 @@ public class TaskExecutionContext : ITaskExecutionContext
 
         var request = new LastBlockRequest(
             _taskExecutionInstance.TaskId,
-            BlockType.Object);
+            BlockTypeEnum.Object);
 
         return await _objectBlockRepository.GetLastObjectBlockAsync<T>(request).ConfigureAwait(false);
     }
@@ -451,7 +441,7 @@ public class TaskExecutionContext : ITaskExecutionContext
         return new List<TaskExecutionMeta<TExecutionHeader>>();
     }
 
-    public IDateRangeBlock GetLastDateRangeBlock(LastBlockOrder lastCreated)
+    public IDateRangeBlock GetLastDateRangeBlock(LastBlockOrderEnum lastCreated)
     {
         return GetLastDateRangeBlockAsync(lastCreated).WaitAndUnwrapException();
     }
@@ -502,7 +492,8 @@ public class TaskExecutionContext : ITaskExecutionContext
         return GetDateRangeBlocksAsync(fluentBlockRequest).WaitAndUnwrapException();
     }
 
-    public async Task<IList<T>> GetBlocksAsync<T, U, TBlockRequest, TBlockSettings>(BlockType blockType, Func<U, object> fluentBlockRequest,
+    public async Task<IList<T>> GetBlocksAsync<T, U, TBlockRequest, TBlockSettings>(BlockTypeEnum blockType,
+        Func<U, object> fluentBlockRequest,
         Func<TBlockSettings, TBlockRequest> createRequestFunc,
         Func<TBlockRequest, Task<IList<T>>> generateFunc)
         where TBlockRequest : BlockRequest where U : new() where TBlockSettings : IBlockSettings
@@ -561,7 +552,7 @@ public class TaskExecutionContext : ITaskExecutionContext
             _taskExecutionOptions.ConcurrencyLimit,
             _taskConfiguration.FailedTaskRetryLimit,
             _taskConfiguration.DeadTaskRetryLimit);
-        _logger.LogDebug($"{nameof(startRequest)}={Constants.Serialize(startRequest)}");
+        _logger.LogDebug($"{nameof(startRequest)}={JsonConvert.SerializeObject(startRequest, Formatting.Indented)}");
 
         SetStartRequestValues(startRequest, referenceValue);
         SetStartRequestTasklingVersion(startRequest);
@@ -580,20 +571,18 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     private void SetStartRequestValues(TaskExecutionStartRequest startRequest, Guid referenceValue)
     {
-        if (_taskExecutionOptions.TaskDeathMode == TaskDeathMode.KeepAlive)
+        if (_taskExecutionOptions.TaskDeathMode == TaskDeathModeEnum.KeepAlive)
         {
             if (!_taskExecutionOptions.KeepAliveInterval.HasValue)
                 throw new ExecutionArgumentsException("KeepAliveInterval must be set when using KeepAlive mode");
 
             if (!_taskExecutionOptions.KeepAliveDeathThreshold.HasValue)
                 throw new ExecutionArgumentsException("KeepAliveDeathThreshold must be set when using KeepAlive mode");
-
-
             startRequest.KeepAliveDeathThreshold = _taskExecutionOptions.KeepAliveDeathThreshold;
             startRequest.KeepAliveInterval = _taskExecutionOptions.KeepAliveInterval;
         }
 
-        if (_taskExecutionOptions.TaskDeathMode == TaskDeathMode.Override)
+        if (_taskExecutionOptions.TaskDeathMode == TaskDeathModeEnum.Override)
         {
             if (!_taskExecutionOptions.OverrideThreshold.HasValue)
                 throw new ExecutionArgumentsException("OverrideThreshold must be set when using KeepAlive mode");
@@ -607,9 +596,9 @@ public class TaskExecutionContext : ITaskExecutionContext
     private void SerializeHeaderIfExists(TaskExecutionStartRequest startRequest)
     {
         if (_taskExecutionHeader != null)
-        {
             startRequest.TaskExecutionHeader = JsonGenericSerializer.Serialize(_taskExecutionHeader);
-        }
+        else
+            startRequest.TaskExecutionHeader = null;
     }
 
     private void StartKeepAlive()
@@ -631,7 +620,7 @@ public class TaskExecutionContext : ITaskExecutionContext
         request.TaskExecutionId = _taskExecutionInstance.TaskExecutionId;
         request.TaskDeathMode = _taskExecutionOptions.TaskDeathMode;
 
-        if (_taskExecutionOptions.TaskDeathMode == TaskDeathMode.KeepAlive)
+        if (_taskExecutionOptions.TaskDeathMode == TaskDeathModeEnum.KeepAlive)
             request.KeepAliveDeathThreshold = _taskExecutionOptions.KeepAliveDeathThreshold.Value;
         else
             request.OverrideDeathThreshold = _taskExecutionOptions.OverrideThreshold.Value;
@@ -653,7 +642,7 @@ public class TaskExecutionContext : ITaskExecutionContext
         request.TaskExecutionId = _taskExecutionInstance.TaskExecutionId;
         request.TaskDeathMode = _taskExecutionOptions.TaskDeathMode;
 
-        if (_taskExecutionOptions.TaskDeathMode == TaskDeathMode.KeepAlive)
+        if (_taskExecutionOptions.TaskDeathMode == TaskDeathModeEnum.KeepAlive)
             request.KeepAliveDeathThreshold = _taskExecutionOptions.KeepAliveDeathThreshold.Value;
         else
             request.OverrideDeathThreshold = _taskExecutionOptions.OverrideThreshold.Value;
@@ -672,12 +661,10 @@ public class TaskExecutionContext : ITaskExecutionContext
     private ListBlockRequest GetListBlockRequest(IBlockSettings settings)
     {
         var request = new ListBlockRequest(_taskExecutionInstance.TaskId);
-
-
         request.TaskExecutionId = _taskExecutionInstance.TaskExecutionId;
         request.TaskDeathMode = _taskExecutionOptions.TaskDeathMode;
 
-        if (_taskExecutionOptions.TaskDeathMode == TaskDeathMode.KeepAlive)
+        if (_taskExecutionOptions.TaskDeathMode == TaskDeathModeEnum.KeepAlive)
             request.KeepAliveDeathThreshold = _taskExecutionOptions.KeepAliveDeathThreshold.Value;
         else
             request.OverrideDeathThreshold = _taskExecutionOptions.OverrideThreshold.Value;
@@ -695,8 +682,6 @@ public class TaskExecutionContext : ITaskExecutionContext
         request.ReprocessOption = settings.ReprocessOption;
 
         SetConfigurationOverridableSettings(request, settings);
-
-
         return request;
     }
 
@@ -708,7 +693,7 @@ public class TaskExecutionContext : ITaskExecutionContext
         request.TaskExecutionId = _taskExecutionInstance.TaskExecutionId;
         request.TaskDeathMode = _taskExecutionOptions.TaskDeathMode;
 
-        if (_taskExecutionOptions.TaskDeathMode == TaskDeathMode.KeepAlive)
+        if (_taskExecutionOptions.TaskDeathMode == TaskDeathModeEnum.KeepAlive)
             request.KeepAliveDeathThreshold = _taskExecutionOptions.KeepAliveDeathThreshold.Value;
         else
             request.OverrideDeathThreshold = _taskExecutionOptions.OverrideThreshold.Value;
@@ -723,9 +708,10 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     private void SetConfigurationOverridableSettings(BlockRequest request, IBlockSettings settings)
     {
-        request.ReprocessDeadTasks = settings.MustReprocessDeadTasks ?? _taskConfiguration.ReprocessDeadTasks;
+        _logger.LogDebug($"{nameof(IBlockSettings)}={JsonConvert.SerializeObject(settings, Formatting.Indented)}");
+        request.ReprocessDeadTasks = settings.ReprocessDeadTasks ?? _taskConfiguration.ReprocessDeadTasks;
 
-        request.ReprocessFailedTasks = settings.MustReprocessFailedTasks ?? _taskConfiguration.ReprocessFailedTasks;
+        request.ReprocessFailedTasks = settings.ReprocessFailedTasks ?? _taskConfiguration.ReprocessFailedTasks;
 
         request.DeadTaskRetryLimit = settings.DeadTaskRetryLimit ?? _taskConfiguration.DeadTaskRetryLimit;
 
@@ -733,13 +719,14 @@ public class TaskExecutionContext : ITaskExecutionContext
 
         if (request.ReprocessDeadTasks)
             request.DeadTaskDetectionRange =
-                settings.DeadTaskDetectionRange ?? _taskConfiguration.ReprocessDeadTasksDetectionRange;
+                settings.DeadTaskDetectionRange ?? _taskConfiguration.DeadTaskDetectionRange;
 
         if (request.ReprocessFailedTasks)
             request.FailedTaskDetectionRange = settings.FailedTaskDetectionRange ??
-                                               _taskConfiguration.ReprocessFailedTasksDetectionRange;
+                                               _taskConfiguration.FailedTaskDetectionRange;
 
-        request.MaxBlocks = settings.MaximumNumberOfBlocksLimit ?? _taskConfiguration.MaxBlocksToGenerate;
+        request.MaxBlocks = settings.MaxBlocksToGenerate ?? _taskConfiguration.MaxBlocksToGenerate;
+        _logger.LogDebug($"{nameof(request)}={JsonConvert.SerializeObject(request, Formatting.Indented)}");
     }
 
     private bool IsUserCriticalSectionActive()
@@ -751,9 +738,10 @@ public class TaskExecutionContext : ITaskExecutionContext
 
     private bool ShouldProtect(BlockRequest blockRequest)
     {
+        _logger.LogDebug($"Blockrequest={JsonConvert.SerializeObject(blockRequest, Formatting.Indented)}");
         var tmp = (blockRequest.ReprocessDeadTasks || blockRequest.ReprocessFailedTasks) &&
                   !IsUserCriticalSectionActive();
-        _logger.LogDebug(tmp.ToString());
+        _logger.LogDebug($"ShouldProtect={tmp}");
         return tmp;
     }
 
@@ -765,7 +753,7 @@ public class TaskExecutionContext : ITaskExecutionContext
         _clientCriticalSectionContext = new CriticalSectionContext(_criticalSectionRepository,
             _taskExecutionInstance,
             _taskExecutionOptions,
-            CriticalSectionType.Client, _startupOptions, _loggerFactory.CreateLogger<CriticalSectionContext>());
+            CriticalSectionTypeEnum.Client, _startupOptions, _loggerFactory.CreateLogger<CriticalSectionContext>());
 
         return _clientCriticalSectionContext;
     }

@@ -5,7 +5,7 @@ VisualStudioVersion = 17.3.32922.545
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Taskling", "Taskling\Taskling.csproj", "{CBF76ACC-EB9B-42E7-A681-FA02558E08E4}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SqlServerImplementation", "SqlServerImplementation", "{8BCF138F-576D-4AE3-9DFE-34EFEEEF01C5}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "EntityFrameworkImplementation", "EntityFrameworkImplementation", "{8BCF138F-576D-4AE3-9DFE-34EFEEEF01C5}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Taskling.EntityFrameworkCore.Tests", "Taskling.EntityFrameworkCore.Tests\Taskling.EntityFrameworkCore.Tests.csproj", "{E8DE3978-18F2-4678-A2D4-1E11B0495C9F}"
 EndProject

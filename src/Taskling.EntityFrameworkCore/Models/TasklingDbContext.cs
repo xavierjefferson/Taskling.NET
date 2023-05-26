@@ -15,7 +15,7 @@ public partial class TasklingDbContext : DbContext
 
     public virtual DbSet<Block> Blocks { get; set; }
     public virtual DbSet<BlockExecution> BlockExecutions { get; set; }
-    public virtual DbSet<ForceBlockQueue> ForceBlockQueues { get; set; }
+    public virtual DbSet<ForcedBlockQueue> ForcedBlockQueues { get; set; }
     public virtual DbSet<ListBlockItem> ListBlockItems { get; set; }
     public virtual DbSet<TaskDefinition> TaskDefinitions { get; set; }
     public virtual DbSet<TaskExecution> TaskExecutions { get; set; }
@@ -78,9 +78,9 @@ public partial class TasklingDbContext : DbContext
                 .HasConstraintName("FK_BlockExecution_Block");
         });
 
-        modelBuilder.Entity<ForceBlockQueue>(entity =>
+        modelBuilder.Entity<ForcedBlockQueue>(entity =>
         {
-            entity.ToTable("ForceBlockQueue");
+            entity.ToTable("ForcedBlockQueue");
 
             entity.Property(e => e.ForcedBy)
                 .IsRequired()
@@ -92,10 +92,10 @@ public partial class TasklingDbContext : DbContext
                 .IsRequired().HasMaxLength(20);
 
             entity.HasOne(d => d.Block)
-                .WithMany(p => p.ForceBlockQueues)
+                .WithMany(p => p.ForcedBlockQueues)
                 .HasForeignKey(d => d.BlockId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_ForceBlockQueue_Block");
+                .HasConstraintName("FK_ForcedBlockQueue_Block");
         });
 
         modelBuilder.Entity<ListBlockItem>(entity =>

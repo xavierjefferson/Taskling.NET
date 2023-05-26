@@ -2,11 +2,11 @@
 using Microsoft.Extensions.Logging;
 using Taskling.EntityFrameworkCore.AncilliaryServices;
 using Taskling.EntityFrameworkCore.Models;
+using Taskling.Enums;
 using Taskling.Exceptions;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.CriticalSections;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.Tasks;
 using TaskDefinition = Taskling.EntityFrameworkCore.Models.TaskDefinition;
 
 namespace Taskling.EntityFrameworkCore.Tokens.CriticalSections;
@@ -39,7 +39,7 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
 
         return new StartCriticalSectionResponse
         {
-            GrantStatus = granted ? GrantStatus.Granted : GrantStatus.Denied
+            GrantStatus = granted ? GrantStatusEnum.Granted : GrantStatusEnum.Denied
         };
     }
 
@@ -54,7 +54,7 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
     private void ValidateStartRequest(StartCriticalSectionRequest startRequest)
     {
         _logger.LogDebug($"TaskDeathMode={startRequest.TaskDeathMode}");
-        if (startRequest.TaskDeathMode == TaskDeathMode.KeepAlive)
+        if (startRequest.TaskDeathMode == TaskDeathModeEnum.KeepAlive)
         {
             if (!startRequest.KeepAliveDeathThreshold.HasValue)
             {
@@ -62,7 +62,7 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
                 throw new ExecutionArgumentsException("KeepAliveDeathThreshold must be set when using KeepAlive mode");
             }
         }
-        else if (startRequest.TaskDeathMode == TaskDeathMode.Override)
+        else if (startRequest.TaskDeathMode == TaskDeathModeEnum.Override)
         {
             if (!startRequest.OverrideThreshold.HasValue)
             {
@@ -73,7 +73,7 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
     }
 
     private async Task<CompleteCriticalSectionResponse> ReturnCriticalSectionTokenAsync(TaskId taskId,
-        long taskDefinitionId, long taskExecutionId, CriticalSectionType criticalSectionType)
+        long taskDefinitionId, long taskExecutionId, CriticalSectionTypeEnum criticalSectionType)
     {
         return await RetryHelper.WithRetryAsync(async () =>
         {
@@ -83,7 +83,7 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
             {
                 var entityEntry = dbContext.TaskDefinitions.Attach(new TaskDefinition
                     { TaskDefinitionId = taskDefinitionId });
-                if (criticalSectionType == CriticalSectionType.User)
+                if (criticalSectionType == CriticalSectionTypeEnum.User)
                 {
                     entityEntry.Entity.UserCsStatus = 1;
                     entityEntry.Property(i => i.UserCsStatus).IsModified = true;
@@ -102,7 +102,7 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
     }
 
     private async Task<bool> TryAcquireCriticalSectionAsync(TaskId taskId, long taskDefinitionId, long taskExecutionId,
-        CriticalSectionType criticalSectionType)
+        CriticalSectionTypeEnum criticalSectionType)
     {
         return await RetryHelper.WithRetryAsync(async () =>
         {
@@ -164,12 +164,12 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
     }
 
     private async Task<CriticalSectionState> GetCriticalSectionStateAsync(long taskDefinitionId,
-        CriticalSectionType criticalSectionType, TasklingDbContext dbContext)
+        CriticalSectionTypeEnum criticalSectionType, TasklingDbContext dbContext)
     {
         var tmp = dbContext.TaskDefinitions.Where(i => i.TaskDefinitionId == taskDefinitionId);
 
         QueueItemInfo? tuple = null;
-        if (criticalSectionType == CriticalSectionType.User)
+        if (criticalSectionType == CriticalSectionTypeEnum.User)
             tuple = await tmp.Select(i => new QueueItemInfo
                     { Queue = i.UserCsQueue, Status = i.UserCsStatus, TaskExecutionId = i.UserCsTaskExecutionId })
                 .FirstOrDefaultAsync().ConfigureAwait(false);
@@ -254,12 +254,12 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
     }
 
     private async Task UpdateCriticalSectionStateAsync(long taskDefinitionId, CriticalSectionState csState,
-        CriticalSectionType criticalSectionType, TasklingDbContext dbContext)
+        CriticalSectionTypeEnum criticalSectionType, TasklingDbContext dbContext)
     {
         var taskDefinition = new TaskDefinition { TaskDefinitionId = taskDefinitionId };
         var entityEntry = dbContext.TaskDefinitions.Attach(taskDefinition);
 
-        if (criticalSectionType == CriticalSectionType.User)
+        if (criticalSectionType == CriticalSectionTypeEnum.User)
         {
             taskDefinition.UserCsQueue = csState.GetQueueString();
             taskDefinition.UserCsStatus = csState.IsGranted ? 1 : 0;
@@ -277,7 +277,6 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
             entityEntry.Property(i => i.ClientCsStatus).IsModified = true;
             entityEntry.Property(i => i.ClientCsTaskExecutionId).IsModified = true;
         }
-
 
         await dbContext.SaveChangesAsync();
     }

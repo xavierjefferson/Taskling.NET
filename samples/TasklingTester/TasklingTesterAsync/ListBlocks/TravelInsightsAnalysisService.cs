@@ -1,6 +1,7 @@
 ﻿using Taskling;
 using Taskling.Blocks.ListBlocks;
 using Taskling.Contexts;
+using Taskling.Enums;
 using TasklingTester.Common.Entities;
 using TasklingTester.Common.ListBlocks;
 using TasklingTesterAsync.Configuration;
@@ -70,7 +71,7 @@ public class TravelInsightsAnalysisService
 
                 var blockSize = 500;
                 return await taskExecutionContext.GetListBlocksAsync<Journey, BatchDatesHeader>(x =>
-                    x.WithPeriodicCommit(journeys.ToList(), batchHeader, blockSize, BatchSize.Fifty));
+                    x.WithPeriodicCommit(journeys.ToList(), batchHeader, blockSize, BatchSizeEnum.Fifty));
             }
 
             throw new Exception("Could not acquire a critical section, aborted task");
@@ -91,7 +92,7 @@ public class TravelInsightsAnalysisService
         {
             await blockContext.StartAsync();
 
-            foreach (var journeyItem in await blockContext.GetItemsAsync(ItemStatus.Pending, ItemStatus.Failed))
+            foreach (var journeyItem in await blockContext.GetItemsAsync(ItemStatusEnum.Pending, ItemStatusEnum.Failed))
                 await ProcessJourneyAsync(journeyItem);
 
             await blockContext.CompleteAsync();

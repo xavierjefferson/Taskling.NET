@@ -8,13 +8,11 @@ public class DateRangeJobBuilder : JobBuilderBase<IDateRangeBlockContext, DateRa
 {
     protected override DateRangeJobBuilder BuilderInstance => this;
 
-
     public override DateRangeJob Build()
     {
         return new DateRangeJob(_client, _application, _taskName, _getBlocksFunc, _processFunc,
             _failTaskOnException);
     }
-
 
     public DateRangeJobBuilder WithRange(Func<ITaskExecutionContext, Task<DateRange>> rangeFunc)
     {

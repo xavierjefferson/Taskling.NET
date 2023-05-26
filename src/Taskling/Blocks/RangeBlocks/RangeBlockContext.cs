@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Taskling.Blocks.Common;
 using Taskling.Contexts;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
@@ -26,7 +26,7 @@ public class RangeBlockContext : BlockContextBase, IDateRangeBlockContext, INume
         long blockExecutionId, IServiceProvider serviceProvider,
         ILoggerFactory loggerFactory,
         IRetryService retryService,
-        int forcedBlockQueueId = 0) : base(taskId, blockExecutionId, taskExecutionId, retryService,
+        long forcedBlockQueueId = 0) : base(taskId, blockExecutionId, taskExecutionId, retryService,
         taskExecutionRepository,
         loggerFactory.CreateLogger<BlockContextBase>(),
         forcedBlockQueueId)
@@ -36,22 +36,17 @@ public class RangeBlockContext : BlockContextBase, IDateRangeBlockContext, INume
         _block = rangeBlock;
     }
 
-
-    protected override BlockType BlockType => _block.RangeType;
+    protected override BlockTypeEnum BlockType => _block.RangeType;
 
     protected override Func<BlockExecutionChangeStatusRequest, Task> ChangeStatusFunc =>
         _rangeBlockRepository.ChangeStatusAsync;
 
-
     public IDateRangeBlock DateRangeBlock => _block;
-
-
     public INumericRangeBlock NumericRangeBlock => _block;
-
 
     protected override string GetFailedErrorMessage(string message)
     {
-        if (_block.RangeType == BlockType.DateRange)
+        if (_block.RangeType == BlockTypeEnum.DateRange)
             return
                 $"BlockId {_block.RangeBlockId} From: {_block.RangeBeginAsDateTime().ToString("yyyy-MM-dd HH:mm:ss")} To: {_block.RangeEndAsDateTime().ToString("yyyy-MM-dd HH:mm:ss")} Error: {message}";
         return

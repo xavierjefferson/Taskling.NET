@@ -3,9 +3,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Taskling.EntityFrameworkCore.Tests.Helpers;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Xunit;
-using TaskExecutionStatus = Taskling.Tasks.TaskExecutionStatus;
 
 namespace Taskling.EntityFrameworkCore.Tests.Contexts.Given_TaskExecutionContext;
 
@@ -24,8 +24,6 @@ public class When_GetLastExecutionMeta : TestBase
         _logger = logger;
         _executionsHelper = executionsHelper;
         _clientHelper = clientHelper;
-
-
         executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
 
         _taskDefinitionId = executionsHelper.InsertTask(CurrentTaskId);
@@ -237,14 +235,12 @@ public class When_GetLastExecutionMeta : TestBase
             }
 
             Thread.Sleep(200);
-
-
             // ACT and ASSERT
             using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
                        _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
             {
                 var executionMeta = await executionContext.GetLastExecutionMetaAsync();
-                Assert.Equal(TaskExecutionStatus.Completed, executionMeta.Status);
+                Assert.Equal(TaskExecutionStatusEnum.Completed, executionMeta.Status);
             }
         });
     }
@@ -265,14 +261,12 @@ public class When_GetLastExecutionMeta : TestBase
             }
 
             Thread.Sleep(200);
-
-
             // ACT and ASSERT
             using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
                        _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
             {
                 var executionMeta = await executionContext.GetLastExecutionMetaAsync();
-                Assert.Equal(TaskExecutionStatus.Failed, executionMeta.Status);
+                Assert.Equal(TaskExecutionStatusEnum.Failed, executionMeta.Status);
             }
         });
     }
@@ -301,13 +295,12 @@ public class When_GetLastExecutionMeta : TestBase
                 await executionContext.CompleteAsync();
             }
 
-
             // ACT and ASSERT
             using (var executionContext = _clientHelper.GetExecutionContext(CurrentTaskId,
                        _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
             {
                 var executionMeta = await executionContext.GetLastExecutionMetaAsync();
-                Assert.Equal(TaskExecutionStatus.Blocked, executionMeta.Status);
+                Assert.Equal(TaskExecutionStatusEnum.Blocked, executionMeta.Status);
 
                 await executionContext.CompleteAsync();
             }
@@ -332,7 +325,7 @@ public class When_GetLastExecutionMeta : TestBase
                            _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
                 {
                     var executionMeta = await executionContext2.GetLastExecutionMetaAsync();
-                    Assert.Equal(TaskExecutionStatus.InProgress, executionMeta.Status);
+                    Assert.Equal(TaskExecutionStatusEnum.InProgress, executionMeta.Status);
                 }
             }
         });
@@ -358,7 +351,7 @@ public class When_GetLastExecutionMeta : TestBase
                            _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing()))
                 {
                     var executionMeta = await executionContext2.GetLastExecutionMetaAsync();
-                    Assert.Equal(TaskExecutionStatus.Dead, executionMeta.Status);
+                    Assert.Equal(TaskExecutionStatusEnum.Dead, executionMeta.Status);
                 }
             }
         });

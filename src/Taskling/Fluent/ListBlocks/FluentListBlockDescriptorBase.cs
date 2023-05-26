@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
-using Taskling.Blocks.Common;
-using Taskling.Blocks.ListBlocks;
+using Taskling.Enums;
 using Taskling.Serialization;
 
 namespace Taskling.Fluent.ListBlocks;
@@ -11,32 +10,33 @@ public class FluentListBlockDescriptorBase<T> : IFluentListBlockDescriptorBase<T
     {
         var jsonValues = Serialize(values);
         var listBlockDescriptor = new FluentBlockSettingsDescriptor(jsonValues, maxBlockSize);
-        listBlockDescriptor.ListUpdateMode = ListUpdateMode.SingleItemCommit;
+        listBlockDescriptor.ListUpdateMode = ListUpdateModeEnum.SingleItemCommit;
 
         return listBlockDescriptor;
     }
 
-    public IOverrideConfigurationDescriptor WithPeriodicCommit(List<T> values, int maxBlockSize, BatchSize batchSize)
+    public IOverrideConfigurationDescriptor WithPeriodicCommit(List<T> values, int maxBlockSize,
+        BatchSizeEnum batchSize)
     {
         var jsonValues = Serialize(values);
         var listBlockDescriptor = new FluentBlockSettingsDescriptor(jsonValues, maxBlockSize);
-        listBlockDescriptor.ListUpdateMode = ListUpdateMode.PeriodicBatchCommit;
+        listBlockDescriptor.ListUpdateMode = ListUpdateModeEnum.PeriodicBatchCommit;
 
         switch (batchSize)
         {
-            case BatchSize.NotSet:
+            case BatchSizeEnum.NotSet:
                 listBlockDescriptor.UncommittedItemsThreshold = 100;
                 break;
-            case BatchSize.Ten:
+            case BatchSizeEnum.Ten:
                 listBlockDescriptor.UncommittedItemsThreshold = 10;
                 break;
-            case BatchSize.Fifty:
+            case BatchSizeEnum.Fifty:
                 listBlockDescriptor.UncommittedItemsThreshold = 50;
                 break;
-            case BatchSize.Hundred:
+            case BatchSizeEnum.Hundred:
                 listBlockDescriptor.UncommittedItemsThreshold = 100;
                 break;
-            case BatchSize.FiveHundred:
+            case BatchSizeEnum.FiveHundred:
                 listBlockDescriptor.UncommittedItemsThreshold = 500;
                 break;
         }
@@ -48,31 +48,31 @@ public class FluentListBlockDescriptorBase<T> : IFluentListBlockDescriptorBase<T
     {
         var jsonValues = Serialize(values);
         var listBlockDescriptor = new FluentBlockSettingsDescriptor(jsonValues, maxBlockSize);
-        listBlockDescriptor.ListUpdateMode = ListUpdateMode.BatchCommitAtEnd;
+        listBlockDescriptor.ListUpdateMode = ListUpdateModeEnum.BatchCommitAtEnd;
 
         return listBlockDescriptor;
     }
 
-    public IReprocessScopeDescriptor ReprocessWithSingleUnitCommit()
+    public IReprocessScopeDescriptor WithReprocessSingleUnitCommit()
     {
-        var listBlockDescriptor = new FluentBlockSettingsDescriptor(BlockType.List);
-        listBlockDescriptor.ListUpdateMode = ListUpdateMode.SingleItemCommit;
+        var listBlockDescriptor = new FluentBlockSettingsDescriptor(BlockTypeEnum.List);
+        listBlockDescriptor.ListUpdateMode = ListUpdateModeEnum.SingleItemCommit;
 
         return listBlockDescriptor;
     }
 
-    public IReprocessScopeDescriptor ReprocessWithPeriodicCommit(BatchSize batchSize)
+    public IReprocessScopeDescriptor WithReprocessPeriodicCommit(BatchSizeEnum batchSize)
     {
-        var listBlockDescriptor = new FluentBlockSettingsDescriptor(BlockType.List);
-        listBlockDescriptor.ListUpdateMode = ListUpdateMode.PeriodicBatchCommit;
+        var listBlockDescriptor = new FluentBlockSettingsDescriptor(BlockTypeEnum.List);
+        listBlockDescriptor.ListUpdateMode = ListUpdateModeEnum.PeriodicBatchCommit;
 
         return listBlockDescriptor;
     }
 
-    public IReprocessScopeDescriptor ReprocessWithBatchCommitAtEnd()
+    public IReprocessScopeDescriptor WithReprocessBatchCommitAtEnd()
     {
-        var listBlockDescriptor = new FluentBlockSettingsDescriptor(BlockType.List);
-        listBlockDescriptor.ListUpdateMode = ListUpdateMode.BatchCommitAtEnd;
+        var listBlockDescriptor = new FluentBlockSettingsDescriptor(BlockTypeEnum.List);
+        listBlockDescriptor.ListUpdateMode = ListUpdateModeEnum.BatchCommitAtEnd;
 
         return listBlockDescriptor;
     }
@@ -94,34 +94,34 @@ public class FluentListBlockDescriptorBase<TItem, THeader> : IFluentListBlockDes
         var jsonHeader = Serialize(header);
 
         var listBlockDescriptor = new FluentBlockSettingsDescriptor(jsonValues, jsonHeader, maxBlockSize);
-        listBlockDescriptor.ListUpdateMode = ListUpdateMode.SingleItemCommit;
+        listBlockDescriptor.ListUpdateMode = ListUpdateModeEnum.SingleItemCommit;
 
         return listBlockDescriptor;
     }
 
     public IOverrideConfigurationDescriptor WithPeriodicCommit(List<TItem> values, THeader header, int maxBlockSize,
-        BatchSize batchSize)
+        BatchSizeEnum batchSize)
     {
         var jsonValues = Serialize(values);
         var jsonHeader = Serialize(header);
         var listBlockDescriptor = new FluentBlockSettingsDescriptor(jsonValues, jsonHeader, maxBlockSize);
-        listBlockDescriptor.ListUpdateMode = ListUpdateMode.PeriodicBatchCommit;
+        listBlockDescriptor.ListUpdateMode = ListUpdateModeEnum.PeriodicBatchCommit;
 
         switch (batchSize)
         {
-            case BatchSize.NotSet:
+            case BatchSizeEnum.NotSet:
                 listBlockDescriptor.UncommittedItemsThreshold = 100;
                 break;
-            case BatchSize.Ten:
+            case BatchSizeEnum.Ten:
                 listBlockDescriptor.UncommittedItemsThreshold = 10;
                 break;
-            case BatchSize.Fifty:
+            case BatchSizeEnum.Fifty:
                 listBlockDescriptor.UncommittedItemsThreshold = 50;
                 break;
-            case BatchSize.Hundred:
+            case BatchSizeEnum.Hundred:
                 listBlockDescriptor.UncommittedItemsThreshold = 100;
                 break;
-            case BatchSize.FiveHundred:
+            case BatchSizeEnum.FiveHundred:
                 listBlockDescriptor.UncommittedItemsThreshold = 500;
                 break;
         }
@@ -134,31 +134,31 @@ public class FluentListBlockDescriptorBase<TItem, THeader> : IFluentListBlockDes
         var jsonValues = Serialize(values);
         var jsonHeader = Serialize(header);
         var listBlockDescriptor = new FluentBlockSettingsDescriptor(jsonValues, jsonHeader, maxBlockSize);
-        listBlockDescriptor.ListUpdateMode = ListUpdateMode.BatchCommitAtEnd;
+        listBlockDescriptor.ListUpdateMode = ListUpdateModeEnum.BatchCommitAtEnd;
 
         return listBlockDescriptor;
     }
 
-    public IReprocessScopeDescriptor ReprocessWithSingleUnitCommit()
+    public IReprocessScopeDescriptor WithReprocessSingleUnitCommit()
     {
-        var listBlockDescriptor = new FluentBlockSettingsDescriptor(BlockType.List);
-        listBlockDescriptor.ListUpdateMode = ListUpdateMode.SingleItemCommit;
+        var listBlockDescriptor = new FluentBlockSettingsDescriptor(BlockTypeEnum.List);
+        listBlockDescriptor.ListUpdateMode = ListUpdateModeEnum.SingleItemCommit;
 
         return listBlockDescriptor;
     }
 
-    public IReprocessScopeDescriptor ReprocessWithPeriodicCommit(BatchSize batchSize)
+    public IReprocessScopeDescriptor WithReprocessPeriodicCommit(BatchSizeEnum batchSize)
     {
-        var listBlockDescriptor = new FluentBlockSettingsDescriptor(BlockType.List);
-        listBlockDescriptor.ListUpdateMode = ListUpdateMode.PeriodicBatchCommit;
+        var listBlockDescriptor = new FluentBlockSettingsDescriptor(BlockTypeEnum.List);
+        listBlockDescriptor.ListUpdateMode = ListUpdateModeEnum.PeriodicBatchCommit;
 
         return listBlockDescriptor;
     }
 
-    public IReprocessScopeDescriptor ReprocessWithBatchCommitAtEnd()
+    public IReprocessScopeDescriptor WithReprocessBatchCommitAtEnd()
     {
-        var listBlockDescriptor = new FluentBlockSettingsDescriptor(BlockType.List);
-        listBlockDescriptor.ListUpdateMode = ListUpdateMode.BatchCommitAtEnd;
+        var listBlockDescriptor = new FluentBlockSettingsDescriptor(BlockTypeEnum.List);
+        listBlockDescriptor.ListUpdateMode = ListUpdateModeEnum.BatchCommitAtEnd;
 
         return listBlockDescriptor;
     }

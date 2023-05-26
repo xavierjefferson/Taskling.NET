@@ -1,6 +1,6 @@
-﻿namespace Taskling.Blocks.ListBlocks;
+﻿namespace Taskling.Enums;
 
-public enum BatchSize
+public enum BatchSizeEnum
 {
     NotSet = 0,
     Ten = 10,

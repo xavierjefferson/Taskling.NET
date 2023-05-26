@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-using Taskling.Blocks.Common;
+using Taskling.Enums;
 
 namespace Taskling.InfrastructureContracts.Blocks.CommonRequests.ForcedBlocks;
 
@@ -7,12 +7,12 @@ public class DequeueForcedBlocksRequest : BlockRequestBase
 {
     public DequeueForcedBlocksRequest(TaskId taskId,
         long taskExecutionId,
-        BlockType blockType,
-        List<int> forcedBlockQueueIds)
+        BlockTypeEnum blockType,
+        List<long> forcedBlockQueueIds)
         : base(taskId, taskExecutionId, blockType)
     {
         ForcedBlockQueueIds = forcedBlockQueueIds;
     }
 
-    public List<int> ForcedBlockQueueIds { get; set; }
+    public List<long> ForcedBlockQueueIds { get; set; }
 }

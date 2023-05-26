@@ -1,7 +1,7 @@
 ﻿using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Taskling.EntityFrameworkCore.Tests.Helpers;
-using Taskling.Events;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Xunit;
 
@@ -50,7 +50,7 @@ public class When_Checkpoint : TestBase
             }
 
             // ASSERT
-            Assert.Equal(EventType.CheckPoint, lastEvent.EventType);
+            Assert.Equal(EventTypeEnum.CheckPoint, lastEvent.EventType);
             Assert.Equal("Test checkpoint", lastEvent.Message);
         });
     }

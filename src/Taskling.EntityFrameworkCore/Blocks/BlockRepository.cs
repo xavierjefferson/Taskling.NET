@@ -1,7 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Taskling.Blocks.Common;
-using Taskling.Blocks.ListBlocks;
 using Taskling.Blocks.ObjectBlocks;
 using Taskling.Blocks.RangeBlocks;
 using Taskling.EntityFrameworkCore.AncilliaryServices;
@@ -9,8 +7,8 @@ using Taskling.EntityFrameworkCore.Blocks.Models;
 using Taskling.EntityFrameworkCore.Blocks.QueryBuilders;
 using Taskling.EntityFrameworkCore.Blocks.Serialization;
 using Taskling.EntityFrameworkCore.Models;
+using Taskling.Enums;
 using Taskling.Exceptions;
-using Taskling.Extensions;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
@@ -20,7 +18,6 @@ using Taskling.InfrastructureContracts.Blocks.ObjectBlocks;
 using Taskling.InfrastructureContracts.Blocks.RangeBlocks;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.Serialization;
-using Taskling.Tasks;
 using TaskDefinition = Taskling.InfrastructureContracts.TaskExecution.TaskDefinition;
 
 namespace Taskling.EntityFrameworkCore.Blocks;
@@ -32,17 +29,14 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
 
     public static readonly int[] PendingOrFailedStatuses =
     {
-        (int)BlockExecutionStatus.NotStarted,
-        (int)BlockExecutionStatus.NotDefined, (int)BlockExecutionStatus.Started,
-        (int)BlockExecutionStatus.Failed
+        (int)BlockExecutionStatusEnum.NotStarted,
+        (int)BlockExecutionStatusEnum.NotDefined, (int)BlockExecutionStatusEnum.Started,
+        (int)BlockExecutionStatusEnum.Failed
     };
 
     private readonly ILogger<BlockRepository> _logger;
     private readonly ILoggerFactory _loggerFactory;
-
-
     private readonly ITaskRepository _taskRepository;
-
 
     public BlockRepository(ITaskRepository taskRepository, IConnectionStore connectionStore,
         ILogger<BlockRepository> logger, IDbContextFactoryEx dbContextFactoryEx, ILoggerFactory loggerFactory) : base(
@@ -54,17 +48,16 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
         _loggerFactory = loggerFactory;
     }
 
-
     public async Task<IList<ForcedRangeBlockQueueItem>> GetQueuedForcedRangeBlocksAsync(
         QueuedForcedBlocksRequest queuedForcedBlocksRequest)
     {
         switch (queuedForcedBlocksRequest.BlockType)
         {
-            case BlockType.DateRange:
+            case BlockTypeEnum.DateRange:
                 var tmp = await GetForcedDateRangeBlocksAsync(queuedForcedBlocksRequest).ConfigureAwait(false);
                 _logger.LogDebug($"Returning {tmp.Count}");
                 return tmp;
-            case BlockType.NumericRange:
+            case BlockTypeEnum.NumericRange:
                 var tmp2 = await GetForcedNumericRangeBlocksAsync(queuedForcedBlocksRequest).ConfigureAwait(false);
                 _logger.LogDebug($"Returning {tmp2.Count}");
                 return tmp2;
@@ -90,10 +83,10 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
         await UpdateForcedBlocksAsync(dequeueForcedBlocksRequest).ConfigureAwait(false);
     }
 
-
     public async Task<IList<RangeBlock>> FindRangeBlocksOfTaskAsync(FindBlocksOfTaskRequest blocksOfTaskRequest)
     {
-        return await FindBlocksOfTaskAsync(blocksOfTaskRequest, new[] { BlockType.DateRange, BlockType.NumericRange },
+        return await FindBlocksOfTaskAsync(blocksOfTaskRequest,
+            new[] { BlockTypeEnum.DateRange, BlockTypeEnum.NumericRange },
             (i, j) => GetRangeBlocks(j, i));
     }
 
@@ -113,24 +106,24 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
                 Block block;
                 switch (rangeBlockCreateRequest.BlockType)
                 {
-                    case BlockType.DateRange:
+                    case BlockTypeEnum.DateRange:
                         block = new Block
                         {
                             TaskDefinitionId = taskDefinition.TaskDefinitionId,
                             FromDate = new DateTime(rangeBlockCreateRequest.From),
                             ToDate = new DateTime(rangeBlockCreateRequest.To),
-                            BlockType = (int)BlockType.DateRange,
+                            BlockType = (int)BlockTypeEnum.DateRange,
                             CreatedDate = DateTime.UtcNow
                         };
 
                         break;
-                    case BlockType.NumericRange:
+                    case BlockTypeEnum.NumericRange:
                         block = new Block
                         {
                             TaskDefinitionId = taskDefinition.TaskDefinitionId,
                             FromNumber = rangeBlockCreateRequest.From,
                             ToNumber = rangeBlockCreateRequest.To,
-                            BlockType = (int)BlockType.NumericRange,
+                            BlockType = (int)BlockTypeEnum.NumericRange,
                             CreatedDate = DateTime.UtcNow
                         };
 
@@ -160,7 +153,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
 
     public async Task<IList<ProtoListBlock>> FindListBlocksOfTaskAsync(FindBlocksOfTaskRequest blocksOfTaskRequest)
     {
-        return await FindBlocksOfTaskAsync(blocksOfTaskRequest, new[] { BlockType.List },
+        return await FindBlocksOfTaskAsync(blocksOfTaskRequest, new[] { BlockTypeEnum.List },
             (i, j) => GetListBlocks(j, i));
     }
 
@@ -171,7 +164,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
             await _taskRepository.EnsureTaskDefinitionAsync(createRequest.TaskId).ConfigureAwait(false);
 
         var response = new ListBlockCreateResponse();
-        if (createRequest.BlockType == BlockType.List)
+        if (createRequest.BlockType == BlockTypeEnum.List)
         {
             var blockId = await AddNewListBlockAsync(createRequest.TaskId, taskDefinition.TaskDefinitionId,
                 createRequest.SerializedHeader, createRequest.CompressionThreshold).ConfigureAwait(false);
@@ -195,16 +188,14 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
         return await AddBlockExecutionAsync(executionCreateRequest).ConfigureAwait(false);
     }
 
-
     public async Task<IList<ObjectBlock<T>>> FindObjectBlocksOfTaskAsync<T>(FindBlocksOfTaskRequest blocksOfTaskRequest)
     {
-        if (blocksOfTaskRequest.BlockType == BlockType.Object)
+        if (blocksOfTaskRequest.BlockType == BlockTypeEnum.Object)
             return await FindObjectBlocksOfTaskAsync<T>(blocksOfTaskRequest, blocksOfTaskRequest.ReprocessOption)
                 .ConfigureAwait(false);
 
         throw new NotSupportedException(UnexpectedBlockTypeMessage);
     }
-
 
     public async Task<long> AddObjectBlockExecutionAsync(BlockExecutionCreateRequest executionCreateRequest)
     {
@@ -218,7 +209,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
             await _taskRepository.EnsureTaskDefinitionAsync(createRequest.TaskId).ConfigureAwait(false);
 
         var response = new ObjectBlockCreateResponse<T>();
-        if (createRequest.BlockType == BlockType.Object)
+        if (createRequest.BlockType == BlockTypeEnum.Object)
         {
             var blockId = await AddNewObjectBlockAsync(createRequest.TaskId, taskDefinition.TaskDefinitionId,
                 createRequest.Object, createRequest.CompressionThreshold).ConfigureAwait(false);
@@ -235,7 +226,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
     }
 
     private async Task<IList<T>> FindBlocksOfTaskAsync<T>(FindBlocksOfTaskRequest blocksOfTaskRequest,
-        BlockType[] blockTypes, Func<List<BlockQueryItem>, FindBlocksOfTaskRequest, IList<T>> converter)
+        BlockTypeEnum[] blockTypes, Func<List<BlockQueryItem>, FindBlocksOfTaskRequest, IList<T>> converter)
     {
         if (blockTypes.Contains(blocksOfTaskRequest.BlockType))
             return await RetryHelper.WithRetryAsync(async () =>
@@ -255,7 +246,6 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
 
         throw new NotSupportedException(UnexpectedBlockTypeMessage);
     }
-
 
     private async Task<long> AddNewListBlockAsync(TaskId taskId, long taskDefinitionId, string? header,
         int compressionThreshold)
@@ -279,7 +269,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
                 {
                     TaskDefinitionId = taskDefinitionId,
 
-                    BlockType = (int)BlockType.List,
+                    BlockType = (int)BlockTypeEnum.List,
                     CreatedDate = DateTime.UtcNow
                 };
                 if (isLargeTextValue)
@@ -314,8 +304,6 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
                     {
                         BlockId = blockId
                     };
-
-
                     if (value.Length > createRequest.CompressionThreshold)
                     {
                         item.Value = null;
@@ -327,7 +315,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
                         item.CompressedValue = null;
                     }
 
-                    item.Status = (int)ItemStatus.Pending;
+                    item.Status = (int)ItemStatusEnum.Pending;
                     item.LastUpdated = DateTime.UtcNow;
                     await dbContext.ListBlockItems.AddAsync(item);
                 }
@@ -336,7 +324,6 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
             }
         });
     }
-
 
     private async Task<long> AddNewObjectBlockAsync<T>(TaskId taskId, long taskDefinitionId, T objectData,
         int compressionThreshold)
@@ -358,7 +345,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
                 var block = new Block
                 {
                     TaskDefinitionId = taskDefinitionId,
-                    BlockType = (int)BlockType.Object,
+                    BlockType = (int)BlockTypeEnum.Object,
                     CreatedDate = DateTime.UtcNow
                 };
                 block.ObjectData = isLargeTextValue ? null : jsonValue;
@@ -371,7 +358,6 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
             }
         });
     }
-
 
     private async Task<IList<ObjectBlock<T>>> FindSearchableObjectBlocksAsync<T>(
         ISearchableBlockRequest deadBlocksRequest,
@@ -386,11 +372,9 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
             {
                 var items = await GetBlockQueryItems(deadBlocksRequest, blockItemDelegateRunner, taskDefinition,
                     dbContext);
-
-
                 foreach (var item in items)
                 {
-                    var blockType = (BlockType)item.BlockType;
+                    var blockType = (BlockTypeEnum)item.BlockType;
                     if (blockType == deadBlocksRequest.BlockType)
                     {
                         var objectBlock = new ObjectBlock<T>();
@@ -424,12 +408,11 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
 
     private async Task<IList<ObjectBlock<T>>> FindObjectBlocksOfTaskAsync<T>(
         FindBlocksOfTaskRequest blocksOfTaskRequest,
-        ReprocessOption reprocessOption)
+        ReprocessOptionEnum reprocessOptionEnum)
     {
-        return await FindBlocksOfTaskAsync(blocksOfTaskRequest, new[] { BlockType.Object },
+        return await FindBlocksOfTaskAsync(blocksOfTaskRequest, new[] { BlockTypeEnum.Object },
             (i, j) => GetObjectBlocks<T, BlockQueryItem>(j, i));
     }
-
 
     private async Task<IList<ForcedRangeBlockQueueItem>> GetForcedDateRangeBlocksAsync(
         QueuedForcedBlocksRequest queuedForcedBlocksRequest)
@@ -454,45 +437,44 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
             using (var dbContext = await GetDbContextAsync(queuedForcedBlocksRequest.TaskId))
 
             {
-                var items = await ForcedBlockQueueQueryBuilder.GetForcedBlockQueueQueryItems(dbContext,
+                var items = await GetForcedBlockQueueQueryItems(dbContext,
                     taskDefinition.TaskDefinitionId,
                     queuedForcedBlocksRequest.BlockType).ConfigureAwait(false);
                 var results = new List<ForcedRangeBlockQueueItem>();
                 foreach (var item in items)
                 {
-                    var blockType = (BlockType)item.BlockType;
+                    var blockType = (BlockTypeEnum)item.BlockType;
                     if (blockType == queuedForcedBlocksRequest.BlockType)
                     {
                         var blockId = item.BlockId;
                         var attempt = item.Attempt;
-                        var forceBlockQueueId = 0;
 
                         long rangeBegin;
                         long rangeEnd;
 
                         RangeBlock? rangeBlock = null;
                         var logger = _loggerFactory.CreateLogger<RangeBlock>();
-                        if (queuedForcedBlocksRequest.BlockType == BlockType.DateRange)
+                        switch (queuedForcedBlocksRequest.BlockType)
                         {
-                            rangeBegin = item.FromDate.Value.Ticks;
-                            rangeEnd = item.ToDate.Value.Ticks;
-                            rangeBlock = new RangeBlock(blockId, attempt + 1, rangeBegin, rangeEnd,
-                                queuedForcedBlocksRequest.BlockType, logger);
-                            forceBlockQueueId = item.ForceBlockQueueId;
-                        }
-                        else if (queuedForcedBlocksRequest.BlockType == BlockType.NumericRange)
-                        {
-                            rangeBegin = item.FromNumber.Value;
-                            rangeEnd = item.ToNumber.Value;
-                            rangeBlock = new RangeBlock(blockId, attempt + 1, rangeBegin, rangeEnd,
-                                queuedForcedBlocksRequest.BlockType, logger);
-                            forceBlockQueueId = item.ForceBlockQueueId;
+                            case BlockTypeEnum.DateRange:
+                                rangeBegin = item.FromDate.Value.Ticks;
+                                rangeEnd = item.ToDate.Value.Ticks;
+                                break;
+                            case BlockTypeEnum.NumericRange:
+                                rangeBegin = item.FromNumber.Value;
+                                rangeEnd = item.ToNumber.Value;
+                                break;
+                            default:
+                                throw new InvalidOperationException(
+                                    $"unknown block type {queuedForcedBlocksRequest.BlockType}");
                         }
 
+                        rangeBlock = new RangeBlock(blockId, attempt + 1, rangeBegin, rangeEnd,
+                            queuedForcedBlocksRequest.BlockType, logger);
                         var queueItem = new ForcedRangeBlockQueueItem
                         {
                             BlockType = queuedForcedBlocksRequest.BlockType,
-                            ForcedBlockQueueId = forceBlockQueueId,
+                            ForcedBlockQueueId = item.ForcedBlockQueueId,
                             RangeBlock = rangeBlock
                         };
 
@@ -519,21 +501,19 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
             var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(queuedForcedBlocksRequest.TaskId)
                 .ConfigureAwait(false);
             using (var dbContext = await GetDbContextAsync(queuedForcedBlocksRequest.TaskId).ConfigureAwait(false))
-
-
             {
-                var items = await ForcedBlockQueueQueryBuilder.GetForcedBlockQueueQueryItems(dbContext,
+                var items = await GetForcedBlockQueueQueryItems(dbContext,
                     taskDefinition.TaskDefinitionId,
                     queuedForcedBlocksRequest.BlockType).ConfigureAwait(false);
 
                 foreach (var item in items)
                 {
-                    var blockType = (BlockType)item.BlockType;
+                    var blockType = (BlockTypeEnum)item.BlockType;
                     if (blockType == queuedForcedBlocksRequest.BlockType)
                     {
                         var blockId = item.BlockId;
                         var attempt = item.Attempt;
-                        var forceBlockQueueId = item.ForceBlockQueueId;
+                        var forcedBlockQueueId = item.ForcedBlockQueueId;
 
                         var listBlock = new ProtoListBlock
                         {
@@ -545,7 +525,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
                         var queueItem = new ForcedListBlockQueueItem
                         {
                             BlockType = queuedForcedBlocksRequest.BlockType,
-                            ForcedBlockQueueId = forceBlockQueueId,
+                            ForcedBlockQueueId = forcedBlockQueueId,
                             ListBlock = listBlock
                         };
 
@@ -573,17 +553,13 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
                 .ConfigureAwait(false);
 
             using (var dbContext = await GetDbContextAsync(queuedForcedBlocksRequest.TaskId).ConfigureAwait(false))
-
-
             {
-                var items = await ForcedBlockQueueQueryBuilder.GetForcedBlockQueueQueryItems(dbContext,
+                var items = await GetForcedBlockQueueQueryItems(dbContext,
                     taskDefinition.TaskDefinitionId,
                     queuedForcedBlocksRequest.BlockType).ConfigureAwait(false);
-
-
                 foreach (var item in items)
                 {
-                    var blockType = (BlockType)item.BlockType;
+                    var blockType = (BlockTypeEnum)item.BlockType;
                     if (blockType == queuedForcedBlocksRequest.BlockType)
                     {
                         var objectData =
@@ -599,7 +575,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
                         var queueItem = new ForcedObjectBlockQueueItem<T>
                         {
                             BlockType = queuedForcedBlocksRequest.BlockType,
-                            ForcedBlockQueueId = item.ForceBlockQueueId,
+                            ForcedBlockQueueId = item.ForcedBlockQueueId,
                             ObjectBlock = objectBlock
                         };
 
@@ -618,7 +594,7 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
     }
 
     private static ExecutionException GetBlockTypeException(IBlockRequest blockTypedRequest,
-        BlockType blockType)
+        BlockTypeEnum blockType)
     {
         return new ExecutionException(
             @"The block type of the process does not match the block type of the queued item. 
@@ -632,20 +608,19 @@ This could occur if the block type of the process has been changed during a new 
         {
             using (var dbContext = await GetDbContextAsync(dequeueForcedBlocksRequest.TaskId).ConfigureAwait(false))
             {
-                var forceBlockQueues = await dbContext.ForceBlockQueues
-                    .Where(i => dequeueForcedBlocksRequest.ForcedBlockQueueIds.Contains(i.ForceBlockQueueId))
+                var forcedBlockQueues = await dbContext.ForcedBlockQueues
+                    .Where(i => dequeueForcedBlocksRequest.ForcedBlockQueueIds.Contains(i.ForcedBlockQueueId))
                     .ToListAsync().ConfigureAwait(false);
-                foreach (var forceBlockQueueId in forceBlockQueues)
+                foreach (var forcedBlockQueueId in forcedBlockQueues)
                 {
-                    forceBlockQueueId.ProcessingStatus = "Execution Created";
-                    dbContext.ForceBlockQueues.Update(forceBlockQueueId);
+                    forcedBlockQueueId.ProcessingStatus = "Execution Created";
+                    dbContext.ForcedBlockQueues.Update(forcedBlockQueueId);
                 }
 
                 await dbContext.SaveChangesAsync().ConfigureAwait(false);
             }
         });
     }
-
 
     private async Task<long> AddBlockExecutionAsync(BlockExecutionCreateRequest executionCreateRequest)
     {
@@ -659,7 +634,7 @@ This could occur if the block type of the process has been changed during a new 
                     TaskExecutionId = executionCreateRequest.TaskExecutionId,
                     BlockId = executionCreateRequest.BlockId,
                     Attempt = executionCreateRequest.Attempt,
-                    BlockExecutionStatus = (int)BlockExecutionStatus.NotStarted,
+                    BlockExecutionStatus = (int)BlockExecutionStatusEnum.NotStarted,
                     CreatedAt = DateTime.UtcNow
                 };
                 await dbContext.BlockExecutions.AddAsync(blockExecution).ConfigureAwait(false);
@@ -668,5 +643,47 @@ This could occur if the block type of the process has been changed during a new 
                 return blockExecution.BlockExecutionId;
             }
         });
+    }
+
+    public static async Task<List<BlockQueryItem>> GetBlocksInner(BlockItemRequestWrapper requestWrapper)
+    {
+        var tasklingDbContext = requestWrapper.DbContext;
+        var request = requestWrapper.Body;
+
+        var b0 = tasklingDbContext.BlockExecutions.Include(i => i.TaskExecution).Where(i =>
+                i.TaskExecution.StartedAt >= request.SearchPeriodBegin
+                && i.TaskExecution.StartedAt <= request.SearchPeriodEnd &&
+                i.TaskExecution.TaskDefinitionId == requestWrapper.TaskDefinitionId)
+            .GroupBy(i => i.BlockId,
+                (i, j) => j.Max(k => k.BlockExecutionId));
+        var d = b0.ToList();
+
+        var statuses = request.GetMatchingStatuses();
+
+        var b = tasklingDbContext.BlockExecutions.Include(i => i.TaskExecution)
+            .Join(b0, i => i.BlockExecutionId, i => i, (i, j) => i)
+            .Where(i => !i.Block.IsPhantom && statuses.Contains(i.BlockExecutionStatus) &&
+                        i.Attempt < request.AttemptLimit)
+            //.Where(i=>i.StartedAt.Value.Add(i.TaskExecution.OverrideThreshold.Value) <= DateTime.UtcNow)
+            .OrderBy(i => i.Block.CreatedDate)
+            .Select(i => new BlockQueryItem
+            {
+                BlockId = i.BlockId,
+                Attempt = i.Attempt,
+                BlockType = i.Block.BlockType,
+                FromDate = i.Block.FromDate,
+                ObjectData = i.Block.ObjectData,
+                CompressedObjectData = i.Block.CompressedObjectData,
+                FromNumber = i.Block.FromNumber,
+                ToDate = i.Block.ToDate,
+                ToNumber = i.Block.ToNumber,
+                StartedAt = i.TaskExecution.StartedAt,
+                LastKeepAlive = i.TaskExecution.LastKeepAlive,
+                OverrideThreshold = i.TaskExecution.OverrideThreshold,
+                KeepAliveDeathThreshold = i.TaskExecution.KeepAliveDeathThreshold,
+                KeepAliveInterval = i.TaskExecution.KeepAliveInterval
+            });
+        var c = await b.ToListAsync().ConfigureAwait(false);
+        return c;
     }
 }

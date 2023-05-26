@@ -4,7 +4,7 @@ public class Block
 {
     public Block()
     {
-        ForceBlockQueues = new HashSet<ForceBlockQueue>();
+        ForcedBlockQueues = new HashSet<ForcedBlockQueue>();
         ListBlockItems = new HashSet<ListBlockItem>();
         BlockExecutions = new HashSet<BlockExecution>();
     }
@@ -22,7 +22,7 @@ public class Block
     public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
     public virtual TaskDefinition TaskDefinition { get; set; }
-    public virtual ICollection<ForceBlockQueue> ForceBlockQueues { get; set; }
+    public virtual ICollection<ForcedBlockQueue> ForcedBlockQueues { get; set; }
     public virtual ICollection<ListBlockItem> ListBlockItems { get; set; }
     public virtual ICollection<BlockExecution> BlockExecutions { get; set; }
 }

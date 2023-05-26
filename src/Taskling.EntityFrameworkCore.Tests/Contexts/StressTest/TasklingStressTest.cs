@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Taskling.Blocks.ListBlocks;
 using Taskling.EntityFrameworkCore.Tests.Helpers;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts;
 using Xunit;
 
@@ -133,11 +133,11 @@ public class TasklingStressTest : TestBase
 
                 var blocks =
                     await executionContext.GetDateRangeBlocksAsync(
-                        x => x.WithRange(DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, new TimeSpan(0, 1, 0, 0))
+                        x => x.WithRange(DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, TimeSpans.OneHour)
                             .OverrideConfiguration()
-                            .ReprocessDeadTasks(new TimeSpan(1, 0, 0, 0), 3)
-                            .ReprocessFailedTasks(new TimeSpan(1, 0, 0, 0), 3)
-                            .MaximumBlocksToGenerate(50));
+                            .WithReprocessDeadTasks(TimeSpans.OneDay, 3)
+                            .WithReprocessFailedTasks(TimeSpans.OneDay, 3)
+                            .WithMaximumBlocksToGenerate(50));
 
                 foreach (var block in blocks)
                 {
@@ -166,9 +166,9 @@ public class TasklingStressTest : TestBase
 
                 var blocks = await executionContext.GetNumericRangeBlocksAsync(x => x.WithRange(1, 10000, 100)
                     .OverrideConfiguration()
-                    .ReprocessDeadTasks(new TimeSpan(1, 0, 0, 0), 3)
-                    .ReprocessFailedTasks(new TimeSpan(1, 0, 0, 0), 3)
-                    .MaximumBlocksToGenerate(50));
+                    .WithReprocessDeadTasks(TimeSpans.OneDay, 3)
+                    .WithReprocessFailedTasks(TimeSpans.OneDay, 3)
+                    .WithMaximumBlocksToGenerate(50));
 
                 foreach (var block in blocks)
                 {
@@ -199,9 +199,9 @@ public class TasklingStressTest : TestBase
                 var blocks = await executionContext.GetListBlocksAsync<PersonDto>(x => x
                     .WithSingleUnitCommit(values, 50)
                     .OverrideConfiguration()
-                    .ReprocessDeadTasks(new TimeSpan(1, 0, 0, 0), 3)
-                    .ReprocessFailedTasks(new TimeSpan(1, 0, 0, 0), 3)
-                    .MaximumBlocksToGenerate(50));
+                    .WithReprocessDeadTasks(TimeSpans.OneDay, 3)
+                    .WithReprocessFailedTasks(TimeSpans.OneDay, 3)
+                    .WithMaximumBlocksToGenerate(50));
 
                 foreach (var block in blocks)
                 {
@@ -230,11 +230,11 @@ public class TasklingStressTest : TestBase
 
                 var values = GetList("PC", 1000);
                 var blocks = await executionContext.GetListBlocksAsync<PersonDto>(x => x
-                    .WithPeriodicCommit(values, 50, BatchSize.Hundred)
+                    .WithPeriodicCommit(values, 50, BatchSizeEnum.Hundred)
                     .OverrideConfiguration()
-                    .ReprocessDeadTasks(new TimeSpan(1, 0, 0, 0), 3)
-                    .ReprocessFailedTasks(new TimeSpan(1, 0, 0, 0), 3)
-                    .MaximumBlocksToGenerate(50));
+                    .WithReprocessDeadTasks(TimeSpans.OneDay, 3)
+                    .WithReprocessFailedTasks(TimeSpans.OneDay, 3)
+                    .WithMaximumBlocksToGenerate(50));
 
                 foreach (var block in blocks)
                 {
@@ -265,9 +265,9 @@ public class TasklingStressTest : TestBase
                 var blocks = await executionContext.GetListBlocksAsync<PersonDto>(x => x
                     .WithBatchCommitAtEnd(values, 50)
                     .OverrideConfiguration()
-                    .ReprocessDeadTasks(new TimeSpan(1, 0, 0, 0), 3)
-                    .ReprocessFailedTasks(new TimeSpan(1, 0, 0, 0), 3)
-                    .MaximumBlocksToGenerate(50));
+                    .WithReprocessDeadTasks(TimeSpans.OneDay, 3)
+                    .WithReprocessFailedTasks(TimeSpans.OneDay, 3)
+                    .WithMaximumBlocksToGenerate(50));
 
                 foreach (var block in blocks)
                 {
@@ -277,7 +277,6 @@ public class TasklingStressTest : TestBase
             }
         }
     }
-
 
     private async Task RunOverrideDateRangeTaskAsync()
     {
@@ -297,11 +296,11 @@ public class TasklingStressTest : TestBase
 
                 var blocks =
                     await executionContext.GetDateRangeBlocksAsync(
-                        x => x.WithRange(DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, new TimeSpan(0, 1, 0, 0))
+                        x => x.WithRange(DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, TimeSpans.OneHour)
                             .OverrideConfiguration()
-                            .ReprocessDeadTasks(new TimeSpan(1, 0, 0, 0), 3)
-                            .ReprocessFailedTasks(new TimeSpan(1, 0, 0, 0), 3)
-                            .MaximumBlocksToGenerate(50));
+                            .WithReprocessDeadTasks(TimeSpans.OneDay, 3)
+                            .WithReprocessFailedTasks(TimeSpans.OneDay, 3)
+                            .WithMaximumBlocksToGenerate(50));
 
                 foreach (var block in blocks)
                 {
@@ -330,9 +329,9 @@ public class TasklingStressTest : TestBase
 
                 var blocks = await executionContext.GetNumericRangeBlocksAsync(x => x.WithRange(1, 10000, 100)
                     .OverrideConfiguration()
-                    .ReprocessDeadTasks(new TimeSpan(1, 0, 0, 0), 3)
-                    .ReprocessFailedTasks(new TimeSpan(1, 0, 0, 0), 3)
-                    .MaximumBlocksToGenerate(50));
+                    .WithReprocessDeadTasks(TimeSpans.OneDay, 3)
+                    .WithReprocessFailedTasks(TimeSpans.OneDay, 3)
+                    .WithMaximumBlocksToGenerate(50));
 
                 foreach (var block in blocks)
                 {
@@ -363,9 +362,9 @@ public class TasklingStressTest : TestBase
                 var blocks = await executionContext.GetListBlocksAsync<PersonDto>(x => x
                     .WithSingleUnitCommit(values, 50)
                     .OverrideConfiguration()
-                    .ReprocessDeadTasks(new TimeSpan(1, 0, 0, 0), 3)
-                    .ReprocessFailedTasks(new TimeSpan(1, 0, 0, 0), 3)
-                    .MaximumBlocksToGenerate(50));
+                    .WithReprocessDeadTasks(TimeSpans.OneDay, 3)
+                    .WithReprocessFailedTasks(TimeSpans.OneDay, 3)
+                    .WithMaximumBlocksToGenerate(50));
 
                 foreach (var block in blocks)
                 {
@@ -394,11 +393,11 @@ public class TasklingStressTest : TestBase
 
                 var values = GetList("PC", 1000);
                 var blocks = await executionContext.GetListBlocksAsync<PersonDto>(x => x
-                    .WithPeriodicCommit(values, 50, BatchSize.Hundred)
+                    .WithPeriodicCommit(values, 50, BatchSizeEnum.Hundred)
                     .OverrideConfiguration()
-                    .ReprocessDeadTasks(new TimeSpan(1, 0, 0, 0), 3)
-                    .ReprocessFailedTasks(new TimeSpan(1, 0, 0, 0), 3)
-                    .MaximumBlocksToGenerate(50));
+                    .WithReprocessDeadTasks(TimeSpans.OneDay, 3)
+                    .WithReprocessFailedTasks(TimeSpans.OneDay, 3)
+                    .WithMaximumBlocksToGenerate(50));
 
                 foreach (var block in blocks)
                 {
@@ -429,9 +428,9 @@ public class TasklingStressTest : TestBase
                 var blocks = await executionContext.GetListBlocksAsync<PersonDto>(x => x
                     .WithBatchCommitAtEnd(values, 50)
                     .OverrideConfiguration()
-                    .ReprocessDeadTasks(new TimeSpan(1, 0, 0, 0), 3)
-                    .ReprocessFailedTasks(new TimeSpan(1, 0, 0, 0), 3)
-                    .MaximumBlocksToGenerate(50));
+                    .WithReprocessDeadTasks(TimeSpans.OneDay, 3)
+                    .WithReprocessFailedTasks(TimeSpans.OneDay, 3)
+                    .WithMaximumBlocksToGenerate(50));
 
                 foreach (var block in blocks)
                 {

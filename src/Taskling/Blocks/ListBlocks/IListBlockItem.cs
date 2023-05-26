@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Taskling.Enums;
 
 namespace Taskling.Blocks.ListBlocks;
 
 public interface IItem
 {
-    ItemStatus Status { get; set; }
+    ItemStatusEnum Status { get; set; }
 }
 
 public interface IListBlockItem<T> : IItem

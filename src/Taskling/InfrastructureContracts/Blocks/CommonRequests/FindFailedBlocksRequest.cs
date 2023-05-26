@@ -1,15 +1,15 @@
 ﻿using System;
-using Taskling.Blocks.Common;
+using Taskling.Enums;
 
 namespace Taskling.InfrastructureContracts.Blocks.CommonRequests;
 
 public class FindFailedBlocksRequest : StatusSpecificBlockRequestBase, ISearchableBlockRequest
 {
-    private static readonly int[] Statuses = { (int)BlockExecutionStatus.Failed };
+    private static readonly int[] Statuses = { (int)BlockExecutionStatusEnum.Failed };
 
     public FindFailedBlocksRequest(TaskId taskId,
         long taskExecutionId,
-        BlockType blockType,
+        BlockTypeEnum blockType,
         DateTime searchPeriodBegin,
         DateTime searchPeriodEnd,
         int blockCountLimit,

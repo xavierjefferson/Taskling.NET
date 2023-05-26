@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Taskling.Blocks.Common;
 using Taskling.EntityFrameworkCore.Tests.Helpers;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.TaskExecution;
@@ -54,7 +54,7 @@ public class When_ChangeStatus : TestBase
         var block1 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, _baseDateTime.AddMinutes(-20),
             _baseDateTime.AddMinutes(-30), DateTime.UtcNow);
         _blockExecutionId = _blocksHelper.InsertBlockExecution(_taskExecution1, block1, _baseDateTime.AddMinutes(-20),
-            _baseDateTime.AddMinutes(-20), _baseDateTime.AddMinutes(-25), BlockExecutionStatus.Started);
+            _baseDateTime.AddMinutes(-20), _baseDateTime.AddMinutes(-25), BlockExecutionStatusEnum.Started);
     }
 
     private void InsertNumericRangeBlock()
@@ -64,7 +64,7 @@ public class When_ChangeStatus : TestBase
         _baseDateTime = new DateTime(2016, 1, 1);
         var block1 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 1, 100, DateTime.UtcNow);
         _blockExecutionId = _blocksHelper.InsertBlockExecution(_taskExecution1, block1, _baseDateTime.AddMinutes(-20),
-            _baseDateTime.AddMinutes(-20), _baseDateTime.AddMinutes(-25), BlockExecutionStatus.Started);
+            _baseDateTime.AddMinutes(-20), _baseDateTime.AddMinutes(-25), BlockExecutionStatusEnum.Started);
     }
 
     [Fact]
@@ -80,12 +80,10 @@ public class When_ChangeStatus : TestBase
             var request = new BlockExecutionChangeStatusRequest(
                 CurrentTaskId,
                 _taskExecution1,
-                BlockType.DateRange,
+                BlockTypeEnum.DateRange,
                 _blockExecutionId,
-                BlockExecutionStatus.Completed);
+                BlockExecutionStatusEnum.Completed);
             request.ItemsProcessed = 10000;
-
-
             // ACT
             var sut = CreateSut();
             await sut.ChangeStatusAsync(request);
@@ -110,12 +108,10 @@ public class When_ChangeStatus : TestBase
             var request = new BlockExecutionChangeStatusRequest(
                 CurrentTaskId,
                 _taskExecution1,
-                BlockType.NumericRange,
+                BlockTypeEnum.NumericRange,
                 _blockExecutionId,
-                BlockExecutionStatus.Completed);
+                BlockExecutionStatusEnum.Completed);
             request.ItemsProcessed = 10000;
-
-
             // ACT
             var sut = CreateSut();
             await sut.ChangeStatusAsync(request);

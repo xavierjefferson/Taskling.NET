@@ -1,10 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Taskling.Blocks.Common;
-using Taskling.Blocks.ListBlocks;
 using Taskling.EntityFrameworkCore.AncilliaryServices;
 using Taskling.EntityFrameworkCore.Blocks.Serialization;
 using Taskling.EntityFrameworkCore.Models;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
@@ -35,8 +34,8 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
                 blockExecution.BlockExecutionStatus = (int)changeStatusRequest.BlockExecutionStatus;
                 switch (changeStatusRequest.BlockExecutionStatus)
                 {
-                    case BlockExecutionStatus.Completed:
-                    case BlockExecutionStatus.Failed:
+                    case BlockExecutionStatusEnum.Completed:
+                    case BlockExecutionStatusEnum.Failed:
                         blockExecution.CompletedAt = DateTime.UtcNow;
                         entityEntry.Property(i => i.CompletedAt).IsModified = true;
                         break;
@@ -46,7 +45,6 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
                         break;
                 }
 
-                //dbContext.BlockExecutions.Update(blockExecution);
                 await dbContext.SaveChangesAsync().ConfigureAwait(false);
             }
         });
@@ -61,21 +59,17 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
             {
                 var items = await dbContext.ListBlockItems.Where(i => i.BlockId == listBlockId).ToListAsync()
                     .ConfigureAwait(false);
-
-
                 foreach (var item in items)
                 {
                     var listBlock = new ProtoListBlockItem
                     {
                         ListBlockItemId = item.ListBlockItemId,
                         Value = SerializedValueReader.ReadValueAsString(item.Value, item.CompressedValue),
-                        Status = (ItemStatus)item.Status,
+                        Status = (ItemStatusEnum)item.Status,
                         LastUpdated = item.LastUpdated ?? DateTime.MinValue,
                         StatusReason = item.StatusReason,
                         Step = item.Step
                     };
-
-
                     results.Add(listBlock);
                 }
             }
@@ -83,7 +77,6 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
             return results;
         });
     }
-
 
     public async Task UpdateListBlockItemAsync(SingleUpdateRequest singeUpdateRequest)
     {
@@ -155,8 +148,6 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
                 StatusReason = listBlockItem.StatusReason,
                 Step = listBlockItem.Step
             });
-
-
             entityEntry.Property(i => i.Status).IsModified = true;
             entityEntry.Property(i => i.StatusReason).IsModified = true;
             entityEntry.Property(i => i.Step).IsModified = true;

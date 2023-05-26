@@ -1,7 +1,6 @@
 ﻿using System;
-using Taskling.Blocks.Common;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts;
-using Taskling.Tasks;
 
 namespace Taskling.Blocks.Requests;
 
@@ -14,7 +13,7 @@ public abstract class BlockRequest
 
     public TaskId TaskId { get; }
 
-    public BlockType BlockType { get; protected set; }
+    public BlockTypeEnum BlockType { get; protected set; }
 
     public bool ReprocessDeadTasks { get; set; }
 
@@ -24,7 +23,7 @@ public abstract class BlockRequest
 
     public long TaskExecutionId { get; set; }
 
-    public ReprocessOption ReprocessOption { get; set; }
+    public ReprocessOptionEnum ReprocessOption { get; set; }
 
     public int DeadTaskRetryLimit { get; set; }
 
@@ -34,7 +33,7 @@ public abstract class BlockRequest
     public Guid ReprocessReferenceValue { get; set; }
 
     //    //public string TaskName { get; set; }
-    public TaskDeathMode TaskDeathMode { get; set; }
+    public TaskDeathModeEnum TaskDeathMode { get; set; }
 
     public TimeSpan DeadTaskDetectionRange { get; set; }
 

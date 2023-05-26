@@ -17,7 +17,7 @@ public interface IExecutionsHelper
     void InsertUnlimitedExecutionToken(long taskDefinitionId);
     void InsertUnavailableExecutionToken(long taskDefinitionId);
     void InsertAvailableExecutionToken(long taskDefinitionId, int count = 1);
-    void InsertExecutionToken(long taskDefinitionId, ExecInfoList tokens);
+    void InsertExecutionToken(long taskDefinitionId, ExecutionTokenList tokens);
     ExecutionTokenList GetExecutionTokens(TaskId taskId);
     ExecutionTokenStatus GetExecutionTokenStatus(TaskId taskId);
     long InsertKeepAliveTaskExecution(long taskDefinitionId);

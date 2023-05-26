@@ -2,8 +2,8 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Taskling.Blocks.Common;
 using Taskling.EntityFrameworkCore.Tests.Helpers;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Xunit;
@@ -64,23 +64,23 @@ public class When_GetLastNumericRangeBlock : TestBase
         _baseDateTime = new DateTime(2016, 1, 1);
         _block1 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 1000, 1100, DateTime.UtcNow);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block1, _baseDateTime.AddMinutes(-20),
-            _baseDateTime.AddMinutes(-20), _baseDateTime.AddMinutes(-25), BlockExecutionStatus.Failed);
+            _baseDateTime.AddMinutes(-20), _baseDateTime.AddMinutes(-25), BlockExecutionStatusEnum.Failed);
         Thread.Sleep(10);
         _block2 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 900, 1200, DateTime.UtcNow);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block2, _baseDateTime.AddMinutes(-30),
-            _baseDateTime.AddMinutes(-30), _baseDateTime.AddMinutes(-35), BlockExecutionStatus.Started);
+            _baseDateTime.AddMinutes(-30), _baseDateTime.AddMinutes(-35), BlockExecutionStatusEnum.Started);
         Thread.Sleep(10);
         _block3 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 800, 900, DateTime.UtcNow);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block3, _baseDateTime.AddMinutes(-40),
-            _baseDateTime.AddMinutes(-40), _baseDateTime.AddMinutes(-45), BlockExecutionStatus.NotStarted);
+            _baseDateTime.AddMinutes(-40), _baseDateTime.AddMinutes(-45), BlockExecutionStatusEnum.NotStarted);
         Thread.Sleep(10);
         _block4 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 700, 800, DateTime.UtcNow);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block4, _baseDateTime.AddMinutes(-50),
-            _baseDateTime.AddMinutes(-50), _baseDateTime.AddMinutes(-55), BlockExecutionStatus.Completed);
+            _baseDateTime.AddMinutes(-50), _baseDateTime.AddMinutes(-55), BlockExecutionStatusEnum.Completed);
         Thread.Sleep(10);
         _block5 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 600, 700, DateTime.UtcNow);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block5, _baseDateTime.AddMinutes(-60),
-            _baseDateTime.AddMinutes(-60), _baseDateTime.AddMinutes(-65), BlockExecutionStatus.Started);
+            _baseDateTime.AddMinutes(-60), _baseDateTime.AddMinutes(-65), BlockExecutionStatusEnum.Started);
     }
 
     [Fact]
@@ -95,7 +95,7 @@ public class When_GetLastNumericRangeBlock : TestBase
 
             // ACT
             var sut = CreateSut();
-            var block = await sut.GetLastRangeBlockAsync(CreateRequest(LastBlockOrder.LastCreated));
+            var block = await sut.GetLastRangeBlockAsync(CreateRequest(LastBlockOrderEnum.LastCreated));
 
             // ASSERT
             Assert.Equal(_block5, block.RangeBlockId);
@@ -116,7 +116,7 @@ public class When_GetLastNumericRangeBlock : TestBase
 
             // ACT
             var sut = CreateSut();
-            var block = await sut.GetLastRangeBlockAsync(CreateRequest(LastBlockOrder.MaxRangeStartValue));
+            var block = await sut.GetLastRangeBlockAsync(CreateRequest(LastBlockOrderEnum.MaxRangeStartValue));
 
             // ASSERT
             Assert.Equal(_block1, block.RangeBlockId);
@@ -137,7 +137,7 @@ public class When_GetLastNumericRangeBlock : TestBase
 
             // ACT
             var sut = CreateSut();
-            var block = await sut.GetLastRangeBlockAsync(CreateRequest(LastBlockOrder.MaxRangeEndValue));
+            var block = await sut.GetLastRangeBlockAsync(CreateRequest(LastBlockOrderEnum.MaxRangeEndValue));
 
             // ASSERT
             Assert.Equal(_block2, block.RangeBlockId);
@@ -146,10 +146,10 @@ public class When_GetLastNumericRangeBlock : TestBase
         });
     }
 
-    private LastBlockRequest CreateRequest(LastBlockOrder lastBlockOrder)
+    private LastBlockRequest CreateRequest(LastBlockOrderEnum lastBlockOrder)
     {
         var request = new LastBlockRequest(CurrentTaskId,
-            BlockType.NumericRange);
+            BlockTypeEnum.NumericRange);
         request.LastBlockOrder = lastBlockOrder;
 
         return request;

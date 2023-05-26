@@ -12,7 +12,6 @@ public class RetryHelper
     private const int DefaultMaxRetries = 10;
     private const int DefaultDelayMilliseconds = 5000;
 
-
     public static async Task WithRetryAsync(Func<Task> action,
         int maxRetries = DefaultMaxRetries, int maxDelayMilliseconds = DefaultMaxDelayMilliseconds,
         int delayMilliseconds = DefaultDelayMilliseconds)
@@ -67,19 +66,14 @@ public class RetryHelper
     private static PolicyBuilder GetPolicy()
     {
         var policyBuilder = Policy.Handle<DbException>(i => i.IsTransient).OrInner<DbException>(i => i.IsTransient);
-
-
         return policyBuilder;
     }
 
     private static PolicyBuilder<T> GetGenericPolicy<T>()
     {
         var policyBuilder = Policy<T>.Handle<DbException>(i => i.IsTransient).OrInner<DbException>(i => i.IsTransient);
-
-
         return policyBuilder;
     }
-
 
     public static async Task<T> WithRetryAsync<T>(Func<Task<T>> action,
         int maxRetries = DefaultMaxRetries, int maxDelayMilliseconds = DefaultMaxDelayMilliseconds,
@@ -87,8 +81,6 @@ public class RetryHelper
     {
         var sleepDurationProvider = new SleepDurationProvider(maxDelayMilliseconds, delayMilliseconds);
         var myPolicy = GetGenericPolicy<T>().WaitAndRetryAsync(maxRetries, sleepDurationProvider.GetDelay);
-
-
         return await myPolicy.ExecuteAsync(async () =>
         {
             using (var transactionScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
@@ -99,7 +91,6 @@ public class RetryHelper
             }
         }).ConfigureAwait(false);
     }
-
 
     private class SleepDurationProvider
     {

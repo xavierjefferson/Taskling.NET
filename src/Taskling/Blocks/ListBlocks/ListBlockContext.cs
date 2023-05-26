@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Taskling.Contexts;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.TaskExecution;
@@ -17,12 +18,12 @@ public class ListBlockContext<T> : ListBlockContextBase<T, bool>, IListBlockCont
         ITaskExecutionRepository taskExecutionRepository,
         TaskId taskId,
         long taskExecutionId,
-        ListUpdateMode listUpdateMode,
+        ListUpdateModeEnum listUpdateMode,
         int uncommittedThreshold,
         ListBlock<T> listBlock, IRetryService retryService,
         long blockExecutionId,
         int maxStatusReasonLength, ILoggerFactory loggerFactory, IServiceProvider serviceProvider,
-        int forcedBlockQueueId = 0)
+        long forcedBlockQueueId = 0)
         : base(listBlockRepository,
             taskExecutionRepository,
             taskId,
@@ -37,7 +38,6 @@ public class ListBlockContext<T> : ListBlockContextBase<T, bool>, IListBlockCont
         _logger = loggerFactory.CreateLogger<ListBlockContext<T>>();
         _headerlessBlock.SetParentContext(this);
     }
-
 
     public IListBlock<T> Block => _headerlessBlock;
 }

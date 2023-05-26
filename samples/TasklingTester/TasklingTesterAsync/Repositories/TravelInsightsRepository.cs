@@ -8,7 +8,6 @@ public class TravelInsightsRepository : ITravelInsightsRepository
 {
     private const string ConnString = "Server=(local);Database=MyAppDb;Trusted_Connection=true;";
 
-
     private const string InsertCommand = @"INSERT INTO [MyAppDb].[dbo].[TravelInsight]
            ([PassengerName]
            ,[InsightText]

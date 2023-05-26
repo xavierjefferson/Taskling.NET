@@ -1,11 +1,11 @@
-﻿using Taskling.Blocks.Common;
+﻿using Taskling.Enums;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 
 namespace Taskling.InfrastructureContracts.Blocks;
 
 public abstract class BlockRequestBase : IBlockRequest
 {
-    public BlockRequestBase(TaskId taskId, long taskExecutionId, BlockType blockType, long blockExecutionId = 0)
+    public BlockRequestBase(TaskId taskId, long taskExecutionId, BlockTypeEnum blockType, long blockExecutionId = 0)
     {
         TaskId = taskId;
         TaskExecutionId = taskExecutionId;
@@ -16,5 +16,5 @@ public abstract class BlockRequestBase : IBlockRequest
     public TaskId TaskId { get; }
     public long TaskExecutionId { get; }
     public long BlockExecutionId { get; }
-    public BlockType BlockType { get; }
+    public BlockTypeEnum BlockType { get; }
 }

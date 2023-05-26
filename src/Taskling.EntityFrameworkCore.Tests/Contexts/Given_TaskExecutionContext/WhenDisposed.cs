@@ -21,8 +21,6 @@ public class WhenDisposed : TestBase
         _logger = logger;
         _clientHelper = clientHelper;
         _executionsHelper = executionsHelper;
-
-
         executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
     }
 

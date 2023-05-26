@@ -14,7 +14,6 @@ public class CleanUpService : ICleanUpService
     private readonly ILogger<CleanUpService> _logger;
     private readonly ITaskExecutionRepository _taskExecutionRepository;
 
-
     public CleanUpService(ICleanUpRepository cleanUpRepository,
         ITaskExecutionRepository taskExecutionRepository, ILogger<CleanUpService> logger)
     {
@@ -47,7 +46,7 @@ public class CleanUpService : ICleanUpService
             {
                 GeneralDateThreshold = DateTime.UtcNow.AddDays(-1 * configuration.KeepGeneralDataForDays),
                 ListItemDateThreshold = DateTime.UtcNow.AddDays(-1 * configuration.KeepListItemsForDays),
-                TimeSinceLastCleaningThreshold = new TimeSpan(configuration.MinimumCleanUpIntervalHours, 0, 0)
+                TimeSinceLastCleaningThreshold = TimeSpan.FromHours(configuration.MinimumCleanUpIntervalHours)
             };
             var cleaned = await _cleanUpRepository.CleanOldDataAsync(request).ConfigureAwait(false);
 

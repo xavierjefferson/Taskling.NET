@@ -16,11 +16,9 @@ internal class Program
         var serviceCollection = new ServiceCollection()
             .AddLogging()
             .AddTaskling();
-        serviceCollection.AddSingleton<IConfigurationReader, MyConfigReader>();
+        serviceCollection.AddSingleton<ITaskConfigurationReader, MyConfigReader>();
         var serviceProvider = serviceCollection
             .BuildServiceProvider();
-
-
         //var insightService = GetDateRangeInsightService(serviceProvider);
         //await insightService.RunBatchJobAsync();
 
@@ -33,7 +31,7 @@ internal class Program
 
     private static TravelInsightsAnalysisService GetDateRangeInsightService(IServiceProvider serviceProvider)
     {
-        var my = serviceProvider.GetRequiredService<IConfigurationReader>();
+        var my = serviceProvider.GetRequiredService<ITaskConfigurationReader>();
         return new TravelInsightsAnalysisService(new TasklingClient(serviceProvider, my),
             new MyApplicationConfiguration(),
             new JourneysRepository(),
@@ -43,7 +41,7 @@ internal class Program
     private static NumericRangeBlocks.TravelInsightsAnalysisService GetNumericRangeInsightService(
         IServiceProvider serviceProvider)
     {
-        var my = serviceProvider.GetRequiredService<IConfigurationReader>();
+        var my = serviceProvider.GetRequiredService<ITaskConfigurationReader>();
         return new NumericRangeBlocks.TravelInsightsAnalysisService(new TasklingClient(serviceProvider, my),
             new MyApplicationConfiguration(),
             new JourneysRepository(),
@@ -52,7 +50,7 @@ internal class Program
 
     private static ListBlocks.TravelInsightsAnalysisService GetListInsightService(IServiceProvider serviceProvider)
     {
-        var my = serviceProvider.GetRequiredService<IConfigurationReader>();
+        var my = serviceProvider.GetRequiredService<ITaskConfigurationReader>();
 
         return new ListBlocks.TravelInsightsAnalysisService(new TasklingClient(serviceProvider, my),
             new MyApplicationConfiguration(),

@@ -1,11 +1,10 @@
-﻿using System;
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Taskling.EntityFrameworkCore.Tests.Helpers;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts.CriticalSections;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.Tasks;
 using Xunit;
 
 namespace Taskling.EntityFrameworkCore.Tests.Repositories.Given_CriticalSectionService;
@@ -17,7 +16,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     private readonly IExecutionsHelper _executionsHelper;
     private readonly ILogger<When_TryStart_AsKeepAliveMode> _logger;
 
-
     public When_TryStart_AsKeepAliveMode(IBlocksHelper blocksHelper, IExecutionsHelper executionsHelper,
         IClientHelper clientHelper,
         ILogger<When_TryStart_AsKeepAliveMode> logger, ITaskRepository taskRepository,
@@ -27,8 +25,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
         _executionsHelper = executionsHelper;
 
         _criticalSectionRepository = criticalSectionRepository;
-
-
         _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
     }
 
@@ -47,16 +43,16 @@ public class When_TryStart_AsKeepAliveMode : TestBase
 
             var request = new StartCriticalSectionRequest(CurrentTaskId,
                 taskExecutionId,
-                TaskDeathMode.KeepAlive,
-                CriticalSectionType.User);
-            request.KeepAliveDeathThreshold = new TimeSpan(0, 1, 0);
+                TaskDeathModeEnum.KeepAlive,
+                CriticalSectionTypeEnum.User);
+            request.KeepAliveDeathThreshold = TimeSpans.OneMinute;
 
             // ACT
             var sut = _criticalSectionRepository;
             var response = await sut.StartAsync(request);
 
             // ASSERT
-            Assert.Equal(GrantStatus.Granted, response.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, response.GrantStatus);
         });
     }
 
@@ -81,9 +77,9 @@ public class When_TryStart_AsKeepAliveMode : TestBase
 
             var request = new StartCriticalSectionRequest(CurrentTaskId,
                 taskExecutionId2,
-                TaskDeathMode.KeepAlive,
-                CriticalSectionType.User);
-            request.KeepAliveDeathThreshold = new TimeSpan(0, 1, 0);
+                TaskDeathModeEnum.KeepAlive,
+                CriticalSectionTypeEnum.User);
+            request.KeepAliveDeathThreshold = TimeSpans.OneMinute;
 
             // ACT
             var sut = _criticalSectionRepository;
@@ -92,7 +88,7 @@ public class When_TryStart_AsKeepAliveMode : TestBase
             // ASSERT
             var isInQueue = _executionsHelper.GetQueueCount(taskExecutionId2) == 1;
             Assert.True(isInQueue);
-            Assert.Equal(GrantStatus.Denied, response.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Denied, response.GrantStatus);
         });
     }
 
@@ -118,9 +114,9 @@ public class When_TryStart_AsKeepAliveMode : TestBase
 
             var request = new StartCriticalSectionRequest(CurrentTaskId,
                 taskExecutionId2,
-                TaskDeathMode.KeepAlive,
-                CriticalSectionType.User);
-            request.KeepAliveDeathThreshold = new TimeSpan(0, 10, 0);
+                TaskDeathModeEnum.KeepAlive,
+                CriticalSectionTypeEnum.User);
+            request.KeepAliveDeathThreshold = TimeSpans.TenMinutes;
 
             // ACT
             var sut = _criticalSectionRepository;
@@ -129,7 +125,7 @@ public class When_TryStart_AsKeepAliveMode : TestBase
             // ASSERT
             var numberOfQueueRecords = _executionsHelper.GetQueueCount(taskExecutionId2);
             Assert.Equal(1, numberOfQueueRecords);
-            Assert.Equal(GrantStatus.Denied, response.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Denied, response.GrantStatus);
         });
     }
 
@@ -152,9 +148,9 @@ public class When_TryStart_AsKeepAliveMode : TestBase
 
             var request = new StartCriticalSectionRequest(CurrentTaskId,
                 taskExecutionId1,
-                TaskDeathMode.KeepAlive,
-                CriticalSectionType.User);
-            request.KeepAliveDeathThreshold = new TimeSpan(0, 1, 0);
+                TaskDeathModeEnum.KeepAlive,
+                CriticalSectionTypeEnum.User);
+            request.KeepAliveDeathThreshold = TimeSpans.OneMinute;
 
             // ACT
             var sut = _criticalSectionRepository;
@@ -163,7 +159,7 @@ public class When_TryStart_AsKeepAliveMode : TestBase
             // ASSERT
             var numberOfQueueRecords = _executionsHelper.GetQueueCount(taskExecutionId1);
             Assert.Equal(0, numberOfQueueRecords);
-            Assert.Equal(GrantStatus.Granted, response.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, response.GrantStatus);
         });
     }
 
@@ -192,9 +188,9 @@ public class When_TryStart_AsKeepAliveMode : TestBase
 
             var request = new StartCriticalSectionRequest(CurrentTaskId,
                 taskExecutionId2,
-                TaskDeathMode.KeepAlive,
-                CriticalSectionType.User);
-            request.KeepAliveDeathThreshold = new TimeSpan(0, 1, 0);
+                TaskDeathModeEnum.KeepAlive,
+                CriticalSectionTypeEnum.User);
+            request.KeepAliveDeathThreshold = TimeSpans.OneMinute;
 
             // ACT
             var sut = _criticalSectionRepository;
@@ -203,7 +199,7 @@ public class When_TryStart_AsKeepAliveMode : TestBase
             // ASSERT
             var numberOfQueueRecords = _executionsHelper.GetQueueCount(taskExecutionId2);
             Assert.Equal(1, numberOfQueueRecords);
-            Assert.Equal(GrantStatus.Denied, response.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Denied, response.GrantStatus);
         });
     }
 
@@ -219,11 +215,11 @@ public class When_TryStart_AsKeepAliveMode : TestBase
 
             var taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
 
-            var keepAliveThreshold = new TimeSpan(0, 0, 5);
+            var keepAliveThreshold = TimeSpans.FiveSeconds;
 
             // Create execution 1 and add it to the queue
             var taskExecutionId1 =
-                _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId, new TimeSpan(0, 0, 1),
+                _executionsHelper.InsertKeepAliveTaskExecution(taskDefinitionId, TimeSpans.OneSecond,
                     keepAliveThreshold);
             _executionsHelper.InsertUnlimitedExecutionToken(taskDefinitionId);
             _executionsHelper.SetKeepAlive(taskExecutionId1);
@@ -241,8 +237,8 @@ public class When_TryStart_AsKeepAliveMode : TestBase
 
             var request = new StartCriticalSectionRequest(CurrentTaskId,
                 taskExecutionId2,
-                TaskDeathMode.KeepAlive,
-                CriticalSectionType.User);
+                TaskDeathModeEnum.KeepAlive,
+                CriticalSectionTypeEnum.User);
             request.KeepAliveDeathThreshold = keepAliveThreshold;
 
             // ACT
@@ -254,7 +250,7 @@ public class When_TryStart_AsKeepAliveMode : TestBase
             var numberOfQueueRecordsForExecution2 = _executionsHelper.GetQueueCount(taskExecutionId2);
             Assert.Equal(0, numberOfQueueRecordsForExecution1);
             Assert.Equal(0, numberOfQueueRecordsForExecution2);
-            Assert.Equal(GrantStatus.Granted, response.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, response.GrantStatus);
         });
     }
 
@@ -287,9 +283,9 @@ public class When_TryStart_AsKeepAliveMode : TestBase
 
             var request = new StartCriticalSectionRequest(CurrentTaskId,
                 taskExecutionId2,
-                TaskDeathMode.KeepAlive,
-                CriticalSectionType.User);
-            request.KeepAliveDeathThreshold = new TimeSpan(0, 30, 0);
+                TaskDeathModeEnum.KeepAlive,
+                CriticalSectionTypeEnum.User);
+            request.KeepAliveDeathThreshold = TimeSpans.ThirtyMinutes;
 
             // ACT
             var sut = _criticalSectionRepository;
@@ -300,7 +296,7 @@ public class When_TryStart_AsKeepAliveMode : TestBase
             var numberOfQueueRecordsForExecution2 = _executionsHelper.GetQueueCount(taskExecutionId2);
             Assert.Equal(0, numberOfQueueRecordsForExecution1);
             Assert.Equal(0, numberOfQueueRecordsForExecution2);
-            Assert.Equal(GrantStatus.Granted, response.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, response.GrantStatus);
         });
     }
 }

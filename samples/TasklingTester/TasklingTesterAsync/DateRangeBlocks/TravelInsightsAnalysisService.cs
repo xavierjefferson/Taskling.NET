@@ -1,7 +1,7 @@
 ﻿using Taskling;
-using Taskling.Blocks.Common;
 using Taskling.Builders;
 using Taskling.Contexts;
+using Taskling.Enums;
 using TasklingTester.Common.Entities;
 using TasklingTesterAsync.Configuration;
 using TasklingTesterAsync.Repositories;
@@ -33,12 +33,10 @@ public class TravelInsightsAnalysisService
             .WithRange((Func<ITaskExecutionContext, Task<DateRange>>)(async taskExecutionContext =>
             {
                 DateTime startDate;
-                var lastBlock = await taskExecutionContext.GetLastDateRangeBlockAsync(LastBlockOrder.LastCreated);
+                var lastBlock = await taskExecutionContext.GetLastDateRangeBlockAsync(LastBlockOrderEnum.LastCreated);
                 if (lastBlock == null)
                     startDate = _configuration.FirstRunDate;
                 else startDate = lastBlock.EndDate;
-
-
                 var endDate = DateTime.Now;
                 return new DateRange(startDate, endDate, TimeSpan.FromMinutes(30));
             })).WithProcessFunc((Func<IDateRangeBlockContext, Task>)ProcessBlockAsync);

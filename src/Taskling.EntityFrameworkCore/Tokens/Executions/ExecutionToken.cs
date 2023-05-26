@@ -1,16 +1,25 @@
 ﻿using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Taskling.Extensions;
 
 namespace Taskling.EntityFrameworkCore.Tokens.Executions;
 
 public class ExecutionToken
 {
+    public ExecutionToken(ExecutionTokenStatus status, int grantedTaskExecutionId)
+    {
+        Status = status;
+        GrantedTaskExecutionId = grantedTaskExecutionId;
+    }
+
+    public ExecutionToken()
+    {
+    }
+
     [JsonProperty("I")] public Guid TokenId { get; set; } = Guid.NewGuid();
 
     [JsonProperty("S")] public ExecutionTokenStatus Status { get; set; }
 
-    [JsonProperty("G")] public long GrantedToExecution { get; set; }
+    [JsonProperty("G")] public long GrantedTaskExecutionId { get; set; }
 }
 
 public interface IExecutionTokenHelper
@@ -31,7 +40,7 @@ public class ExecutionTokenHelper : IExecutionTokenHelper
 
     public ExecutionToken Create(ExecutionTokenStatus status, long g = 0)
     {
-        return new ExecutionToken { Status = status, GrantedToExecution = g };
+        return new ExecutionToken { Status = status, GrantedTaskExecutionId = g };
     }
 
     public void SetStatus(ExecutionToken execution, ExecutionTokenStatus status)
@@ -43,6 +52,6 @@ public class ExecutionTokenHelper : IExecutionTokenHelper
     public void SetGrantedToExecution(ExecutionToken execution, long g)
     {
         _logger.LogDebug($"Setting token g to {g}");
-        execution.GrantedToExecution = g;
+        execution.GrantedTaskExecutionId = g;
     }
 }

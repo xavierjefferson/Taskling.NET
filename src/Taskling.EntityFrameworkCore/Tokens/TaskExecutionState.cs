@@ -1,4 +1,4 @@
-﻿using Taskling.Tasks;
+﻿using Taskling.Enums;
 
 namespace Taskling.EntityFrameworkCore.Tokens;
 
@@ -8,7 +8,7 @@ public class TaskExecutionState
     public DateTime StartedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
     public DateTime? LastKeepAlive { get; set; }
-    public TaskDeathMode TaskDeathMode { get; set; }
+    public TaskDeathModeEnum TaskDeathMode { get; set; }
     public TimeSpan? OverrideThreshold { get; set; }
     public TimeSpan? KeepAliveInterval { get; set; }
     public TimeSpan? KeepAliveDeathThreshold { get; set; }
@@ -21,7 +21,7 @@ public class TaskExecutionState
         if (taskExecutionState.CompletedAt.HasValue)
             return true;
 
-        if (taskExecutionState.TaskDeathMode == TaskDeathMode.KeepAlive)
+        if (taskExecutionState.TaskDeathMode == TaskDeathModeEnum.KeepAlive)
         {
             if (!taskExecutionState.LastKeepAlive.HasValue)
                 return true;

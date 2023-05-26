@@ -1,21 +1,20 @@
 ﻿using System;
-using Taskling.Blocks.Common;
-using Taskling.Tasks;
+using Taskling.Enums;
 
 namespace Taskling.InfrastructureContracts.Blocks.CommonRequests;
 
 public class FindDeadBlocksRequest : StatusSpecificBlockRequestBase, ISearchableBlockRequest
 {
     private static readonly int[] Statuses =
-        { (int)BlockExecutionStatus.NotStarted, (int)BlockExecutionStatus.Started };
+        { (int)BlockExecutionStatusEnum.NotStarted, (int)BlockExecutionStatusEnum.Started };
 
     public FindDeadBlocksRequest(TaskId taskId,
         long taskExecutionId,
-        BlockType blockType,
+        BlockTypeEnum blockType,
         DateTime searchPeriodBegin,
         DateTime searchPeriodEnd,
         int blockCountLimit,
-        TaskDeathMode taskDeathMode,
+        TaskDeathModeEnum taskDeathMode,
         int retryLimit)
         : base(taskId, taskExecutionId, blockType)
     {
@@ -26,8 +25,7 @@ public class FindDeadBlocksRequest : StatusSpecificBlockRequestBase, ISearchable
         RetryLimit = retryLimit;
     }
 
-
-    public TaskDeathMode TaskDeathMode { get; set; }
+    public TaskDeathModeEnum TaskDeathMode { get; set; }
 
     public override int[] GetMatchingStatuses()
     {

@@ -1,5 +1,5 @@
 ﻿using System;
-using Taskling.Blocks.Common;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts;
 
 namespace Taskling.Blocks.Requests;
@@ -8,7 +8,7 @@ public class DateRangeBlockRequest : BlockRequest
 {
     public DateRangeBlockRequest(TaskId taskId) : base(taskId)
     {
-        BlockType = BlockType.DateRange;
+        BlockType = BlockTypeEnum.DateRange;
     }
 
     public DateTime? RangeBegin { get; set; }

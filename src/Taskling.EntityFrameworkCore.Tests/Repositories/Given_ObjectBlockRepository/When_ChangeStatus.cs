@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Taskling.Blocks.Common;
 using Taskling.EntityFrameworkCore.Tests.Helpers;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.TaskExecution;
@@ -34,8 +34,6 @@ public class When_ChangeStatus : TestBase
         _objectBlockRepository = objectBlockRepository;
         _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
         _executionsHelper = executionsHelper;
-
-
         _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
 
         _taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
@@ -51,7 +49,7 @@ public class When_ChangeStatus : TestBase
         _baseDateTime = new DateTime(2016, 1, 1);
         var block1 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, DateTime.UtcNow, Guid.NewGuid().ToString());
         _blockExecutionId = _blocksHelper.InsertBlockExecution(_taskExecution1, block1, _baseDateTime.AddMinutes(-20),
-            _baseDateTime.AddMinutes(-20), _baseDateTime.AddMinutes(-25), BlockExecutionStatus.Started);
+            _baseDateTime.AddMinutes(-20), _baseDateTime.AddMinutes(-25), BlockExecutionStatusEnum.Started);
     }
 
     [Fact]
@@ -67,12 +65,10 @@ public class When_ChangeStatus : TestBase
             var request = new BlockExecutionChangeStatusRequest(
                 CurrentTaskId,
                 _taskExecution1,
-                BlockType.Object,
+                BlockTypeEnum.Object,
                 _blockExecutionId,
-                BlockExecutionStatus.Completed);
+                BlockExecutionStatusEnum.Completed);
             request.ItemsProcessed = 10000;
-
-
             // ACT
             var sut = _objectBlockRepository;
             await sut.ChangeStatusAsync(request);

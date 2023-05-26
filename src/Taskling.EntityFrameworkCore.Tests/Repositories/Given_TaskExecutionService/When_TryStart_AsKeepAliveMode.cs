@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Taskling.EntityFrameworkCore.Tests.Helpers;
 using Taskling.EntityFrameworkCore.Tokens.Executions;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.Tasks;
 using Xunit;
 
 namespace Taskling.EntityFrameworkCore.Tests.Repositories.Given_TaskExecutionService;
@@ -39,10 +39,10 @@ public class When_TryStart_AsKeepAliveMode : TestBase
     private TaskExecutionStartRequest CreateKeepAliveStartRequest(int concurrencyLimit = 1)
     {
         return new TaskExecutionStartRequest(CurrentTaskId,
-            TaskDeathMode.KeepAlive, concurrencyLimit, 3, 3)
+            TaskDeathModeEnum.KeepAlive, concurrencyLimit, 3, 3)
         {
-            KeepAliveDeathThreshold = new TimeSpan(0, 1, 0),
-            KeepAliveInterval = new TimeSpan(0, 0, 20),
+            KeepAliveDeathThreshold = TimeSpans.OneMinute,
+            KeepAliveInterval = TimeSpans.TwentySeconds,
             TasklingVersion = "N/A"
         };
     }
@@ -99,7 +99,7 @@ public class When_TryStart_AsKeepAliveMode : TestBase
             var response = await _taskExecutionRepository.StartAsync(startRequest);
 
             // ASSERT
-            Assert.Equal(GrantStatus.Granted, response.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, response.GrantStatus);
             Assert.NotEqual(Guid.Empty, response.ExecutionTokenId);
         });
     }
@@ -126,8 +126,8 @@ public class When_TryStart_AsKeepAliveMode : TestBase
             var secondResponse = await _taskExecutionRepository.StartAsync(secondStartRequest);
 
             // ASSERT
-            Assert.Equal(GrantStatus.Granted, firstResponse.GrantStatus);
-            Assert.Equal(GrantStatus.Denied, secondResponse.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, firstResponse.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Denied, secondResponse.GrantStatus);
         });
     }
 
@@ -157,8 +157,8 @@ public class When_TryStart_AsKeepAliveMode : TestBase
             var secondStartResponse = await _taskExecutionRepository.StartAsync(secondStartRequest);
 
             // ASSERT
-            Assert.Equal(GrantStatus.Granted, firstStartResponse.GrantStatus);
-            Assert.Equal(GrantStatus.Granted, secondStartResponse.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, firstStartResponse.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, secondStartResponse.GrantStatus);
         });
     }
 
@@ -194,11 +194,11 @@ public class When_TryStart_AsKeepAliveMode : TestBase
             var fifthResponse = await _taskExecutionRepository.StartAsync(fifthStartRequest);
 
             // ASSERT
-            Assert.Equal(GrantStatus.Granted, firstResponse.GrantStatus);
-            Assert.Equal(GrantStatus.Granted, secondResponse.GrantStatus);
-            Assert.Equal(GrantStatus.Granted, thirdResponse.GrantStatus);
-            Assert.Equal(GrantStatus.Granted, fourthResponse.GrantStatus);
-            Assert.Equal(GrantStatus.Denied, fifthResponse.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, firstResponse.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, secondResponse.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, thirdResponse.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, fourthResponse.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Denied, fifthResponse.GrantStatus);
         });
     }
 
@@ -216,8 +216,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
 
             // ACT
             var sut = _taskExecutionRepository;
-
-
             var tasks = new List<Task>();
             tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync()));
             tasks.Add(Task.Run(async () => await RequestAndReturnTokenWithKeepAliveModeAsync()));
@@ -241,7 +239,6 @@ public class When_TryStart_AsKeepAliveMode : TestBase
         });
     }
 
-
     private async Task RequestAndReturnTokenWithKeepAliveModeAsync()
     {
         for (var i = 0; i < 100; i++)
@@ -249,11 +246,9 @@ public class When_TryStart_AsKeepAliveMode : TestBase
             var firstStartRequest = CreateKeepAliveStartRequest();
 
             var firstStartResponse = await _taskExecutionRepository.StartAsync(firstStartRequest);
-
-
             _executionsHelper.SetKeepAlive(firstStartResponse.TaskExecutionId);
 
-            if (firstStartResponse.GrantStatus == GrantStatus.Granted)
+            if (firstStartResponse.GrantStatus == GrantStatusEnum.Granted)
             {
                 var firstCompleteRequest = new TaskExecutionCompleteRequest(
                     CurrentTaskId,
@@ -277,10 +272,10 @@ public class When_TryStart_AsKeepAliveMode : TestBase
             _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
             var startRequest = CreateKeepAliveStartRequest();
-            startRequest.KeepAliveDeathThreshold = new TimeSpan(0, 0, 4);
+            startRequest.KeepAliveDeathThreshold = TimeSpans.FourSeconds;
 
             var secondRequest = CreateKeepAliveStartRequest();
-            secondRequest.KeepAliveDeathThreshold = new TimeSpan(0, 0, 4);
+            secondRequest.KeepAliveDeathThreshold = TimeSpans.FourSeconds;
 
             // ACT
             var sut = _taskExecutionRepository;
@@ -292,7 +287,7 @@ public class When_TryStart_AsKeepAliveMode : TestBase
             var secondResponse = await sut.StartAsync(secondRequest);
 
             // ASSERT
-            Assert.Equal(GrantStatus.Granted, secondResponse.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, secondResponse.GrantStatus);
             Assert.NotEqual(Guid.Empty, secondResponse.ExecutionTokenId);
         });
     }
@@ -311,10 +306,10 @@ public class When_TryStart_AsKeepAliveMode : TestBase
             _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
             var startRequest = CreateKeepAliveStartRequest();
-            startRequest.KeepAliveDeathThreshold = new TimeSpan(1, 0, 0);
+            startRequest.KeepAliveDeathThreshold = TimeSpans.OneHour;
 
             var secondRequest = CreateKeepAliveStartRequest();
-            secondRequest.KeepAliveDeathThreshold = new TimeSpan(1, 0, 0);
+            secondRequest.KeepAliveDeathThreshold = TimeSpans.OneHour;
 
             // ACT
             var sut = _taskExecutionRepository;
@@ -326,9 +321,9 @@ public class When_TryStart_AsKeepAliveMode : TestBase
             var secondResponse = await sut.StartAsync(secondRequest);
 
             // ASSERT
-            Assert.Equal(GrantStatus.Granted, firstResponse.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, firstResponse.GrantStatus);
             Assert.NotEqual(Guid.Empty, firstResponse.ExecutionTokenId);
-            Assert.Equal(GrantStatus.Denied, secondResponse.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Denied, secondResponse.GrantStatus);
             Assert.Equal(Guid.Empty, secondResponse.ExecutionTokenId);
         });
     }
@@ -394,7 +389,7 @@ public class When_TryStart_AsKeepAliveMode : TestBase
             // ARRANGE
 
             var taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
-            _executionsHelper.InsertExecutionToken(taskDefinitionId, new ExecInfoList
+            _executionsHelper.InsertExecutionToken(taskDefinitionId, new ExecutionTokenList
             {
                 new(ExecutionTokenStatus.Unavailable, 0),
                 new(ExecutionTokenStatus.Available, 1)
@@ -408,7 +403,7 @@ public class When_TryStart_AsKeepAliveMode : TestBase
 
             // ASSERT
             var tokensList = _executionsHelper.GetExecutionTokens(CurrentTaskId);
-            Assert.Equal(GrantStatus.Denied, result.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Denied, result.GrantStatus);
             Assert.Equal(1, tokensList.Count(x => x.Status == ExecutionTokenStatus.Unavailable));
         });
     }
@@ -424,7 +419,7 @@ public class When_TryStart_AsKeepAliveMode : TestBase
             // ARRANGE
 
             var taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
-            _executionsHelper.InsertExecutionToken(taskDefinitionId, new ExecInfoList
+            _executionsHelper.InsertExecutionToken(taskDefinitionId, new ExecutionTokenList
             {
                 new(ExecutionTokenStatus.Unavailable, 0),
                 new(ExecutionTokenStatus.Unavailable, 1)

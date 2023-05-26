@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using Taskling.Exceptions;
 using Taskling.InfrastructureContracts;
 
@@ -9,15 +11,20 @@ namespace Taskling.Configuration;
 public class TaskConfigurationRepository : ITaskConfigurationRepository
 {
     private readonly object _cacheSync = new();
-    private readonly IConfigurationReader _configurationReader;
     private readonly ILogger<TaskConfigurationRepository> _logger;
+    private readonly IMemoryCache _memoryCache;
+    private readonly StartupOptions _options;
+    private readonly ITaskConfigurationReader _taskConfigurationReader;
+
     private readonly Dictionary<string, TaskConfiguration> _taskConfigurations;
 
-    public TaskConfigurationRepository(IConfigurationReader configurationReader,
-        ILogger<TaskConfigurationRepository> logger)
+    public TaskConfigurationRepository(ITaskConfigurationReader taskConfigurationReader,
+        ILogger<TaskConfigurationRepository> logger, IMemoryCache memoryCache, StartupOptions options)
     {
         _logger = logger;
-        _configurationReader = configurationReader;
+        _memoryCache = memoryCache;
+        _options = options;
+        _taskConfigurationReader = taskConfigurationReader;
         _taskConfigurations = new Dictionary<string, TaskConfiguration>();
     }
 
@@ -49,58 +56,60 @@ public class TaskConfigurationRepository : ITaskConfigurationRepository
                 else
                     _taskConfigurations[key] = configuration;
             }
+            else
+            {
+                _logger.LogDebug($"Loading config for {key} from cache");
+            }
 
+            _logger.LogDebug(JsonConvert.SerializeObject(_taskConfigurations[key], Formatting.Indented));
             return _taskConfigurations[key];
         }
     }
 
-
-    private string GetCacheKey(TaskId taskId)
-    {
-        return taskId.GetUniqueKey();
-    }
-
     private TaskConfiguration LoadConfiguration(TaskId taskId)
     {
-        var configString = FindKey(taskId);
+        var key = GetCacheKey(taskId);
+        _logger.LogDebug($"Loading config for {key} from persistence");
+        var configString = _taskConfigurationReader.GetTaskConfiguration(taskId);
+
         var taskConfiguration = ParseConfig(configString, taskId);
         return taskConfiguration;
     }
 
-    private TaskConfiguration ParseConfig(ConfigurationOptions configurationOptions, TaskId taskId)
+    private string GetCacheKey(TaskId taskId)
     {
-        var databaseConnString =
-            configurationOptions.DB ?? throw new ArgumentNullException(nameof(ConfigurationOptions.DB));
-        var taskConfiguration = new TaskConfiguration(taskId);
-        taskConfiguration.SetDefaultValues(databaseConnString);
-
-        taskConfiguration.ConcurrencyLimit = configurationOptions.CON;
-        taskConfiguration.DatabaseTimeoutSeconds = configurationOptions.TO;
-        taskConfiguration.Enabled = configurationOptions.E;
-        taskConfiguration.KeepAliveDeathThresholdMinutes = configurationOptions.KADT;
-        taskConfiguration.KeepAliveIntervalMinutes = configurationOptions.KAINT;
-        taskConfiguration.KeepGeneralDataForDays = configurationOptions.KPDT;
-        taskConfiguration.KeepListItemsForDays = configurationOptions.KPLT;
-        taskConfiguration.MinimumCleanUpIntervalHours = configurationOptions.MCI;
-        taskConfiguration.TimePeriodDeathThresholdMinutes = configurationOptions.TPDT;
-        taskConfiguration.UsesKeepAliveMode = configurationOptions.KA;
-        taskConfiguration.ReprocessFailedTasks = configurationOptions.RPC_FAIL;
-        taskConfiguration.ReprocessFailedTasksDetectionRange = TimeSpan.FromMinutes(configurationOptions.RPC_DEAD_MTS);
-        taskConfiguration.FailedTaskRetryLimit = configurationOptions.RPC_FAIL_RTYL;
-        taskConfiguration.ReprocessDeadTasks = configurationOptions.RPC_DEAD;
-        taskConfiguration.ReprocessDeadTasksDetectionRange = TimeSpan.FromMinutes(configurationOptions.RPC_DEAD_MTS);
-        taskConfiguration.DeadTaskRetryLimit = configurationOptions.RPC_DEAD_RTYL;
-        taskConfiguration.MaxBlocksToGenerate = configurationOptions.MXBL;
-        taskConfiguration.MaxLengthForNonCompressedData =
-            configurationOptions.MXCOMP <= 0 ? int.MaxValue : configurationOptions.MXCOMP;
-        taskConfiguration.MaxStatusReason = configurationOptions.MXRSN;
-
-        return taskConfiguration;
+        return $"config_{taskId.GetUniqueKey()}";
     }
 
-
-    private ConfigurationOptions FindKey(TaskId taskId)
+    private TaskConfiguration ParseConfig(IConfigurationOptions source, TaskId taskId)
     {
-        return _configurationReader.GetTaskConfigurationString(taskId);
+        var connectionString =
+            source.ConnectionString ??
+            throw new ArgumentNullException(nameof(IConfigurationOptions.ConnectionString));
+        var taskConfiguration = new TaskConfiguration(taskId)
+        {
+            ConnectionString = source.ConnectionString,
+            DatabaseTimeoutSeconds = source.DatabaseTimeoutSeconds,
+            Enabled = source.Enabled,
+            ConcurrencyLimit = source.ConcurrencyLimit,
+            KeepListItemsForDays = source.KeepListItemsForDays,
+            KeepGeneralDataForDays = source.KeepGeneralDataForDays,
+            MinimumCleanUpIntervalHours = source.MinimumCleanUpIntervalHours,
+            UseKeepAliveMode = source.UseKeepAliveMode,
+            KeepAliveIntervalMinutes = source.KeepAliveIntervalMinutes,
+            KeepAliveDeathThresholdMinutes = source.KeepAliveDeathThresholdMinutes,
+            TimePeriodDeathThresholdMinutes = source.TimePeriodDeathThresholdMinutes,
+            ReprocessFailedTasks = source.ReprocessFailedTasks,
+            FailedTaskDetectionRangeMinutes = source.FailedTaskDetectionRangeMinutes,
+            FailedTaskRetryLimit = source.FailedTaskRetryLimit,
+            ReprocessDeadTasks = source.ReprocessDeadTasks,
+            DeadTaskDetectionRangeMinutes = source.DeadTaskDetectionRangeMinutes,
+            DeadTaskRetryLimit = source.DeadTaskRetryLimit,
+            MaxBlocksToGenerate = source.MaxBlocksToGenerate,
+            MaxLengthForNonCompressedData = source.MaxLengthForNonCompressedData,
+            MaxStatusReason = source.MaxStatusReason
+        };
+
+        return taskConfiguration;
     }
 }

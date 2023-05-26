@@ -1,8 +1,8 @@
 ﻿namespace Taskling.EntityFrameworkCore.Models;
 
-public class ForceBlockQueue
+public class ForcedBlockQueue
 {
-    public int ForceBlockQueueId { get; set; }
+    public long ForcedBlockQueueId { get; set; }
     public long BlockId { get; set; }
     public DateTime ForcedDate { get; set; }
     public string? ForcedBy { get; set; }

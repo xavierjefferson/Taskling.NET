@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx.Synchronous;
+using Taskling.Enums;
 
 namespace Taskling.Blocks.ListBlocks;
 
@@ -19,7 +20,7 @@ public class ListBlockItem<T> : IListBlockItem<T>
 
     public long ListBlockItemId { get; set; }
     public T Value { get; set; }
-    public ItemStatus Status { get; set; }
+    public ItemStatusEnum Status { get; set; }
     public string StatusReason { get; set; }
     public DateTime LastUpdated { get; set; }
     public int? Step { get; set; }

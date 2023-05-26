@@ -3,13 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
 using Taskling.Blocks.ObjectBlocks;
 using Taskling.Blocks.RangeBlocks;
 using Taskling.Blocks.Requests;
 using Taskling.Contexts;
-using Taskling.Extensions;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
@@ -58,8 +57,6 @@ public class BlockFactory : IBlockFactory
     {
         var blocks =
             await GenerateRangeBlocksAsync(blockRequest, i => i.RangeBegin != null, GenerateNewDateRangeBlocksAsync);
-
-
         var dateRangeBlocks = blocks.Select(x => (IDateRangeBlockContext)x);
         var tmp = dateRangeBlocks.OrderBy(x => x.DateRangeBlock.RangeBlockId).ToList();
         _logger.LogDebug($"Returning {tmp.Count} items");
@@ -119,8 +116,8 @@ public class BlockFactory : IBlockFactory
         }
         else
         {
-            var forceBlocks = await GetForcedObjectBlocksAsync(blockRequest).ConfigureAwait(false);
-            blocks.AddRange(forceBlocks);
+            var forcedBlocks = await GetForcedObjectBlocksAsync(blockRequest).ConfigureAwait(false);
+            blocks.AddRange(forcedBlocks);
 
             if (GetBlocksRemaining(blockRequest, blocks) > 0)
                 await LoadFailedAndDeadObjectBlocksAsync(blockRequest, blocks).ConfigureAwait(false);
@@ -172,17 +169,14 @@ public class BlockFactory : IBlockFactory
         {
             _logger.LogDebug($"{nameof(blockRequest.ReprocessReferenceValue)} is null or empty.");
             _logger.LogDebug("Getting forced blocks...");
-            var forceBlocks = await GetForcedBlocksAsync(blockRequest).ConfigureAwait(false);
-            blocks.AddRange(forceBlocks);
+            var forcedBlocks = await GetForcedBlocksAsync(blockRequest).ConfigureAwait(false);
+            blocks.AddRange(forcedBlocks);
 
             for (var iteration = 0; iteration < 3; iteration++)
             {
                 var remaining = GetBlocksRemaining(blockRequest, blocks);
-                if (remaining == 0)
-                {
-                    _logger.LogDebug("No more blocks need to be fetched");
-                    break;
-                }
+                _logger.LogDebug($"{remaining} more blocks need to be fetched");
+                if (remaining == 0) break;
 
                 switch (iteration)
                 {
@@ -248,7 +242,6 @@ public class BlockFactory : IBlockFactory
         return blocks;
     }
 
-
     private FindDeadBlocksRequest CreateDeadBlocksRequest(BlockRequest blockRequest, int blockCountLimit)
     {
         var utcNow = DateTime.UtcNow;
@@ -263,7 +256,6 @@ public class BlockFactory : IBlockFactory
             blockRequest.DeadTaskRetryLimit);
     }
 
-
     private async Task LogEmptyBlockEventAsync(long taskExecutionId, TaskId taskId)
     {
         var checkPointRequest = new TaskExecutionCheckpointRequest(taskId)
@@ -273,7 +265,6 @@ public class BlockFactory : IBlockFactory
         };
         await _taskExecutionRepository.CheckpointAsync(checkPointRequest).ConfigureAwait(false);
     }
-
 
     private int GetBlocksRemaining<T>(BlockRequest blockRequest, List<T> blocks)
     {
@@ -302,7 +293,7 @@ public class BlockFactory : IBlockFactory
         return forcedBlocks;
     }
 
-    private async Task DequeueForcedBlocksAsync(BlockRequest blockRequest, List<int> forcedBlockQueueIds)
+    private async Task DequeueForcedBlocksAsync(BlockRequest blockRequest, List<long> forcedBlockQueueIds)
     {
         var request = new DequeueForcedBlocksRequest(
             blockRequest.TaskId,
@@ -382,7 +373,7 @@ public class BlockFactory : IBlockFactory
 
     private async Task<RangeBlockContext> CreateBlockContextAsync(BlockRequest blockRequest,
         RangeBlock rangeBlock,
-        int forcedBlockQueueId = 0)
+        long forcedBlockQueueId = 0)
     {
         var attempt = rangeBlock.Attempt + 1;
         var createRequest = new BlockExecutionCreateRequest(
@@ -489,7 +480,6 @@ public class BlockFactory : IBlockFactory
         return rangeBlock;
     }
 
-
     private async Task<List<ProtoListBlock>> CreateProtoListBlocksAsync(ListBlockRequest blockRequest)
     {
         var blocks = new List<ProtoListBlock>();
@@ -501,17 +491,17 @@ public class BlockFactory : IBlockFactory
         else
         {
             // Forced blocks
-            var forceBlockQueueItems = await GetForcedListBlocksAsync(blockRequest).ConfigureAwait(false);
-            var forceBlocks = new List<ProtoListBlock>();
-            foreach (var forceBlockQueueItem in forceBlockQueueItems)
+            var forcedBlockQueueItems = await GetForcedListBlocksAsync(blockRequest).ConfigureAwait(false);
+            var forcedBlocks = new List<ProtoListBlock>();
+            foreach (var forcedBlockQueueItem in forcedBlockQueueItems)
             {
-                var forceBlock = forceBlockQueueItem.ListBlock;
-                forceBlock.IsForcedBlock = true;
-                forceBlock.ForcedBlockQueueId = forceBlockQueueItem.ForcedBlockQueueId;
-                forceBlocks.Add(forceBlock);
+                var forcedBlock = forcedBlockQueueItem.ListBlock;
+                forcedBlock.IsForcedBlock = true;
+                forcedBlock.ForcedBlockQueueId = forcedBlockQueueItem.ForcedBlockQueueId;
+                forcedBlocks.Add(forcedBlock);
             }
 
-            blocks.AddRange(forceBlocks);
+            blocks.AddRange(forcedBlocks);
 
             // Failed and Dead blocks
             if (GetBlocksRemaining(blockRequest, blocks) > 0)
@@ -624,7 +614,6 @@ public class BlockFactory : IBlockFactory
         return listBlock;
     }
 
-
     private async Task<IList<IListBlockContext<T>>> CreateListBlockContextsAsync<T>(ListBlockRequest blockRequest,
         IList<ProtoListBlock> listBlocks)
     {
@@ -639,13 +628,13 @@ public class BlockFactory : IBlockFactory
     }
 
     private async Task<IListBlockContext<T>> CreateListBlockContextAsync<T>(ListBlockRequest blockRequest,
-        ProtoListBlock listBlock, int forcedBlockQueueId = 0)
+        ProtoListBlock listBlock, long forcedBlockQueueId = 0)
     {
         var attempt = listBlock.Attempt + 1;
         var createRequest = new BlockExecutionCreateRequest(
             blockRequest.TaskId,
             blockRequest.TaskExecutionId,
-            BlockType.List,
+            BlockTypeEnum.List,
             listBlock.ListBlockId,
             attempt);
 
@@ -681,7 +670,7 @@ public class BlockFactory : IBlockFactory
     }
 
     private async Task<IListBlockContext<TItem, THeader>> CreateListBlockContextAsync<TItem, THeader>(
-        ListBlockRequest blockRequest, ProtoListBlock listBlock, int forcedBlockQueueId = 0)
+        ListBlockRequest blockRequest, ProtoListBlock listBlock, long forcedBlockQueueId = 0)
     {
         var attempt = listBlock.Attempt + 1;
         var createRequest = new BlockExecutionCreateRequest(
@@ -764,7 +753,6 @@ public class BlockFactory : IBlockFactory
 
         return items;
     }
-
 
     private async Task<List<IObjectBlockContext<T>>> LoadObjectBlocksOfTaskAsync<T>(ObjectBlockRequest<T> blockRequest)
     {
@@ -859,7 +847,7 @@ public class BlockFactory : IBlockFactory
     }
 
     private async Task<IObjectBlockContext<T>> CreateObjectBlockContextAsync<T>(ObjectBlockRequest<T> blockRequest,
-        ObjectBlock<T> objectBlock, int forcedBlockQueueId = 0)
+        ObjectBlock<T> objectBlock, long forcedBlockQueueId = 0)
     {
         var attempt = objectBlock.Attempt + 1;
         var createRequest = new BlockExecutionCreateRequest(

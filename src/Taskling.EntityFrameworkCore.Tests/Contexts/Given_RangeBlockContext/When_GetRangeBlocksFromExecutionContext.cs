@@ -2,11 +2,11 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Taskling.Blocks.Common;
+using Newtonsoft.Json;
 using Taskling.Blocks.RangeBlocks;
 using Taskling.Contexts;
 using Taskling.EntityFrameworkCore.Tests.Helpers;
-using Taskling.Events;
+using Taskling.Enums;
 using Xunit;
 
 namespace Taskling.EntityFrameworkCore.Tests.Contexts.Given_RangeBlockContext;
@@ -58,7 +58,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                 {
                     var fromDate = DateTime.UtcNow.AddHours(-12);
                     var toDate = DateTime.UtcNow;
-                    var maxBlockRange = new TimeSpan(0, 30, 0);
+                    var maxBlockRange = TimeSpans.ThirtyMinutes;
                     var rangeBlocks =
                         await executionContext.GetDateRangeBlocksAsync(
                             x => x.WithRange(fromDate, toDate, maxBlockRange));
@@ -67,13 +67,13 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                     var expectedCompletedCount = 0;
                     Assert.Equal(expectedNotStartedCount,
                         _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                            BlockExecutionStatus.NotStarted));
+                            BlockExecutionStatusEnum.NotStarted));
                     Assert.Equal(0,
                         _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                            BlockExecutionStatus.Started));
+                            BlockExecutionStatusEnum.Started));
                     Assert.Equal(expectedCompletedCount,
                         _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                            BlockExecutionStatus.Completed));
+                            BlockExecutionStatusEnum.Completed));
 
                     foreach (var rangeBlock in rangeBlocks)
                     {
@@ -81,17 +81,16 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                         expectedNotStartedCount--;
                         Assert.Equal(expectedNotStartedCount,
                             _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                                BlockExecutionStatus.NotStarted));
+                                BlockExecutionStatusEnum.NotStarted));
                         Assert.Equal(1,
-                            _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId, BlockExecutionStatus.Started));
-
-
+                            _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
+                                BlockExecutionStatusEnum.Started));
                         // processing here
                         await rangeBlock.CompleteAsync();
                         expectedCompletedCount++;
                         Assert.Equal(expectedCompletedCount,
                             _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                                BlockExecutionStatus.Completed));
+                                BlockExecutionStatusEnum.Completed));
                     }
                 }
             }
@@ -116,14 +115,14 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                 {
                     var fromDate = DateTime.UtcNow;
                     var toDate = DateTime.UtcNow.AddHours(-12);
-                    var maxBlockRange = new TimeSpan(0, 30, 0);
+                    var maxBlockRange = TimeSpans.ThirtyMinutes;
                     var rangeBlocks =
                         await executionContext.GetDateRangeBlocksAsync(
                             x => x.WithRange(fromDate, toDate, maxBlockRange));
                     Assert.Equal(0, _blocksHelper.GetBlockCount(CurrentTaskId));
 
                     var lastEvent = _executionsHelper.GetLastEvent(_taskDefinitionId);
-                    Assert.Equal(EventType.CheckPoint, lastEvent.EventType);
+                    Assert.Equal(EventTypeEnum.CheckPoint, lastEvent.EventType);
                     Assert.Equal("No values for generate the block. Emtpy Block context returned.", lastEvent.Message);
                 }
             }
@@ -155,7 +154,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                     Assert.Equal(0, _blocksHelper.GetBlockCount(CurrentTaskId));
 
                     var lastEvent = _executionsHelper.GetLastEvent(_taskDefinitionId);
-                    Assert.Equal(EventType.CheckPoint, lastEvent.EventType);
+                    Assert.Equal(EventTypeEnum.CheckPoint, lastEvent.EventType);
                     Assert.Equal("No values for generate the block. Emtpy Block context returned.", lastEvent.Message);
                 }
             }
@@ -191,13 +190,13 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                     var expectedCompletedCount = 0;
                     Assert.Equal(expectedNotStartedCount,
                         _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                            BlockExecutionStatus.NotStarted));
+                            BlockExecutionStatusEnum.NotStarted));
                     Assert.Equal(0,
                         _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                            BlockExecutionStatus.Started));
+                            BlockExecutionStatusEnum.Started));
                     Assert.Equal(expectedCompletedCount,
                         _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                            BlockExecutionStatus.Completed));
+                            BlockExecutionStatusEnum.Completed));
 
                     foreach (var block in blocks)
                     {
@@ -205,18 +204,17 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                         expectedNotStartedCount--;
                         Assert.Equal(expectedNotStartedCount,
                             _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                                BlockExecutionStatus.NotStarted));
+                                BlockExecutionStatusEnum.NotStarted));
                         Assert.Equal(1,
-                            _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId, BlockExecutionStatus.Started));
+                            _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
+                                BlockExecutionStatusEnum.Started));
 
                         // processing here
-
-
                         await block.CompleteAsync();
                         expectedCompletedCount++;
                         Assert.Equal(expectedCompletedCount,
                             _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                                BlockExecutionStatus.Completed));
+                                BlockExecutionStatusEnum.Completed));
                     }
                 }
             }
@@ -279,9 +277,9 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                     var rangeBlocks = await executionContext.GetDateRangeBlocksAsync(x => x
                         .WithRange(new DateTime(2016, 1, 1),
                             new DateTime(2016, 1, 31, 23, 59, 59, 999).AddMilliseconds(-1),
-                            new TimeSpan(1, 0, 0, 0))
+                            TimeSpans.OneDay)
                         .OverrideConfiguration()
-                        .MaximumBlocksToGenerate(50));
+                        .WithMaximumBlocksToGenerate(50));
 
                     foreach (var rangeBlock in rangeBlocks)
                     {
@@ -292,7 +290,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
             }
 
             IDateRangeBlock expectedLastBlock = new RangeBlock(0, 1, new DateTime(2016, 1, 31).Ticks,
-                new DateTime(2016, 1, 31, 23, 59, 59, 997).Ticks, BlockType.DateRange,
+                new DateTime(2016, 1, 31, 23, 59, 59, 997).Ticks, BlockTypeEnum.DateRange,
                 _loggerFactory.CreateLogger<RangeBlock>());
 
             // ACT
@@ -301,7 +299,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
             {
                 var startedOk = await executionContext.TryStartAsync();
                 if (startedOk)
-                    lastBlock = await executionContext.GetLastDateRangeBlockAsync(LastBlockOrder.LastCreated);
+                    lastBlock = await executionContext.GetLastDateRangeBlockAsync(LastBlockOrderEnum.LastCreated);
             }
 
             // ASSERT
@@ -326,7 +324,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
             {
                 var startedOk = await executionContext.TryStartAsync();
                 if (startedOk)
-                    lastBlock = await executionContext.GetLastDateRangeBlockAsync(LastBlockOrder.LastCreated);
+                    lastBlock = await executionContext.GetLastDateRangeBlockAsync(LastBlockOrderEnum.LastCreated);
             }
 
             // ASSERT
@@ -349,9 +347,9 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                 if (startedOk)
                 {
                     var rangeBlocks = await executionContext.GetDateRangeBlocksAsync(x => x
-                        .WithRange(new DateTime(2016, 1, 1), new DateTime(2016, 1, 2), new TimeSpan(2, 0, 0, 0))
+                        .WithRange(new DateTime(2016, 1, 1), new DateTime(2016, 1, 2), TimeSpans.TwoDays)
                         .OverrideConfiguration()
-                        .MaximumBlocksToGenerate(50));
+                        .WithMaximumBlocksToGenerate(50));
 
                     foreach (var rangeBlock in rangeBlocks)
                     {
@@ -370,7 +368,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
             {
                 var startedOk = await executionContext.TryStartAsync();
                 if (startedOk)
-                    lastBlock = await executionContext.GetLastDateRangeBlockAsync(LastBlockOrder.LastCreated);
+                    lastBlock = await executionContext.GetLastDateRangeBlockAsync(LastBlockOrderEnum.LastCreated);
             }
 
             // ASSERT
@@ -404,7 +402,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                 }
             }
 
-            var expectedLastBlock = new RangeBlock(0, 1, 901, 1000, BlockType.NumericRange,
+            var expectedLastBlock = new RangeBlock(0, 1, 901, 1000, BlockTypeEnum.NumericRange,
                 _loggerFactory.CreateLogger<RangeBlock>());
 
             // ACT
@@ -414,7 +412,8 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                 var startedOk = await executionContext.TryStartAsync();
                 Assert.True(startedOk);
                 if (startedOk)
-                    lastBlock = await executionContext.GetLastNumericRangeBlockAsync(LastBlockOrder.MaxRangeStartValue);
+                    lastBlock = await executionContext.GetLastNumericRangeBlockAsync(LastBlockOrderEnum
+                        .MaxRangeStartValue);
             }
 
             // ASSERT
@@ -439,7 +438,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
             {
                 var startedOk = await executionContext.TryStartAsync();
                 if (startedOk)
-                    lastBlock = await executionContext.GetLastNumericRangeBlockAsync(LastBlockOrder.LastCreated);
+                    lastBlock = await executionContext.GetLastNumericRangeBlockAsync(LastBlockOrderEnum.LastCreated);
             }
 
             // ASSERT
@@ -480,7 +479,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
             {
                 var startedOk = await executionContext.TryStartAsync();
                 if (startedOk)
-                    lastBlock = await executionContext.GetLastNumericRangeBlockAsync(LastBlockOrder.LastCreated);
+                    lastBlock = await executionContext.GetLastNumericRangeBlockAsync(LastBlockOrderEnum.LastCreated);
             }
 
             // ASSERT
@@ -511,11 +510,11 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                 {
                     var fromDate = DateTime.UtcNow.AddHours(-12);
                     var toDate = DateTime.UtcNow;
-                    var maxBlockRange = new TimeSpan(0, 30, 0);
+                    var maxBlockRange = TimeSpans.ThirtyMinutes;
                     var rangeBlocks = await executionContext.GetDateRangeBlocksAsync(x => x
                         .WithRange(fromDate, toDate, maxBlockRange)
                         .OverrideConfiguration()
-                        .MaximumBlocksToGenerate(5));
+                        .WithMaximumBlocksToGenerate(5));
 
                     await rangeBlocks[0].StartAsync();
                     await rangeBlocks[0].CompleteAsync(); // completed
@@ -535,7 +534,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                 Assert.True(startedOk);
                 if (startedOk)
                 {
-                    var rangeBlocks = await executionContext.GetDateRangeBlocksAsync(x => x.ReprocessDateRange()
+                    var rangeBlocks = await executionContext.GetDateRangeBlocksAsync(x => x.WithReprocessDateRange()
                         .PendingAndFailedBlocks()
                         .OfExecutionWith(referenceValue));
 
@@ -567,11 +566,11 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                 {
                     var fromDate = DateTime.UtcNow.AddHours(-12);
                     var toDate = DateTime.UtcNow;
-                    var maxBlockRange = new TimeSpan(0, 30, 0);
+                    var maxBlockRange = TimeSpans.ThirtyMinutes;
                     var rangeBlocks = await executionContext.GetDateRangeBlocksAsync(x => x
                         .WithRange(fromDate, toDate, maxBlockRange)
                         .OverrideConfiguration()
-                        .MaximumBlocksToGenerate(5));
+                        .WithMaximumBlocksToGenerate(5));
 
                     await rangeBlocks[0].StartAsync();
                     await rangeBlocks[0].CompleteAsync(); // completed
@@ -591,7 +590,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                 Assert.True(startedOk);
                 if (startedOk)
                 {
-                    var rangeBlocks = await executionContext.GetDateRangeBlocksAsync(x => x.ReprocessDateRange()
+                    var rangeBlocks = await executionContext.GetDateRangeBlocksAsync(x => x.WithReprocessDateRange()
                         .AllBlocks()
                         .OfExecutionWith(referenceValue));
 
@@ -627,7 +626,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                     var blocks = await executionContext.GetNumericRangeBlocksAsync(x => x
                         .WithRange(fromNumber, toNumber, maxBlockRange)
                         .OverrideConfiguration()
-                        .MaximumBlocksToGenerate(5));
+                        .WithMaximumBlocksToGenerate(5));
 
                     await blocks[0].StartAsync();
                     await blocks[0].CompleteAsync(); // completed
@@ -647,7 +646,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                 Assert.True(startedOk);
                 if (startedOk)
                 {
-                    var rangeBlocks = await executionContext.GetNumericRangeBlocksAsync(x => x.ReprocessNumericRange()
+                    var rangeBlocks = await executionContext.GetNumericRangeBlocksAsync(x => x.WithReprocessNumericRange()
                         .PendingAndFailedBlocks()
                         .OfExecutionWith(referenceValue));
 
@@ -656,7 +655,6 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
             }
         });
     }
-
 
     [Fact]
     [Trait("Speed", "Fast")]
@@ -684,7 +682,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                     var blocks = await executionContext.GetNumericRangeBlocksAsync(x => x
                         .WithRange(fromNumber, toNumber, maxBlockRange)
                         .OverrideConfiguration()
-                        .MaximumBlocksToGenerate(5));
+                        .WithMaximumBlocksToGenerate(5));
 
                     await blocks[0].StartAsync();
                     await blocks[0].CompleteAsync(); // completed
@@ -704,7 +702,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                 Assert.True(startedOk);
                 if (startedOk)
                 {
-                    var rangeBlocks = await executionContext.GetNumericRangeBlocksAsync(x => x.ReprocessNumericRange()
+                    var rangeBlocks = await executionContext.GetNumericRangeBlocksAsync(x => x.WithReprocessNumericRange()
                         .AllBlocks()
                         .OfExecutionWith(referenceValue));
 
@@ -735,13 +733,13 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                 {
                     var from = new DateTime(2016, 1, 7);
                     var to = new DateTime(2016, 1, 7);
-                    var maxBlockSize = new TimeSpan(1, 0, 0, 0);
+                    var maxBlockSize = TimeSpans.OneDay;
                     var dateBlocks = await executionContext.GetDateRangeBlocksAsync(x => x
                         .WithRange(from, to, maxBlockSize)
                         .OverrideConfiguration()
-                        .ReprocessDeadTasks(new TimeSpan(1, 0, 0, 0), 3)
-                        .ReprocessFailedTasks(new TimeSpan(1, 0, 0, 0), 3)
-                        .MaximumBlocksToGenerate(8));
+                        .WithReprocessDeadTasks(TimeSpans.OneDay, 3)
+                        .WithReprocessFailedTasks(TimeSpans.OneDay, 3)
+                        .WithMaximumBlocksToGenerate(8));
 
                     var counter = 0;
                     foreach (var block in dateBlocks)
@@ -753,7 +751,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                         counter++;
                         Assert.Equal(counter,
                             _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                                BlockExecutionStatus.Completed));
+                                BlockExecutionStatusEnum.Completed));
                     }
                 }
             }
@@ -781,13 +779,13 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                 {
                     var from = new DateTime(2016, 1, 7);
                     var to = new DateTime(2016, 1, 31);
-                    var maxBlockSize = new TimeSpan(1, 0, 0, 0);
+                    var maxBlockSize = TimeSpans.OneDay;
                     var dateBlocks = await executionContext.GetDateRangeBlocksAsync(x => x
                         .WithRange(from, to, maxBlockSize)
                         .OverrideConfiguration()
-                        .ReprocessDeadTasks(new TimeSpan(1, 0, 0, 0), 3)
-                        .ReprocessFailedTasks(new TimeSpan(1, 0, 0, 0), 3)
-                        .MaximumBlocksToGenerate(8));
+                        .WithReprocessDeadTasks(TimeSpans.OneDay, 3)
+                        .WithReprocessFailedTasks(TimeSpans.OneDay, 3)
+                        .WithMaximumBlocksToGenerate(8));
 
                     Assert.Equal(8, dateBlocks.Count());
                     Assert.Contains(dateBlocks, x => x.DateRangeBlock.StartDate == new DateTime(2016, 1, 1));
@@ -825,7 +823,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                 {
                     var from = new DateTime(2016, 1, 7);
                     var to = new DateTime(2016, 1, 31);
-                    var maxBlockSize = new TimeSpan(1, 0, 0, 0);
+                    var maxBlockSize = TimeSpans.OneDay;
                     var numericBlocks =
                         await executionContext.GetDateRangeBlocksAsync(x => x.WithRange(from, to, maxBlockSize));
                     Assert.Equal(10, numericBlocks.Count());
@@ -860,9 +858,9 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                     var numericBlocks = await executionContext.GetNumericRangeBlocksAsync(x => x
                         .WithRange(from, to, maxBlockSize)
                         .OverrideConfiguration()
-                        .ReprocessDeadTasks(new TimeSpan(1, 0, 0, 0), 3)
-                        .ReprocessFailedTasks(new TimeSpan(1, 0, 0, 0), 3)
-                        .MaximumBlocksToGenerate(8));
+                        .WithReprocessDeadTasks(TimeSpans.OneDay, 3)
+                        .WithReprocessFailedTasks(TimeSpans.OneDay, 3)
+                        .WithMaximumBlocksToGenerate(8));
 
                     Assert.Equal(8, numericBlocks.Count());
                     Assert.Contains(numericBlocks, x => (int)x.NumericRangeBlock.StartNumber == 1);
@@ -913,7 +911,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
     [Fact]
     [Trait("Speed", "Fast")]
     [Trait("Area", "Blocks")]
-    public async Task If_AsDateRange_ForceBlock_ThenBlockGetsReprocessedAndDequeued()
+    public async Task If_AsDateRange_ForcedBlock_ThenBlockGetsReprocessedAndDequeued()
     {
         await InSemaphoreAsync(async () =>
         {
@@ -928,7 +926,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                 startedOk = await executionContext.TryStartAsync();
                 if (startedOk)
                 {
-                    var maxBlockRange = new TimeSpan(24, 0, 0);
+                    var maxBlockRange = TimeSpans.OneDay;
                     var rangeBlocks =
                         await executionContext.GetDateRangeBlocksAsync(
                             x => x.WithRange(fromDate, toDate, maxBlockRange));
@@ -950,7 +948,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                 startedOk = await executionContext.TryStartAsync();
                 if (startedOk)
                 {
-                    var rangeBlocks = await executionContext.GetDateRangeBlocksAsync(x => x.OnlyOldDateBlocks());
+                    var rangeBlocks = await executionContext.GetDateRangeBlocksAsync(x => x.WithOnlyOldDateBlocks());
                     Assert.Equal(1, rangeBlocks.Count);
                     Assert.Equal(fromDate.ToString("yyyyMMdd HH:mm:ss"),
                         rangeBlocks[0].DateRangeBlock.StartDate.ToString("yyyyMMdd HH:mm:ss"));
@@ -970,7 +968,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                 startedOk = await executionContext.TryStartAsync();
                 if (startedOk)
                 {
-                    var rangeBlocks = await executionContext.GetDateRangeBlocksAsync(x => x.OnlyOldDateBlocks());
+                    var rangeBlocks = await executionContext.GetDateRangeBlocksAsync(x => x.WithOnlyOldDateBlocks());
                     Assert.Equal(0, rangeBlocks.Count);
                 }
             }
@@ -980,7 +978,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
     [Fact]
     [Trait("Speed", "Fast")]
     [Trait("Area", "Blocks")]
-    public async Task If_AsNumericRange_ForceBlock_ThenBlockGetsReprocessedAndDequeued()
+    public async Task If_AsNumericRange_ForcedBlock_ThenBlockGetsReprocessedAndDequeued()
     {
         await InSemaphoreAsync(async () =>
         {
@@ -1017,7 +1015,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                 startedOk = await executionContext.TryStartAsync();
                 if (startedOk)
                 {
-                    var rangeBlocks = await executionContext.GetNumericRangeBlocksAsync(x => x.OnlyOldNumericBlocks());
+                    var rangeBlocks = await executionContext.GetNumericRangeBlocksAsync(x => x.WithOnlyOldNumericBlocks());
                     Assert.Equal(1, rangeBlocks.Count);
                     Assert.Equal(fromNumber, rangeBlocks[0].NumericRangeBlock.StartNumber);
                     Assert.Equal(toNumber, rangeBlocks[0].NumericRangeBlock.EndNumber);
@@ -1035,13 +1033,12 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                 startedOk = await executionContext.TryStartAsync();
                 if (startedOk)
                 {
-                    var rangeBlocks = await executionContext.GetNumericRangeBlocksAsync(x => x.OnlyOldNumericBlocks());
+                    var rangeBlocks = await executionContext.GetNumericRangeBlocksAsync(x => x.WithOnlyOldNumericBlocks());
                     Assert.Equal(0, rangeBlocks.Count);
                 }
             }
         });
     }
-
 
     private ITaskExecutionContext CreateTaskExecutionContext(int maxBlocksToCreate = 2000)
     {
@@ -1051,8 +1048,12 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
 
     private ITaskExecutionContext CreateTaskExecutionContextWithNoReprocessing(int maxBlocksToCreate = 2000)
     {
+        var defaultTaskConfigurationWithKeepAliveAndNoReprocessing =
+            _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndNoReprocessing(maxBlocksToCreate);
+        _logger.LogDebug(JsonConvert.SerializeObject(defaultTaskConfigurationWithKeepAliveAndNoReprocessing,
+            Formatting.Indented));
         return _clientHelper.GetExecutionContext(CurrentTaskId,
-            _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndNoReprocessing(maxBlocksToCreate));
+            defaultTaskConfigurationWithKeepAliveAndNoReprocessing);
     }
 
     private async Task CreateFailedDateTaskAsync()
@@ -1064,7 +1065,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
             {
                 var from = new DateTime(2016, 1, 1);
                 var to = new DateTime(2016, 1, 4);
-                var maxBlockSize = new TimeSpan(1, 0, 0, 0);
+                var maxBlockSize = TimeSpans.OneDay;
                 var dateBlocks =
                     await executionContext.GetDateRangeBlocksAsync(x => x.WithRange(from, to, maxBlockSize));
 
@@ -1086,7 +1087,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
             {
                 var from = new DateTime(2016, 1, 4);
                 var to = new DateTime(2016, 1, 7);
-                var maxBlockSize = new TimeSpan(1, 0, 0, 0);
+                var maxBlockSize = TimeSpans.OneDay;
                 var dateBlocks =
                     await executionContext.GetDateRangeBlocksAsync(x => x.WithRange(from, to, maxBlockSize));
 

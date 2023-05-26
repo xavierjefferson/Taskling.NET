@@ -1,16 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using Taskling.Blocks.Common;
-using Taskling.Blocks.ListBlocks;
+using Taskling.Enums;
 using Taskling.Fluent.Settings;
-using Taskling.Tasks;
 
 namespace Taskling.Fluent;
 
 public class FluentBlockSettingsDescriptor : IFluentBlockSettingsDescriptor, IOverrideConfigurationDescriptor,
     IReprocessScopeDescriptor, IReprocessTaskDescriptor, IBlockSettings, IComplete
 {
-    public FluentBlockSettingsDescriptor(BlockType blockType)
+    public FluentBlockSettingsDescriptor(BlockTypeEnum blockType)
     {
         BlockType = blockType;
     }
@@ -20,7 +18,7 @@ public class FluentBlockSettingsDescriptor : IFluentBlockSettingsDescriptor, IOv
         FromDate = fromDate;
         ToDate = toDate;
         MaxBlockTimespan = maxBlockRange;
-        BlockType = BlockType.DateRange;
+        BlockType = BlockTypeEnum.DateRange;
     }
 
     public FluentBlockSettingsDescriptor(long fromNumber, long toNumber, long maxBlockRange)
@@ -28,14 +26,14 @@ public class FluentBlockSettingsDescriptor : IFluentBlockSettingsDescriptor, IOv
         FromNumber = fromNumber;
         ToNumber = toNumber;
         MaxBlockNumberRange = maxBlockRange;
-        BlockType = BlockType.NumericRange;
+        BlockType = BlockTypeEnum.NumericRange;
     }
 
     public FluentBlockSettingsDescriptor(List<string> values, int maxBlockSize)
     {
         Values = values;
         MaxBlockSize = maxBlockSize;
-        BlockType = BlockType.List;
+        BlockType = BlockTypeEnum.List;
     }
 
     public FluentBlockSettingsDescriptor(List<string> values, string header, int maxBlockSize)
@@ -43,21 +41,21 @@ public class FluentBlockSettingsDescriptor : IFluentBlockSettingsDescriptor, IOv
         Values = values;
         Header = header;
         MaxBlockSize = maxBlockSize;
-        BlockType = BlockType.List;
+        BlockType = BlockTypeEnum.List;
     }
 
-    public TaskDeathMode TaskDeathMode { get; set; }
+    public TaskDeathModeEnum TaskDeathMode { get; set; }
 
-    public bool? MustReprocessFailedTasks { get; set; }
+    public bool? ReprocessFailedTasks { get; set; }
     public TimeSpan? FailedTaskDetectionRange { get; set; }
     public int? FailedTaskRetryLimit { get; set; }
 
-    public bool? MustReprocessDeadTasks { get; set; }
+    public bool? ReprocessDeadTasks { get; set; }
     public TimeSpan? DeadTaskDetectionRange { get; set; }
     public int? DeadTaskRetryLimit { get; set; }
 
-    public int? MaximumNumberOfBlocksLimit { get; set; }
-    public BlockType BlockType { get; set; }
+    public int? MaxBlocksToGenerate { get; set; }
+    public BlockTypeEnum BlockType { get; set; }
 
     // Date Range
     public DateTime? FromDate { get; set; }
@@ -73,32 +71,32 @@ public class FluentBlockSettingsDescriptor : IFluentBlockSettingsDescriptor, IOv
     public List<string> Values { get; set; }
     public string Header { get; set; }
     public int MaxBlockSize { get; set; }
-    public ListUpdateMode ListUpdateMode { get; set; }
+    public ListUpdateModeEnum ListUpdateMode { get; set; }
     public int UncommittedItemsThreshold { get; set; }
 
     // Reprocess Specific Task
-    public ReprocessOption ReprocessOption { get; set; }
+    public ReprocessOptionEnum ReprocessOption { get; set; }
     public Guid ReferenceValueToReprocess { get; set; }
 
-    public IFluentBlockSettingsDescriptor ReprocessFailedTasks(TimeSpan detectionRange, int retryLimit)
+    public IFluentBlockSettingsDescriptor WithReprocessFailedTasks(TimeSpan detectionRange, int retryLimit)
     {
-        MustReprocessFailedTasks = true;
+        ReprocessFailedTasks = true;
         FailedTaskDetectionRange = detectionRange;
         FailedTaskRetryLimit = retryLimit;
         return this;
     }
 
-    public IFluentBlockSettingsDescriptor ReprocessDeadTasks(TimeSpan detectionRange, int retryLimit)
+    public IFluentBlockSettingsDescriptor WithReprocessDeadTasks(TimeSpan detectionRange, int retryLimit)
     {
-        MustReprocessDeadTasks = true;
+        ReprocessDeadTasks = true;
         DeadTaskDetectionRange = detectionRange;
         DeadTaskRetryLimit = retryLimit;
         return this;
     }
 
-    public IComplete MaximumBlocksToGenerate(int maximumNumberOfBlocks)
+    public IComplete WithMaximumBlocksToGenerate(int maximumNumberOfBlocks)
     {
-        MaximumNumberOfBlocksLimit = maximumNumberOfBlocks;
+        MaxBlocksToGenerate = maximumNumberOfBlocks;
         return this;
     }
 
@@ -109,13 +107,13 @@ public class FluentBlockSettingsDescriptor : IFluentBlockSettingsDescriptor, IOv
 
     public IReprocessTaskDescriptor AllBlocks()
     {
-        ReprocessOption = ReprocessOption.Everything;
+        ReprocessOption = ReprocessOptionEnum.Everything;
         return this;
     }
 
     public IReprocessTaskDescriptor PendingAndFailedBlocks()
     {
-        ReprocessOption = ReprocessOption.PendingOrFailed;
+        ReprocessOption = ReprocessOptionEnum.PendingOrFailed;
         return this;
     }
 

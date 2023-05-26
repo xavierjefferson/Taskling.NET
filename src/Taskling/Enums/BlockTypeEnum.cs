@@ -1,6 +1,6 @@
-﻿namespace Taskling.Blocks.Common;
+﻿namespace Taskling.Enums;
 
-public enum BlockType
+public enum BlockTypeEnum
 {
     NotDefined = 0,
     NumericRange = 1,

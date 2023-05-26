@@ -1,17 +1,17 @@
-﻿using Taskling.Blocks.Common;
+﻿using Taskling.Enums;
 
 namespace Taskling.InfrastructureContracts.Blocks;
 
 public class LastBlockRequest
 {
     public LastBlockRequest(TaskId taskId,
-        BlockType blockType)
+        BlockTypeEnum blockType)
     {
         TaskId = taskId;
         BlockType = blockType;
     }
 
     public TaskId TaskId { get; }
-    public BlockType BlockType { get; set; }
-    public LastBlockOrder LastBlockOrder { get; set; }
+    public BlockTypeEnum BlockType { get; set; }
+    public LastBlockOrderEnum LastBlockOrder { get; set; }
 }

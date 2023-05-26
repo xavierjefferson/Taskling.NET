@@ -1,14 +1,16 @@
-﻿using Taskling.InfrastructureContracts.TaskExecution;
+﻿using Taskling.Enums;
+using Taskling.InfrastructureContracts.TaskExecution;
 
 namespace Taskling.InfrastructureContracts.CriticalSections;
 
 public class CompleteCriticalSectionRequest : RequestBase
 {
-    public CompleteCriticalSectionRequest(TaskId taskId, long taskExecutionId, CriticalSectionType criticalSectionType)
+    public CompleteCriticalSectionRequest(TaskId taskId, long taskExecutionId,
+        CriticalSectionTypeEnum criticalSectionType)
         : base(taskId, taskExecutionId)
     {
         Type = criticalSectionType;
     }
 
-    public CriticalSectionType Type { get; set; }
+    public CriticalSectionTypeEnum Type { get; set; }
 }

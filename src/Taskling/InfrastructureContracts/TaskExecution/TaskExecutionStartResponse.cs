@@ -1,4 +1,5 @@
 ﻿using System;
+using Taskling.Enums;
 
 namespace Taskling.InfrastructureContracts.TaskExecution;
 
@@ -10,7 +11,7 @@ public class TaskExecutionStartResponse : ResponseBase
 
     public TaskExecutionStartResponse(Guid executionTokenId,
         DateTime startedAt,
-        GrantStatus grantStatus)
+        GrantStatusEnum grantStatus)
     {
         ExecutionTokenId = executionTokenId;
         StartedAt = startedAt;
@@ -20,6 +21,6 @@ public class TaskExecutionStartResponse : ResponseBase
     public long TaskExecutionId { get; set; }
     public Guid ExecutionTokenId { get; set; }
     public DateTime StartedAt { get; set; }
-    public GrantStatus GrantStatus { get; set; }
-    public Exception Ex { get; set; }
+    public GrantStatusEnum GrantStatus { get; set; }
+    public Exception Exception { get; set; }
 }

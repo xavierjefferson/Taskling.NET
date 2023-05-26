@@ -1,25 +1,137 @@
-﻿namespace Taskling;
+﻿using System;
+using Newtonsoft.Json;
 
-public class ConfigurationOptions
+namespace Taskling;
+
+public class ConfigurationOptions : IConfigurationOptions
 {
-    public string DB { get; set; }
-    public int TO { get; set; } = 120;
-    public bool E { get; set; } = true;
-    public int CON { get; set; } = -1;
-    public int KPLT { get; set; } = 14;
-    public int KPDT { get; set; } = 40;
-    public int MCI { get; set; } = 1;
-    public bool KA { get; set; } = true;
-    public double KAINT { get; set; } = 1;
-    public double KADT { get; set; } = 10;
-    public double TPDT { get; set; }
-    public bool RPC_FAIL { get; set; } = false;
-    public int RPC_FAIL_MTS { get; set; }
-    public int RPC_FAIL_RTYL { get; set; }
-    public bool RPC_DEAD { get; set; } = false;
-    public int RPC_DEAD_MTS { get; set; }
-    public int RPC_DEAD_RTYL { get; set; }
-    public int MXBL { get; set; } = 10000;
-    public int MXCOMP { get; set; } = 2000;
-    public int MXRSN { get; set; } = 1000;
+    protected TimeSpan _deadTaskDetectionRange;
+    protected TimeSpan _failedTaskDetectionRange;
+
+    public ConfigurationOptions()
+    {
+        DatabaseTimeoutSeconds = 120;
+        Enabled = true;
+        ConcurrencyLimit = -1;
+        KeepListItemsForDays = 14;
+        KeepGeneralDataForDays = 40;
+        MinimumCleanUpIntervalHours = 1;
+        UseKeepAliveMode = true;
+        KeepAliveIntervalMinutes = 1;
+        KeepAliveDeathThresholdMinutes = 10;
+        ReprocessFailedTasks = false;
+        ReprocessDeadTasks = false;
+        MaxBlocksToGenerate = 10000;
+        MaxLengthForNonCompressedData = 2000;
+        MaxStatusReason = 1000;
+    }
+
+    [JsonIgnore]
+    [System.Text.Json.Serialization.JsonIgnore]
+    public TimeSpan FailedTaskDetectionRange => _failedTaskDetectionRange;
+
+    [JsonIgnore]
+    [System.Text.Json.Serialization.JsonIgnore]
+    public TimeSpan DeadTaskDetectionRange => _deadTaskDetectionRange;
+
+    public string ConnectionString { get; set; }
+    public int DatabaseTimeoutSeconds { get; set; }
+
+    /// <summary>
+    ///     concurrency
+    /// </summary>
+    public bool Enabled { get; set; }
+
+    /// <summary>
+    ///     concurrency
+    /// </summary>
+    public int ConcurrencyLimit { get; set; }
+
+    /// <summary>
+    ///     clean up
+    /// </summary>
+    public int KeepListItemsForDays { get; set; }
+
+    /// <summary>
+    ///     clean up
+    /// </summary>
+    public int KeepGeneralDataForDays { get; set; }
+
+    /// <summary>
+    ///     clean up
+    /// </summary>
+    public int MinimumCleanUpIntervalHours { get; set; }
+
+    /// <summary>
+    ///     death detection
+    /// </summary>
+    public bool UseKeepAliveMode { get; set; }
+
+    /// <summary>
+    ///     death detection
+    /// </summary>
+    public double KeepAliveIntervalMinutes { get; set; }
+
+    /// <summary>
+    ///     death detection
+    /// </summary>
+    public double KeepAliveDeathThresholdMinutes { get; set; }
+
+    /// <summary>
+    ///     death detection
+    /// </summary>
+    public double TimePeriodDeathThresholdMinutes { get; set; }
+
+    /// <summary>
+    ///     reprocess failed tasks
+    /// </summary>
+    public bool ReprocessFailedTasks { get; set; }
+
+    /// <summary>
+    ///     reprocess failed tasks
+    /// </summary>
+    public int FailedTaskDetectionRangeMinutes
+    {
+        get => Convert.ToInt32(_failedTaskDetectionRange.TotalMinutes);
+        set => _failedTaskDetectionRange = TimeSpan.FromMinutes(value);
+    }
+
+    /// <summary>
+    ///     reprocess failed tasks
+    /// </summary>
+    public int FailedTaskRetryLimit { get; set; }
+
+    /// <summary>
+    ///     reprocess dead tasks
+    /// </summary>
+    public bool ReprocessDeadTasks { get; set; }
+
+    /// <summary>
+    ///     reprocess dead tasks
+    /// </summary>
+    public int DeadTaskDetectionRangeMinutes
+    {
+        get => Convert.ToInt32(_deadTaskDetectionRange.TotalMinutes);
+        set => _deadTaskDetectionRange = TimeSpan.FromMinutes(value);
+    }
+
+    /// <summary>
+    ///     reprocess dead tasks
+    /// </summary>
+    public int DeadTaskRetryLimit { get; set; }
+
+    /// <summary>
+    ///     blocks
+    /// </summary>
+    public int MaxBlocksToGenerate { get; set; }
+
+    /// <summary>
+    ///     blocks
+    /// </summary>
+    public int MaxLengthForNonCompressedData { get; set; }
+
+    /// <summary>
+    ///     blocks
+    /// </summary>
+    public int MaxStatusReason { get; set; }
 }

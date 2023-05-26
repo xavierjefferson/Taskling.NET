@@ -1,4 +1,4 @@
-﻿using Taskling.Blocks.Common;
+﻿using Taskling.Enums;
 
 namespace Taskling.InfrastructureContracts.Blocks.CommonRequests;
 
@@ -6,14 +6,14 @@ public class BlockExecutionChangeStatusRequest : BlockRequestBase
 {
     public BlockExecutionChangeStatusRequest(TaskId taskId,
         long taskExecutionId,
-        BlockType blockType,
+        BlockTypeEnum blockType,
         long blockExecutionId,
-        BlockExecutionStatus blockExecutionStatus)
+        BlockExecutionStatusEnum blockExecutionStatus)
         : base(taskId, taskExecutionId, blockType, blockExecutionId)
     {
         BlockExecutionStatus = blockExecutionStatus;
     }
 
-    public BlockExecutionStatus BlockExecutionStatus { get; set; }
+    public BlockExecutionStatusEnum BlockExecutionStatus { get; set; }
     public int ItemsProcessed { get; set; }
 }

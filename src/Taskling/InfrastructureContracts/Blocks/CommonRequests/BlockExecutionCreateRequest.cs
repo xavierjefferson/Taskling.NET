@@ -1,4 +1,4 @@
-﻿using Taskling.Blocks.Common;
+﻿using Taskling.Enums;
 
 namespace Taskling.InfrastructureContracts.Blocks.CommonRequests;
 
@@ -6,7 +6,7 @@ public class BlockExecutionCreateRequest : BlockRequestBase
 {
     public BlockExecutionCreateRequest(TaskId taskId,
         long taskExecutionId,
-        BlockType blockType,
+        BlockTypeEnum blockType,
         long blockId,
         int attempt)
         : base(taskId, taskExecutionId, blockType)

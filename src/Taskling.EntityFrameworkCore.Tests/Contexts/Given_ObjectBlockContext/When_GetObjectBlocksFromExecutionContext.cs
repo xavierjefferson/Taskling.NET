@@ -3,11 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Taskling.Blocks.Common;
 using Taskling.Blocks.ObjectBlocks;
 using Taskling.Contexts;
 using Taskling.EntityFrameworkCore.Tests.Helpers;
-using Taskling.Events;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Xunit;
 
@@ -60,13 +59,13 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
                     var expectedCompletedCount = 0;
                     Assert.Equal(expectedNotStartedCount,
                         _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                            BlockExecutionStatus.NotStarted));
+                            BlockExecutionStatusEnum.NotStarted));
                     Assert.Equal(0,
                         _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                            BlockExecutionStatus.Started));
+                            BlockExecutionStatusEnum.Started));
                     Assert.Equal(expectedCompletedCount,
                         _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                            BlockExecutionStatus.Completed));
+                            BlockExecutionStatusEnum.Completed));
 
                     foreach (var block in blocks)
                     {
@@ -74,17 +73,16 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
                         expectedNotStartedCount--;
                         Assert.Equal(expectedNotStartedCount,
                             _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                                BlockExecutionStatus.NotStarted));
+                                BlockExecutionStatusEnum.NotStarted));
                         Assert.Equal(1,
-                            _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId, BlockExecutionStatus.Started));
-
-
+                            _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
+                                BlockExecutionStatusEnum.Started));
                         // processing here
                         await block.CompleteAsync();
                         expectedCompletedCount++;
                         Assert.Equal(expectedCompletedCount,
                             _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                                BlockExecutionStatus.Completed));
+                                BlockExecutionStatusEnum.Completed));
                     }
                 }
             }
@@ -111,7 +109,7 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
                     Assert.Equal(0, _blocksHelper.GetBlockCount(CurrentTaskId));
 
                     var lastEvent = _executionsHelper.GetLastEvent(_taskDefinitionId);
-                    Assert.Equal(EventType.CheckPoint, lastEvent.EventType);
+                    Assert.Equal(EventTypeEnum.CheckPoint, lastEvent.EventType);
                     Assert.Equal("No values for generate the block. Emtpy Block context returned.", lastEvent.Message);
                 }
             }
@@ -402,7 +400,7 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
                 {
                     var fromDate = DateTime.UtcNow.AddHours(-12);
                     var toDate = DateTime.UtcNow;
-                    var maxBlockRange = new TimeSpan(0, 30, 0);
+                    var maxBlockRange = TimeSpans.ThirtyMinutes;
 
                     var blocks = new List<IObjectBlockContext<string>>();
                     blocks.AddRange(
@@ -465,9 +463,9 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
                 {
                     var blocks = await executionContext.GetObjectBlocksAsync<string>(x => x.WithObject("TestingDFG")
                         .OverrideConfiguration()
-                        .ReprocessDeadTasks(new TimeSpan(1, 0, 0, 0), 3)
-                        .ReprocessFailedTasks(new TimeSpan(1, 0, 0, 0), 3)
-                        .MaximumBlocksToGenerate(8));
+                        .WithReprocessDeadTasks(TimeSpans.OneDay, 3)
+                        .WithReprocessFailedTasks(TimeSpans.OneDay, 3)
+                        .WithMaximumBlocksToGenerate(8));
 
                     var counter = 0;
                     foreach (var block in blocks)
@@ -479,7 +477,7 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
                         counter++;
                         Assert.Equal(counter,
                             _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                                BlockExecutionStatus.Completed));
+                                BlockExecutionStatusEnum.Completed));
                     }
                 }
             }
@@ -507,9 +505,9 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
                 {
                     var blocks = await executionContext.GetObjectBlocksAsync<string>(x => x.WithObject("TestingYHN")
                         .OverrideConfiguration()
-                        .ReprocessDeadTasks(new TimeSpan(1, 0, 0, 0), 3)
-                        .ReprocessFailedTasks(new TimeSpan(1, 0, 0, 0), 3)
-                        .MaximumBlocksToGenerate(8));
+                        .WithReprocessDeadTasks(TimeSpans.OneDay, 3)
+                        .WithReprocessFailedTasks(TimeSpans.OneDay, 3)
+                        .WithMaximumBlocksToGenerate(8));
 
                     Assert.Equal(3, blocks.Count());
                     Assert.Contains(blocks, x => x.Block.Object == "Dead Task");
@@ -550,7 +548,7 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
     [Fact]
     [Trait("Speed", "Fast")]
     [Trait("Area", "Blocks")]
-    public async Task If_ForceBlock_ThenBlockGetsReprocessedAndDequeued()
+    public async Task If_ForcedBlock_ThenBlockGetsReprocessedAndDequeued()
     {
         await InSemaphoreAsync(async () =>
         {
@@ -650,7 +648,7 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
             {
                 var from = new DateTime(2016, 1, 4);
                 var to = new DateTime(2016, 1, 7);
-                var maxBlockSize = new TimeSpan(1, 0, 0, 0);
+                var maxBlockSize = TimeSpans.OneDay;
                 var blocks = await executionContext.GetObjectBlocksAsync<string>(x => x.WithObject("Dead Task"));
 
                 foreach (var block in blocks) await block.StartAsync();

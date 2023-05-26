@@ -1,13 +1,13 @@
 ﻿using System;
-using Taskling.Blocks.Common;
+using Taskling.Enums;
 
 namespace Taskling.Fluent.RangeBlocks;
 
 public class FluentRangeBlockDescriptor : IFluentDateRangeBlockDescriptor, IFluentNumericRangeBlockDescriptor
 {
-    public IReprocessScopeDescriptor ReprocessDateRange()
+    public IReprocessScopeDescriptor WithReprocessDateRange()
     {
-        return new FluentBlockSettingsDescriptor(BlockType.DateRange);
+        return new FluentBlockSettingsDescriptor(BlockTypeEnum.DateRange);
     }
 
     public IOverrideConfigurationDescriptor WithRange(DateTime fromDate, DateTime toDate, TimeSpan maxBlockRange)
@@ -15,14 +15,14 @@ public class FluentRangeBlockDescriptor : IFluentDateRangeBlockDescriptor, IFlue
         return new FluentBlockSettingsDescriptor(fromDate, toDate, maxBlockRange);
     }
 
-    public IOverrideConfigurationDescriptor OnlyOldDateBlocks()
+    public IOverrideConfigurationDescriptor WithOnlyOldDateBlocks()
     {
-        return new FluentBlockSettingsDescriptor(BlockType.DateRange);
+        return new FluentBlockSettingsDescriptor(BlockTypeEnum.DateRange);
     }
 
-    public IReprocessScopeDescriptor ReprocessNumericRange()
+    public IReprocessScopeDescriptor WithReprocessNumericRange()
     {
-        return new FluentBlockSettingsDescriptor(BlockType.NumericRange);
+        return new FluentBlockSettingsDescriptor(BlockTypeEnum.NumericRange);
     }
 
     public IOverrideConfigurationDescriptor WithRange(long fromNumber, long toNumber, long maxBlockNumberRange)
@@ -30,8 +30,8 @@ public class FluentRangeBlockDescriptor : IFluentDateRangeBlockDescriptor, IFlue
         return new FluentBlockSettingsDescriptor(fromNumber, toNumber, maxBlockNumberRange);
     }
 
-    public IOverrideConfigurationDescriptor OnlyOldNumericBlocks()
+    public IOverrideConfigurationDescriptor WithOnlyOldNumericBlocks()
     {
-        return new FluentBlockSettingsDescriptor(BlockType.NumericRange);
+        return new FluentBlockSettingsDescriptor(BlockTypeEnum.NumericRange);
     }
 }

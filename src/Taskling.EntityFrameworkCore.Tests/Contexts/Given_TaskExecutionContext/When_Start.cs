@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using Taskling.EntityFrameworkCore.Tests.Helpers;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Xunit;
@@ -121,11 +122,11 @@ public class When_Start : TestBase
             }
 
             var dbHelper = executionsHelper;
-            var executionHeader = dbHelper.GetLastExecutionHeader(_taskDefinitionId);
-            var expectedHeader = "{\"Name\":\"Jack\",\"Id\":367}";
-
+            var executionHeader =
+                JsonConvert.DeserializeObject<MyHeader>(dbHelper.GetLastExecutionHeader(_taskDefinitionId));
             // ASSERT
-            Assert.Equal(expectedHeader, executionHeader);
+            Assert.Equal(myHeader.Id, executionHeader.Id);
+            Assert.Equal(myHeader.Name, executionHeader.Name);
         });
     }
 }

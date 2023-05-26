@@ -1,6 +1,6 @@
-﻿namespace Taskling.Tasks;
+﻿namespace Taskling.Enums;
 
-public enum TaskExecutionStatus
+public enum TaskExecutionStatusEnum
 {
     NotDefined = 0,
     Completed = 1,

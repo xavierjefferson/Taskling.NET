@@ -2,14 +2,14 @@
 
 public class NumericRange
 {
-    public NumericRange(int fromNumber, int toNumber, int maxBlockSize)
+    public NumericRange(long fromNumber, long toNumber, long maxBlockSize)
     {
         FromNumber = fromNumber;
         ToNumber = toNumber;
         MaxBlockSize = maxBlockSize;
     }
 
-    public int FromNumber { get; set; }
-    public int ToNumber { get; set; }
-    public int MaxBlockSize { get; set; }
+    public long FromNumber { get; set; }
+    public long ToNumber { get; set; }
+    public long MaxBlockSize { get; set; }
 }

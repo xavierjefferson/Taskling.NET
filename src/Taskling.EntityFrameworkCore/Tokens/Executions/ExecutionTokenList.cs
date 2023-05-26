@@ -4,16 +4,6 @@ namespace Taskling.EntityFrameworkCore.Tokens.Executions;
 
 public class ExecutionTokenList : List<ExecutionToken>
 {
-    //public ExecutionTokenList()
-    //{
-
-    //}
-
-    //public ExecutionTokenList(IEnumerable<ExecutionToken> executionTokens) : base(executionTokens)
-    //{
-
-    //}
-
     public string Serialize()
     {
         return JsonConvert.SerializeObject(this);

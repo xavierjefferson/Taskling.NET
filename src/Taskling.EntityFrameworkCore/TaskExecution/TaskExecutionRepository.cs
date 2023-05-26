@@ -4,11 +4,10 @@ using Microsoft.Extensions.Logging;
 using Taskling.EntityFrameworkCore.AncilliaryServices;
 using Taskling.EntityFrameworkCore.Events;
 using Taskling.EntityFrameworkCore.Tokens.Executions;
-using Taskling.Events;
+using Taskling.Enums;
 using Taskling.Exceptions;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.Tasks;
 
 namespace Taskling.EntityFrameworkCore.TaskExecution;
 
@@ -36,11 +35,11 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
         ValidateStartRequest(startRequest);
         var taskDefinition = await _taskRepository.EnsureTaskDefinitionAsync(startRequest.TaskId).ConfigureAwait(false);
 
-        if (startRequest.TaskDeathMode == TaskDeathMode.KeepAlive)
+        if (startRequest.TaskDeathMode == TaskDeathModeEnum.KeepAlive)
             return await StartKeepAliveExecutionAsync(startRequest, taskDefinition.TaskDefinitionId)
                 .ConfigureAwait(false);
 
-        if (startRequest.TaskDeathMode == TaskDeathMode.Override)
+        if (startRequest.TaskDeathMode == TaskDeathModeEnum.Override)
             return await StartOverrideExecutionAsync(startRequest, taskDefinition.TaskDefinitionId)
                 .ConfigureAwait(false);
 
@@ -51,7 +50,7 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
     {
         await SetCompletedDateOnTaskExecutionAsync(completeRequest.TaskId, completeRequest.TaskExecutionId)
             .ConfigureAwait(false);
-        await RegisterEventAsync(completeRequest.TaskId, completeRequest.TaskExecutionId, EventType.End, null)
+        await RegisterEventAsync(completeRequest.TaskId, completeRequest.TaskExecutionId, EventTypeEnum.End, null)
             .ConfigureAwait(false);
         return await ReturnExecutionTokenAsync(completeRequest).ConfigureAwait(false);
     }
@@ -59,7 +58,7 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
     public async Task CheckpointAsync(TaskExecutionCheckpointRequest taskExecutionRequest)
     {
         await RegisterEventAsync(taskExecutionRequest.TaskId, taskExecutionRequest.TaskExecutionId,
-            EventType.CheckPoint, taskExecutionRequest.Message).ConfigureAwait(false);
+            EventTypeEnum.CheckPoint, taskExecutionRequest.Message).ConfigureAwait(false);
     }
 
     public async Task ErrorAsync(TaskExecutionErrorRequest taskExecutionErrorRequest)
@@ -69,7 +68,7 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
                 taskExecutionErrorRequest.TaskExecutionId).ConfigureAwait(false);
 
         await RegisterEventAsync(taskExecutionErrorRequest.TaskId, taskExecutionErrorRequest.TaskExecutionId,
-            EventType.Error, taskExecutionErrorRequest.Error).ConfigureAwait(false);
+            EventTypeEnum.Error, taskExecutionErrorRequest.Error).ConfigureAwait(false);
     }
 
     public async Task SendKeepAliveAsync(SendKeepAliveRequest sendKeepAliveRequest)
@@ -95,11 +94,7 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
                     .Take(taskExecutionMetaRequest.ExecutionsToRetrieve)
                     .ToListAsync()
                     .ConfigureAwait(false);
-
-
                 var now = DateTime.UtcNow;
-
-
                 foreach (var taskExecution in items)
                 {
                     var executionMeta = new TaskExecutionMetaItem();
@@ -111,28 +106,27 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
                         var blocked = taskExecution.Blocked;
 
                         if (failed)
-                            executionMeta.Status = TaskExecutionStatus.Failed;
+                            executionMeta.Status = TaskExecutionStatusEnum.Failed;
                         else if (blocked)
-                            executionMeta.Status = TaskExecutionStatus.Blocked;
+                            executionMeta.Status = TaskExecutionStatusEnum.Blocked;
                         else
-                            executionMeta.Status = TaskExecutionStatus.Completed;
+                            executionMeta.Status = TaskExecutionStatusEnum.Completed;
                     }
                     else
                     {
-                        var taskDeathMode = (TaskDeathMode)taskExecution.TaskDeathMode;
-                        if (taskDeathMode == TaskDeathMode.KeepAlive)
+                        var taskDeathMode = (TaskDeathModeEnum)taskExecution.TaskDeathMode;
+                        if (taskDeathMode == TaskDeathModeEnum.KeepAlive)
                         {
                             var lastKeepAlive = taskExecution.LastKeepAlive;
                             var keepAliveThreshold = taskExecution.KeepAliveDeathThreshold;
 
                             var timeSinceLastKeepAlive = now - lastKeepAlive;
                             if (timeSinceLastKeepAlive > keepAliveThreshold)
-                                executionMeta.Status = TaskExecutionStatus.Dead;
+                                executionMeta.Status = TaskExecutionStatusEnum.Dead;
                             else
-                                executionMeta.Status = TaskExecutionStatus.InProgress;
+                                executionMeta.Status = TaskExecutionStatusEnum.InProgress;
                         }
                     }
-
 
                     executionMeta.Header = taskExecution.ExecutionHeader;
                     executionMeta.ReferenceValue = taskExecution.ReferenceValue;
@@ -152,10 +146,10 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
         {
             using (var dbContext = await GetDbContextAsync(taskId).ConfigureAwait(false))
             {
-                var entry = dbContext.TaskExecutions.Attach(
+                var entityEntry = dbContext.TaskExecutions.Attach(
                     new Models.TaskExecution { TaskExecutionId = taskExecutionId });
-                action(entry.Entity);
-                entry.Property(changedPropertyExpression).IsModified = true;
+                action(entityEntry.Entity);
+                entityEntry.Property(changedPropertyExpression).IsModified = true;
                 await dbContext.SaveChangesAsync().ConfigureAwait(false);
             }
         });
@@ -163,7 +157,7 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
 
     private void ValidateStartRequest(TaskExecutionStartRequest startRequest)
     {
-        if (startRequest.TaskDeathMode == TaskDeathMode.KeepAlive)
+        if (startRequest.TaskDeathMode == TaskDeathModeEnum.KeepAlive)
         {
             if (!startRequest.KeepAliveInterval.HasValue)
                 throw new ExecutionArgumentsException("KeepAliveInterval must be set when using KeepAlive mode");
@@ -171,7 +165,7 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
             if (!startRequest.KeepAliveDeathThreshold.HasValue)
                 throw new ExecutionArgumentsException("KeepAliveDeathThreshold must be set when using KeepAlive mode");
         }
-        else if (startRequest.TaskDeathMode == TaskDeathMode.Override)
+        else if (startRequest.TaskDeathMode == TaskDeathModeEnum.Override)
         {
             if (!startRequest.OverrideThreshold.HasValue)
                 throw new ExecutionArgumentsException("OverrideThreshold must be set when using Override mode");
@@ -191,19 +185,19 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
             startRequest.TasklingVersion,
             startRequest.TaskExecutionHeader).ConfigureAwait(false);
 
-        await RegisterEventAsync(startRequest.TaskId, taskExecutionId, EventType.Start, null).ConfigureAwait(false);
+        await RegisterEventAsync(startRequest.TaskId, taskExecutionId, EventTypeEnum.Start, null).ConfigureAwait(false);
         var tokenResponse =
             await TryGetExecutionTokenAsync(startRequest.TaskId, taskDefinitionId, taskExecutionId,
                 startRequest.ConcurrencyLimit).ConfigureAwait(false);
-        if (tokenResponse.GrantStatus == GrantStatus.Denied)
+        if (tokenResponse.GrantStatus == GrantStatusEnum.Denied)
         {
             await SetBlockedOnTaskExecutionAsync(startRequest.TaskId, taskExecutionId).ConfigureAwait(false);
-            if (tokenResponse.Ex == null)
-                await RegisterEventAsync(startRequest.TaskId, taskExecutionId, EventType.Blocked, null)
+            if (tokenResponse.Exception == null)
+                await RegisterEventAsync(startRequest.TaskId, taskExecutionId, EventTypeEnum.Blocked, null)
                     .ConfigureAwait(false);
             else
-                await RegisterEventAsync(startRequest.TaskId, taskExecutionId, EventType.Blocked,
-                    tokenResponse.Ex.ToString()).ConfigureAwait(false);
+                await RegisterEventAsync(startRequest.TaskId, taskExecutionId, EventTypeEnum.Blocked,
+                    tokenResponse.Exception.ToString()).ConfigureAwait(false);
         }
 
         return tokenResponse;
@@ -216,22 +210,22 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
             startRequest.OverrideThreshold.Value,
             startRequest.ReferenceValue, startRequest.FailedTaskRetryLimit, startRequest.DeadTaskRetryLimit,
             startRequest.TasklingVersion, startRequest.TaskExecutionHeader).ConfigureAwait(false);
-        await RegisterEventAsync(startRequest.TaskId, taskExecutionId, EventType.Start, null).ConfigureAwait(false);
+        await RegisterEventAsync(startRequest.TaskId, taskExecutionId, EventTypeEnum.Start, null).ConfigureAwait(false);
 
         var tokenResponse =
             await TryGetExecutionTokenAsync(startRequest.TaskId, taskDefinitionId, taskExecutionId,
                 startRequest.ConcurrencyLimit).ConfigureAwait(false);
 
-        if (tokenResponse.GrantStatus == GrantStatus.Denied)
+        if (tokenResponse.GrantStatus == GrantStatusEnum.Denied)
         {
             await SetBlockedOnTaskExecutionAsync(startRequest.TaskId, taskExecutionId).ConfigureAwait(false);
 
-            if (tokenResponse.Ex == null)
-                await RegisterEventAsync(startRequest.TaskId, taskExecutionId, EventType.Blocked, null)
+            if (tokenResponse.Exception == null)
+                await RegisterEventAsync(startRequest.TaskId, taskExecutionId, EventTypeEnum.Blocked, null)
                     .ConfigureAwait(false);
             else
-                await RegisterEventAsync(startRequest.TaskId, taskExecutionId, EventType.Blocked,
-                    tokenResponse.Ex.ToString()).ConfigureAwait(false);
+                await RegisterEventAsync(startRequest.TaskId, taskExecutionId, EventTypeEnum.Blocked,
+                    tokenResponse.Exception.ToString()).ConfigureAwait(false);
         }
 
         return tokenResponse;
@@ -265,10 +259,10 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
         {
             var response = new TaskExecutionStartResponse();
             response.StartedAt = DateTime.UtcNow;
-            response.GrantStatus = GrantStatus.Denied;
+            response.GrantStatus = GrantStatusEnum.Denied;
             response.ExecutionTokenId = Guid.Empty;
             response.TaskExecutionId = taskExecutionId;
-            response.Ex = ex;
+            response.Exception = ex;
 
             return response;
         }
@@ -276,7 +270,7 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
 
     private async Task<long> CreateKeepAliveTaskExecutionAsync(TaskId taskId, long taskDefinitionId,
         TimeSpan keepAliveInterval, TimeSpan keepAliveDeathThreshold, Guid referenceValue,
-        int failedTaskRetryLimit, int deadTaskRetryLimit, string tasklingVersion, string executionHeader)
+        int failedTaskRetryLimit, int deadTaskRetryLimit, string tasklingVersion, string? executionHeader)
     {
         using (var dbContext = await GetDbContextAsync(taskId))
         {
@@ -284,7 +278,7 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
             {
                 TaskDefinitionId = taskDefinitionId,
                 ServerName = Environment.MachineName,
-                TaskDeathMode = (int)TaskDeathMode.KeepAlive,
+                TaskDeathMode = (int)TaskDeathModeEnum.KeepAlive,
                 KeepAliveInterval = keepAliveInterval,
                 KeepAliveDeathThreshold = keepAliveDeathThreshold,
                 FailedTaskRetryLimit = failedTaskRetryLimit,
@@ -303,7 +297,7 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
 
     private async Task<long> CreateOverrideTaskExecutionAsync(TaskId taskId, long taskDefinitionId,
         TimeSpan overrideThreshold, Guid referenceValue,
-        int failedTaskRetryLimit, int deadTaskRetryLimit, string tasklingVersion, string executionHeader)
+        int failedTaskRetryLimit, int deadTaskRetryLimit, string tasklingVersion, string? executionHeader)
     {
         using (var dbContext = await GetDbContextAsync(taskId))
         {
@@ -314,7 +308,7 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
                 StartedAt = lastKeepAlive,
                 ServerName = Environment.MachineName,
                 LastKeepAlive = lastKeepAlive,
-                TaskDeathMode = (int)TaskDeathMode.Override,
+                TaskDeathMode = (int)TaskDeathModeEnum.Override,
                 OverrideThreshold = overrideThreshold,
                 FailedTaskRetryLimit = failedTaskRetryLimit,
                 DeadTaskRetryLimit = deadTaskRetryLimit,
@@ -368,7 +362,7 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
         await UpdateTaskExecution(i => i.Failed = true, i => i.Failed, taskExecutionId, taskId);
     }
 
-    private async Task RegisterEventAsync(TaskId taskId, long taskExecutionId, EventType eventType, string? message)
+    private async Task RegisterEventAsync(TaskId taskId, long taskExecutionId, EventTypeEnum eventType, string? message)
     {
         await _eventsRepository.LogEventAsync(taskId, taskExecutionId, eventType, message).ConfigureAwait(false);
     }

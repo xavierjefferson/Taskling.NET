@@ -4,7 +4,7 @@ namespace Taskling.Contexts;
 
 public interface IBlockContext
 {
-    int ForcedBlockQueueId { get; }
+    long ForcedBlockQueueId { get; }
     Task StartAsync();
     Task CompleteAsync();
     Task FailedAsync();

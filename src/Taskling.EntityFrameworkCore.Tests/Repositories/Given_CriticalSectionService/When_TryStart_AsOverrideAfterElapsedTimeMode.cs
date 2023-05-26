@@ -1,11 +1,10 @@
-﻿using System;
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Taskling.EntityFrameworkCore.Tests.Helpers;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts.CriticalSections;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.Tasks;
 using Xunit;
 
 namespace Taskling.EntityFrameworkCore.Tests.Repositories.Given_CriticalSectionService;
@@ -46,16 +45,16 @@ public class When_TryStart_AsOverrideAfterElapsedTimeMode : TestBase
 
             var request = new StartCriticalSectionRequest(CurrentTaskId,
                 taskExecutionId,
-                TaskDeathMode.Override,
-                CriticalSectionType.User);
-            request.OverrideThreshold = new TimeSpan(0, 1, 0);
+                TaskDeathModeEnum.Override,
+                CriticalSectionTypeEnum.User);
+            request.OverrideThreshold = TimeSpans.OneMinute;
 
             // ACT
             var sut = _criticalSectionRepository;
             var response = await sut.StartAsync(request);
 
             // ASSERT
-            Assert.Equal(GrantStatus.Granted, response.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, response.GrantStatus);
         });
     }
 
@@ -80,9 +79,9 @@ public class When_TryStart_AsOverrideAfterElapsedTimeMode : TestBase
 
             var request = new StartCriticalSectionRequest(CurrentTaskId,
                 taskExecutionId2,
-                TaskDeathMode.Override,
-                CriticalSectionType.User);
-            request.OverrideThreshold = new TimeSpan(0, 1, 0);
+                TaskDeathModeEnum.Override,
+                CriticalSectionTypeEnum.User);
+            request.OverrideThreshold = TimeSpans.OneMinute;
 
             // ACT
             var sut = _criticalSectionRepository;
@@ -91,7 +90,7 @@ public class When_TryStart_AsOverrideAfterElapsedTimeMode : TestBase
             // ASSERT
             var isInQueue = _executionsHelper.GetQueueCount(taskExecutionId2) == 1;
             Assert.True(isInQueue);
-            Assert.Equal(GrantStatus.Denied, response.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Denied, response.GrantStatus);
         });
     }
 
@@ -117,9 +116,9 @@ public class When_TryStart_AsOverrideAfterElapsedTimeMode : TestBase
 
             var request = new StartCriticalSectionRequest(CurrentTaskId,
                 taskExecutionId2,
-                TaskDeathMode.Override,
-                CriticalSectionType.User);
-            request.OverrideThreshold = new TimeSpan(0, 10, 0);
+                TaskDeathModeEnum.Override,
+                CriticalSectionTypeEnum.User);
+            request.OverrideThreshold = TimeSpans.TenMinutes;
 
             // ACT
             var sut = _criticalSectionRepository;
@@ -128,7 +127,7 @@ public class When_TryStart_AsOverrideAfterElapsedTimeMode : TestBase
             // ASSERT
             var numberOfQueueRecords = _executionsHelper.GetQueueCount(taskExecutionId2);
             Assert.Equal(1, numberOfQueueRecords);
-            Assert.Equal(GrantStatus.Denied, response.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Denied, response.GrantStatus);
         });
     }
 
@@ -151,9 +150,9 @@ public class When_TryStart_AsOverrideAfterElapsedTimeMode : TestBase
 
             var request = new StartCriticalSectionRequest(CurrentTaskId,
                 taskExecutionId1,
-                TaskDeathMode.Override,
-                CriticalSectionType.User);
-            request.OverrideThreshold = new TimeSpan(0, 1, 0);
+                TaskDeathModeEnum.Override,
+                CriticalSectionTypeEnum.User);
+            request.OverrideThreshold = TimeSpans.OneMinute;
 
             // ACT
             var sut = _criticalSectionRepository;
@@ -162,7 +161,7 @@ public class When_TryStart_AsOverrideAfterElapsedTimeMode : TestBase
             // ASSERT
             var numberOfQueueRecords = _executionsHelper.GetQueueCount(taskExecutionId1);
             Assert.Equal(0, numberOfQueueRecords);
-            Assert.Equal(GrantStatus.Granted, response.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, response.GrantStatus);
         });
     }
 
@@ -191,9 +190,9 @@ public class When_TryStart_AsOverrideAfterElapsedTimeMode : TestBase
 
             var request = new StartCriticalSectionRequest(CurrentTaskId,
                 taskExecutionId2,
-                TaskDeathMode.Override,
-                CriticalSectionType.User);
-            request.OverrideThreshold = new TimeSpan(0, 1, 0);
+                TaskDeathModeEnum.Override,
+                CriticalSectionTypeEnum.User);
+            request.OverrideThreshold = TimeSpans.OneMinute;
 
             // ACT
             var sut = _criticalSectionRepository;
@@ -202,7 +201,7 @@ public class When_TryStart_AsOverrideAfterElapsedTimeMode : TestBase
             // ASSERT
             var numberOfQueueRecords = _executionsHelper.GetQueueCount(taskExecutionId2);
             Assert.Equal(1, numberOfQueueRecords);
-            Assert.Equal(GrantStatus.Denied, response.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Denied, response.GrantStatus);
         });
     }
 
@@ -218,7 +217,7 @@ public class When_TryStart_AsOverrideAfterElapsedTimeMode : TestBase
 
             var taskDefinitionId = _executionsHelper.InsertTask(CurrentTaskId);
 
-            var overrideThreshold = new TimeSpan(0, 0, 5);
+            var overrideThreshold = TimeSpans.FiveSeconds;
 
             // Create execution 1 and add it to the queue
             var taskExecutionId1 = _executionsHelper.InsertOverrideTaskExecution(taskDefinitionId, overrideThreshold);
@@ -236,8 +235,8 @@ public class When_TryStart_AsOverrideAfterElapsedTimeMode : TestBase
 
             var request = new StartCriticalSectionRequest(CurrentTaskId,
                 taskExecutionId2,
-                TaskDeathMode.Override,
-                CriticalSectionType.User);
+                TaskDeathModeEnum.Override,
+                CriticalSectionTypeEnum.User);
             request.OverrideThreshold = overrideThreshold;
 
             // ACT
@@ -249,7 +248,7 @@ public class When_TryStart_AsOverrideAfterElapsedTimeMode : TestBase
             var numberOfQueueRecordsForExecution2 = _executionsHelper.GetQueueCount(taskExecutionId2);
             Assert.Equal(0, numberOfQueueRecordsForExecution1);
             Assert.Equal(0, numberOfQueueRecordsForExecution2);
-            Assert.Equal(GrantStatus.Granted, response.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, response.GrantStatus);
         });
     }
 
@@ -280,9 +279,9 @@ public class When_TryStart_AsOverrideAfterElapsedTimeMode : TestBase
 
             var request = new StartCriticalSectionRequest(CurrentTaskId,
                 taskExecutionId2,
-                TaskDeathMode.Override,
-                CriticalSectionType.User);
-            request.OverrideThreshold = new TimeSpan(0, 30, 0);
+                TaskDeathModeEnum.Override,
+                CriticalSectionTypeEnum.User);
+            request.OverrideThreshold = TimeSpans.ThirtyMinutes;
 
             // ACT
             var sut = _criticalSectionRepository;
@@ -293,7 +292,7 @@ public class When_TryStart_AsOverrideAfterElapsedTimeMode : TestBase
             var numberOfQueueRecordsForExecution2 = _executionsHelper.GetQueueCount(taskExecutionId2);
             Assert.Equal(0, numberOfQueueRecordsForExecution1);
             Assert.Equal(0, numberOfQueueRecordsForExecution2);
-            Assert.Equal(GrantStatus.Granted, response.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, response.GrantStatus);
         });
     }
 }

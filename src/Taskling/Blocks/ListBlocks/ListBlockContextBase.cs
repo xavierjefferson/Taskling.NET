@@ -5,8 +5,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx.Synchronous;
-using Taskling.Blocks.Common;
 using Taskling.Blocks.RangeBlocks;
+using Taskling.Enums;
 using Taskling.Exceptions;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
@@ -20,42 +20,33 @@ namespace Taskling.Blocks.ListBlocks;
 
 public class ListBlockContextBase<TItem, THeader> : BlockContextBase
 {
-    private static readonly ItemStatus[] OperationalStatuses =
-        { ItemStatus.Failed, ItemStatus.Pending, ItemStatus.Discarded, ItemStatus.Completed };
+    private static readonly ItemStatusEnum[] OperationalStatuses =
+        { ItemStatusEnum.Failed, ItemStatusEnum.Pending, ItemStatusEnum.Discarded, ItemStatusEnum.Completed };
 
     private readonly bool _hasHeader;
     private readonly ILogger<ListBlockContextBase<TItem, THeader>> _logger;
     private readonly ILoggerFactory _loggerFactory;
     private readonly IRetryService _retryService;
-
-
     protected ListBlock<TItem, THeader> _blockWithHeader;
     protected bool _completed;
-
-
     protected bool _disposed;
     protected SemaphoreSlim _getItemsSemaphore = new(1, 1);
 
     protected ListBlock<TItem> _headerlessBlock;
-
-
     protected IListBlockRepository _listBlockRepository;
-
-
     protected int _maxStatusReasonLength;
     protected List<IListBlockItem<TItem>> _uncommittedItems;
     protected SemaphoreSlim _uncommittedListSemaphore = new(1, 1);
-
 
     private ListBlockContextBase(IListBlockRepository listBlockRepository,
         ITaskExecutionRepository taskExecutionRepository, IRetryService retryService,
         TaskId taskId,
         long taskExecutionId,
-        ListUpdateMode listUpdateMode,
+        ListUpdateModeEnum listUpdateMode,
         int uncommittedThreshold,
         long blockExecutionId,
         int maxStatusReasonLength, ILoggerFactory loggerFactory,
-        int forcedBlockQueueId = 0) : base(taskId, blockExecutionId, taskExecutionId, retryService,
+        long forcedBlockQueueId = 0) : base(taskId, blockExecutionId, taskExecutionId, retryService,
         taskExecutionRepository,
         loggerFactory.CreateLogger<BlockContextBase>(),
         forcedBlockQueueId)
@@ -67,9 +58,7 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
         ListUpdateMode = listUpdateMode;
         UncommittedThreshold = uncommittedThreshold;
         _maxStatusReasonLength = maxStatusReasonLength;
-
-
-        if (listUpdateMode != ListUpdateMode.SingleItemCommit)
+        if (listUpdateMode != ListUpdateModeEnum.SingleItemCommit)
             _uncommittedItems = new List<IListBlockItem<TItem>>();
 
         _completed = false;
@@ -79,12 +68,12 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
         ITaskExecutionRepository taskExecutionRepository,
         TaskId taskId,
         long taskExecutionId,
-        ListUpdateMode listUpdateMode,
+        ListUpdateModeEnum listUpdateMode,
         int uncommittedThreshold,
         ListBlock<TItem> listBlock,
         long blockExecutionId,
         int maxStatusReasonLength, IRetryService retryService, ILoggerFactory loggerFactory,
-        int forcedBlockQueueId = 0) : this(listBlockRepository, taskExecutionRepository, retryService, taskId,
+        long forcedBlockQueueId = 0) : this(listBlockRepository, taskExecutionRepository, retryService, taskId,
         taskExecutionId,
         listUpdateMode, uncommittedThreshold, blockExecutionId, maxStatusReasonLength, loggerFactory,
         forcedBlockQueueId)
@@ -96,12 +85,12 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
         ITaskExecutionRepository taskExecutionRepository,
         TaskId taskId,
         long taskExecutionId,
-        ListUpdateMode listUpdateMode,
+        ListUpdateModeEnum listUpdateMode,
         int uncommittedThreshold,
         ListBlock<TItem, THeader> listBlock,
         long blockExecutionId,
         int maxStatusReasonLength, IRetryService retryService, ILoggerFactory loggerFactory,
-        int forcedBlockQueueId = 0) : this(listBlockRepository, taskExecutionRepository, retryService, taskId,
+        long forcedBlockQueueId = 0) : this(listBlockRepository, taskExecutionRepository, retryService, taskId,
         taskExecutionId,
         listUpdateMode, uncommittedThreshold, blockExecutionId, maxStatusReasonLength, loggerFactory,
         forcedBlockQueueId)
@@ -110,10 +99,8 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
         _hasHeader = true;
     }
 
-
-    protected ListUpdateMode ListUpdateMode { get; }
+    protected ListUpdateModeEnum ListUpdateMode { get; }
     protected int UncommittedThreshold { get; }
-
 
     public long ListBlockId
     {
@@ -126,7 +113,7 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
         }
     }
 
-    protected override BlockType BlockType => BlockType.List;
+    protected override BlockTypeEnum BlockType => BlockTypeEnum.List;
 
     protected override Func<BlockExecutionChangeStatusRequest, Task> ChangeStatusFunc =>
         _listBlockRepository.ChangeStatusAsync;
@@ -151,13 +138,13 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
     {
         switch (ListUpdateMode)
         {
-            case ListUpdateMode.SingleItemCommit:
+            case ListUpdateModeEnum.SingleItemCommit:
                 await CommitAsync(ListBlockId, item).ConfigureAwait(false);
                 break;
-            case ListUpdateMode.BatchCommitAtEnd:
+            case ListUpdateModeEnum.BatchCommitAtEnd:
                 AddToUncommittedItems(item);
                 break;
-            case ListUpdateMode.PeriodicBatchCommit:
+            case ListUpdateModeEnum.PeriodicBatchCommit:
                 await AddAndCommitIfUncommittedCountReachedAsync(item).ConfigureAwait(false);
                 break;
         }
@@ -279,18 +266,18 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
         _headerlessBlock.Items = items;
     }
 
-    private List<T> FilterWithOperationalStatuses<T>(ItemStatus[] statuses, IEnumerable<T> z) where T : IItem
+    private List<T> FilterWithOperationalStatuses<T>(ItemStatusEnum[] statuses, IEnumerable<T> z) where T : IItem
     {
-        var filter = statuses.Any(x => x == ItemStatus.All) ? OperationalStatuses : statuses;
+        var filter = statuses.Any(x => x == ItemStatusEnum.All) ? OperationalStatuses : statuses;
 
         return z.Where(x => filter.Contains(x.Status)).ToList();
     }
 
     private async Task<IEnumerable<IListBlockItem<TItem>>> GetItemsFromHeaderlessBlockAsync(
-        params ItemStatus[] statuses)
+        params ItemStatusEnum[] statuses)
     {
         if (statuses.Length == 0)
-            statuses = new[] { ItemStatus.All };
+            statuses = new[] { ItemStatusEnum.All };
 
         return await _getItemsSemaphore.WrapAsync(async () =>
         {
@@ -299,8 +286,6 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
                 var protoListBlockItems = await _listBlockRepository
                     .GetListBlockItemsAsync(CurrentTaskId, ListBlockId).ConfigureAwait(false);
                 _headerlessBlock.Items = Convert(protoListBlockItems);
-
-
                 foreach (var item in _headerlessBlock.Items)
                     ((ListBlockItem<TItem>)item).SetParentContext(ItemCompletedAsync, ItemFailedAsync,
                         DiscardItemAsync);
@@ -311,10 +296,10 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
     }
 
     private async Task<IEnumerable<IListBlockItem<TItem>>> GetItemsFromBlockWithHeaderAsync(
-        params ItemStatus[] statuses)
+        params ItemStatusEnum[] statuses)
     {
         if (statuses.Length == 0)
-            statuses = new[] { ItemStatus.All };
+            statuses = new[] { ItemStatusEnum.All };
         return await _getItemsSemaphore.WrapAsync(async () =>
         {
             if (_blockWithHeader.Items == null || !_blockWithHeader.Items.Any())
@@ -332,7 +317,6 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
         }).ConfigureAwait(false);
     }
 
-
     public async Task FillItemsAsync()
     {
         await _getItemsSemaphore.WrapAsync(async () =>
@@ -347,12 +331,12 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
         }).ConfigureAwait(false);
     }
 
-    public IEnumerable<IListBlockItem<TItem>> GetItems(params ItemStatus[] statuses)
+    public IEnumerable<IListBlockItem<TItem>> GetItems(params ItemStatusEnum[] statuses)
     {
         return GetItemsAsync(statuses).WaitAndUnwrapException();
     }
 
-    public async Task<IEnumerable<IListBlockItem<TItem>>> GetItemsAsync(params ItemStatus[] statuses)
+    public async Task<IEnumerable<IListBlockItem<TItem>>> GetItemsAsync(params ItemStatusEnum[] statuses)
     {
         if (_hasHeader)
             return await GetItemsFromBlockWithHeaderAsync(statuses).ConfigureAwait(false);
@@ -363,7 +347,7 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
     public async Task ItemCompletedAsync(IListBlockItem<TItem> item)
     {
         ValidateBlockIsActive();
-        item.Status = ItemStatus.Completed;
+        item.Status = ItemStatusEnum.Completed;
         await UpdateItemStatusAsync(item).ConfigureAwait(false);
         GC.Collect();
     }
@@ -376,7 +360,7 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
             item.Step = step;
 
         ValidateBlockIsActive();
-        item.Status = ItemStatus.Failed;
+        item.Status = ItemStatusEnum.Failed;
         await UpdateItemStatusAsync(item).ConfigureAwait(false);
     }
 
@@ -387,7 +371,7 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
             item.Step = step;
 
         ValidateBlockIsActive();
-        item.Status = ItemStatus.Discarded;
+        item.Status = ItemStatusEnum.Discarded;
         await UpdateItemStatusAsync(item).ConfigureAwait(false);
     }
 
@@ -404,11 +388,9 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
         {
             await CommitUncommittedItemsAsync().ConfigureAwait(false);
         }).ConfigureAwait(false);
-
-
-        var status = (await GetItemsAsync(ItemStatus.Failed, ItemStatus.Pending).ConfigureAwait(false)).Any()
-            ? BlockExecutionStatus.Failed
-            : BlockExecutionStatus.Completed;
+        var status = (await GetItemsAsync(ItemStatusEnum.Failed, ItemStatusEnum.Pending).ConfigureAwait(false)).Any()
+            ? BlockExecutionStatusEnum.Failed
+            : BlockExecutionStatusEnum.Completed;
         await ChangeBlockStatus(status).ConfigureAwait(false);
     }
 
@@ -432,7 +414,6 @@ public class ListBlockContextBase<TItem, THeader> : BlockContextBase
         await Task.CompletedTask;
         throw new NotImplementedException();
     }
-
 
     public async Task FlushAsync()
     {

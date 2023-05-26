@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Taskling.EntityFrameworkCore.Models;
-using Taskling.Tasks;
+using Taskling.Enums;
 
 namespace Taskling.EntityFrameworkCore.Tokens;
 
@@ -31,8 +31,6 @@ public class CommonTokenRepository : ICommonTokenRepository
             .ToListAsync().ConfigureAwait(false);
 
         var results = new List<TaskExecutionState>();
-
-
         var currentDateTime = DateTime.UtcNow;
         foreach (var taskExecution in taskExecutions)
         {
@@ -47,14 +45,12 @@ public class CommonTokenRepository : ICommonTokenRepository
                 //reader.GetTimeSpanEx("OverrideThreshold");
                 StartedAt = taskExecution.StartedAt,
                 // reader.GetDateTime("StartedAt");
-                TaskDeathMode = (TaskDeathMode)taskExecution.TaskDeathMode,
+                TaskDeathMode = (TaskDeathModeEnum)taskExecution.TaskDeathMode,
                 // reader.GetInt32("TaskDeathMode");
                 TaskExecutionId = taskExecution.TaskExecutionId,
                 //reader.GetInt32("TaskExecutionId");
                 CurrentDateTime = currentDateTime
             };
-
-
             // reader.GetDateTime("CurrentDateTime");
 
             results.Add(teState);

@@ -1,4 +1,4 @@
-﻿using Taskling.Blocks.Common;
+﻿using Taskling.Enums;
 
 namespace Taskling.InfrastructureContracts.Blocks.ObjectBlocks;
 
@@ -8,7 +8,7 @@ public class ObjectBlockCreateRequest<T> : BlockRequestBase
         long taskExecutionId,
         T objectData,
         int compressionThreshold)
-        : base(taskId, taskExecutionId, BlockType.Object)
+        : base(taskId, taskExecutionId, BlockTypeEnum.Object)
     {
         Object = objectData;
         CompressionThreshold = compressionThreshold;

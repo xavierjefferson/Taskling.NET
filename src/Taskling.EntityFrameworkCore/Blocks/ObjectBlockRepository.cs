@@ -1,9 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Taskling.Blocks.Common;
 using Taskling.Blocks.ObjectBlocks;
 using Taskling.EntityFrameworkCore.AncilliaryServices;
 using Taskling.EntityFrameworkCore.Blocks.Serialization;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.TaskExecution;
@@ -56,7 +56,6 @@ public class ObjectBlockRepository : DbOperationsService, IObjectBlockRepository
         });
     }
 
-
     private async Task ChangeStatusOfExecutionAsync(BlockExecutionChangeStatusRequest changeStatusRequest)
     {
         await RetryHelper.WithRetryAsync(async () =>
@@ -69,8 +68,8 @@ public class ObjectBlockRepository : DbOperationsService, IObjectBlockRepository
                 if (blockExecution != null)
                 {
                     blockExecution.BlockExecutionStatus = (int)changeStatusRequest.BlockExecutionStatus;
-                    if (changeStatusRequest.BlockExecutionStatus == BlockExecutionStatus.Completed ||
-                        changeStatusRequest.BlockExecutionStatus == BlockExecutionStatus.Failed)
+                    if (changeStatusRequest.BlockExecutionStatus == BlockExecutionStatusEnum.Completed ||
+                        changeStatusRequest.BlockExecutionStatus == BlockExecutionStatusEnum.Failed)
                     {
                         blockExecution.ItemsCount = changeStatusRequest.ItemsProcessed;
                         blockExecution.CompletedAt = DateTime.UtcNow;

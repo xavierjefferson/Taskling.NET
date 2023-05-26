@@ -14,7 +14,6 @@ INSERT INTO [Taskling].[TaskExecutionEvent]
            ,@Message
            ,@EventDateTime)";
 
-
     public const string GetTaskQuery = @"SELECT [ApplicationName]
       ,[TaskName]
       ,[TaskDefinitionId]
@@ -40,7 +39,6 @@ SELECT TaskDefinitionId
 FROM [Taskling].[TaskDefinition]
 WHERE ApplicationName = @ApplicationName
 AND TaskName = @TaskName";
-
 
     public const string InsertKeepAliveTaskExecution = @"
 INSERT INTO [Taskling].[TaskExecution]([TaskDefinitionId],[StartedAt],[ServerName],[LastKeepAlive],[TaskDeathMode],[KeepAliveInterval],[KeepAliveDeathThreshold],

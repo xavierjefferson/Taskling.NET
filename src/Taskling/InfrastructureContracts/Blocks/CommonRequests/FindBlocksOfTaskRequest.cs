@@ -1,6 +1,5 @@
 ﻿using System;
-using Taskling.Blocks.Common;
-using Taskling.Tasks;
+using Taskling.Enums;
 
 namespace Taskling.InfrastructureContracts.Blocks.CommonRequests;
 
@@ -8,15 +7,15 @@ public class FindBlocksOfTaskRequest : BlockRequestBase
 {
     public FindBlocksOfTaskRequest(TaskId taskId,
         long taskExecutionId,
-        BlockType blockType,
+        BlockTypeEnum blockType,
         Guid referenceValueOfTask,
-        ReprocessOption reprocessOption)
+        ReprocessOptionEnum reprocessOptionEnum)
         : base(taskId, taskExecutionId, blockType)
     {
         ReferenceValueOfTask = referenceValueOfTask;
-        ReprocessOption = reprocessOption;
+        ReprocessOption = reprocessOptionEnum;
     }
 
     public Guid ReferenceValueOfTask { get; set; }
-    public ReprocessOption ReprocessOption { get; set; }
+    public ReprocessOptionEnum ReprocessOption { get; set; }
 }

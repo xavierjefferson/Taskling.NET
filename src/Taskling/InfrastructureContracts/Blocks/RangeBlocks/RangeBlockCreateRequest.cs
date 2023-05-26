@@ -1,5 +1,5 @@
 ﻿using System;
-using Taskling.Blocks.Common;
+using Taskling.Enums;
 
 namespace Taskling.InfrastructureContracts.Blocks.RangeBlocks;
 
@@ -9,7 +9,7 @@ public class RangeBlockCreateRequest : BlockRequestBase
         long taskExecutionId,
         DateTime fromDate,
         DateTime toDate)
-        : base(taskId, taskExecutionId, BlockType.DateRange)
+        : base(taskId, taskExecutionId, BlockTypeEnum.DateRange)
     {
         From = fromDate.Ticks;
         To = toDate.Ticks;
@@ -19,7 +19,7 @@ public class RangeBlockCreateRequest : BlockRequestBase
         long taskExecutionId,
         long from,
         long to)
-        : base(taskId, taskExecutionId, BlockType.NumericRange)
+        : base(taskId, taskExecutionId, BlockTypeEnum.NumericRange)
     {
         From = from;
         To = to;

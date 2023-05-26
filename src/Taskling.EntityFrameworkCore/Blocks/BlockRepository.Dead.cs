@@ -1,11 +1,10 @@
 ﻿using Microsoft.Extensions.Logging;
-using Taskling.Blocks.Common;
 using Taskling.Blocks.ObjectBlocks;
 using Taskling.Blocks.RangeBlocks;
 using Taskling.EntityFrameworkCore.Blocks.QueryBuilders;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.Blocks.ListBlocks;
-using Taskling.Tasks;
 
 namespace Taskling.EntityFrameworkCore.Blocks;
 
@@ -13,7 +12,7 @@ public partial class BlockRepository
 {
     public async Task<IList<ProtoListBlock>> FindDeadListBlocksAsync(FindDeadBlocksRequest deadBlocksRequest)
     {
-        var funcRunner = GetDeadBlockFuncRunner(deadBlocksRequest, BlockType.List);
+        var funcRunner = GetDeadBlockFuncRunner(deadBlocksRequest, BlockTypeEnum.List);
         return await FindSearchableListBlocksAsync(deadBlocksRequest, funcRunner).ConfigureAwait(false);
     }
 
@@ -25,18 +24,18 @@ public partial class BlockRepository
 
     public async Task<IList<ObjectBlock<T>>> FindDeadObjectBlocksAsync<T>(FindDeadBlocksRequest deadBlocksRequest)
     {
-        var funcRunner = GetDeadBlockFuncRunner(deadBlocksRequest, BlockType.Object);
+        var funcRunner = GetDeadBlockFuncRunner(deadBlocksRequest, BlockTypeEnum.Object);
         return await FindSearchableObjectBlocksAsync<T>(deadBlocksRequest, funcRunner).ConfigureAwait(false);
     }
 
     private static BlockItemDelegateRunner GetFailedBlockFuncRunner(FindFailedBlocksRequest failedBlocksRequest,
-        BlockType blockType)
+        BlockTypeEnum blockType)
     {
         BlockItemDelegateRunner query;
         ;
         if (failedBlocksRequest.BlockType == blockType)
             query = new BlockItemDelegateRunner(failedBlocksRequest
-                .BlockCountLimit, FailedBlocksQueryBuilder.GetFindFailedBlocksQuery, blockType);
+                .BlockCountLimit, GetFailedBlocks, blockType);
         else
             throw new NotSupportedException(UnexpectedBlockTypeMessage);
 
@@ -44,18 +43,18 @@ public partial class BlockRepository
     }
 
     private static BlockItemDelegateRunner GetDeadBlockFuncRunner(FindDeadBlocksRequest deadBlocksRequest,
-        BlockType blockType)
+        BlockTypeEnum blockType)
     {
         BlockItemDelegateRunner query;
         ;
         if (deadBlocksRequest.BlockType == blockType)
         {
-            if (deadBlocksRequest.TaskDeathMode == TaskDeathMode.KeepAlive)
+            if (deadBlocksRequest.TaskDeathMode == TaskDeathModeEnum.KeepAlive)
                 query = new BlockItemDelegateRunner(deadBlocksRequest
-                    .BlockCountLimit, DeadBlocksQueryBuilder.GetFindDeadBlocksWithKeepAliveQuery, blockType);
+                    .BlockCountLimit, GetDeadBlocksWithKeepAlive, blockType);
             else
                 query = new BlockItemDelegateRunner(deadBlocksRequest
-                    .BlockCountLimit, DeadBlocksQueryBuilder.GetFindDeadBlocksQuery, blockType);
+                    .BlockCountLimit, GetDeadBlocks, blockType);
         }
         else
         {
@@ -72,8 +71,6 @@ public partial class BlockRepository
         {
             var taskDefinition =
                 await _taskRepository.EnsureTaskDefinitionAsync(request.TaskId).ConfigureAwait(false);
-
-
             using (var dbContext = await GetDbContextAsync(request.TaskId).ConfigureAwait(false))
             {
                 var items = await GetBlockQueryItems(request, blockItemDelegateRunner, taskDefinition, dbContext);

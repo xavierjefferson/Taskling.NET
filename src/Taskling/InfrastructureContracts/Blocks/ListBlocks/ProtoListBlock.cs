@@ -8,6 +8,6 @@ public class ProtoListBlock
     public int Attempt { get; set; }
     public string Header { get; set; }
     public bool IsForcedBlock { get; set; }
-    public int ForcedBlockQueueId { get; set; }
+    public long ForcedBlockQueueId { get; set; }
     public IList<ProtoListBlockItem> Items { get; set; }
 }

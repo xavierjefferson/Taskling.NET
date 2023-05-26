@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx.Synchronous;
-using Taskling.Blocks.Common;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.TaskExecution;
@@ -16,7 +16,7 @@ public abstract class BlockContextBase
     private readonly IRetryService _retryService;
 
     protected BlockContextBase(TaskId taskId, long blockExecutionId, long taskExecutionId, IRetryService retryService,
-        ITaskExecutionRepository taskExecutionRepository, ILogger<BlockContextBase> logger, int forcedBlockQueueId = 0)
+        ITaskExecutionRepository taskExecutionRepository, ILogger<BlockContextBase> logger, long forcedBlockQueueId = 0)
     {
         _retryService = retryService;
         _logger = logger;
@@ -31,16 +31,16 @@ public abstract class BlockContextBase
     protected TaskId CurrentTaskId { get; }
     protected long BlockExecutionId { get; }
     protected ITaskExecutionRepository TaskExecutionRepository { get; }
-    public int ForcedBlockQueueId { get; }
+    public long ForcedBlockQueueId { get; }
     protected abstract Func<BlockExecutionChangeStatusRequest, Task> ChangeStatusFunc { get; }
 
-    protected abstract BlockType BlockType { get; }
+    protected abstract BlockTypeEnum BlockType { get; }
 
     protected abstract string GetFailedErrorMessage(string message);
 
     public virtual async Task CompleteAsync(int itemsProcessed)
     {
-        await ChangeBlockStatus(BlockExecutionStatus.Completed, itemsProcessed);
+        await ChangeBlockStatus(BlockExecutionStatusEnum.Completed, itemsProcessed);
     }
 
     public async Task FailedAsync(string message)
@@ -59,7 +59,7 @@ public abstract class BlockContextBase
 
     public virtual async Task StartAsync()
     {
-        await ChangeBlockStatus(BlockExecutionStatus.Started);
+        await ChangeBlockStatus(BlockExecutionStatusEnum.Started);
     }
 
     public virtual async Task CompleteAsync()
@@ -69,7 +69,7 @@ public abstract class BlockContextBase
 
     public virtual async Task FailedAsync()
     {
-        await ChangeBlockStatus(BlockExecutionStatus.Failed);
+        await ChangeBlockStatus(BlockExecutionStatusEnum.Failed);
     }
 
     public void Complete()
@@ -92,7 +92,7 @@ public abstract class BlockContextBase
         FailedAsync(toString).WaitAndUnwrapException();
     }
 
-    protected async Task ChangeBlockStatus(BlockExecutionStatus blockExecutionStatus, int? itemsProcessed = null)
+    protected async Task ChangeBlockStatus(BlockExecutionStatusEnum blockExecutionStatus, int? itemsProcessed = null)
     {
         var blockType = BlockType;
         var request = new BlockExecutionChangeStatusRequest(CurrentTaskId,

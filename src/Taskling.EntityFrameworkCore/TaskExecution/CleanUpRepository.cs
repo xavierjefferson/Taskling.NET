@@ -62,7 +62,7 @@ public class CleanUpRepository : DbOperationsService, ICleanUpRepository
             {
                 dbContext.BlockExecutions.RemoveRange(dbContext.BlockExecutions.Where(i =>
                     i.Block.TaskDefinitionId == taskDefinitionId && i.Block.CreatedDate < generalDateThreshold));
-                dbContext.ForceBlockQueues.RemoveRange(dbContext.ForceBlockQueues.Where(i =>
+                dbContext.ForcedBlockQueues.RemoveRange(dbContext.ForcedBlockQueues.Where(i =>
                     i.Block.TaskDefinitionId == taskDefinitionId && i.Block.CreatedDate < generalDateThreshold));
                 dbContext.Blocks.RemoveRange(dbContext.Blocks.Where(i =>
                     i.TaskDefinitionId == taskDefinitionId && i.CreatedDate < generalDateThreshold));
@@ -71,8 +71,8 @@ public class CleanUpRepository : DbOperationsService, ICleanUpRepository
                     i.TaskExecution.StartedAt < generalDateThreshold));
                 dbContext.TaskExecutions.RemoveRange(dbContext.TaskExecutions.Where(i =>
                     i.TaskDefinitionId == taskDefinitionId && i.StartedAt < generalDateThreshold));
-                dbContext.ForceBlockQueues.RemoveRange(
-                    dbContext.ForceBlockQueues.Where(i => i.ForcedDate < generalDateThreshold));
+                dbContext.ForcedBlockQueues.RemoveRange(
+                    dbContext.ForcedBlockQueues.Where(i => i.ForcedDate < generalDateThreshold));
                 await dbContext.SaveChangesAsync().ConfigureAwait(false);
             }
         });

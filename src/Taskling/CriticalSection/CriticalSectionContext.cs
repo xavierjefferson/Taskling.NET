@@ -3,10 +3,10 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx.Synchronous;
 using Taskling.Contexts;
+using Taskling.Enums;
 using Taskling.Exceptions;
 using Taskling.ExecutionContext;
 using Taskling.InfrastructureContracts.CriticalSections;
-using Taskling.InfrastructureContracts.TaskExecution;
 using Taskling.Tasks;
 
 namespace Taskling.CriticalSection;
@@ -14,11 +14,11 @@ namespace Taskling.CriticalSection;
 public class CriticalSectionContext : ICriticalSectionContext
 {
     private readonly ICriticalSectionRepository _criticalSectionRepository;
-    private readonly CriticalSectionType _criticalSectionType;
+    private readonly CriticalSectionTypeEnum _criticalSectionType;
     private readonly ILogger<CriticalSectionContext> _logger;
+    private readonly StartupOptions _startupOptions;
     private readonly TaskExecutionInstance _taskExecutionInstance;
     private readonly TaskExecutionOptions _taskExecutionOptions;
-    private readonly StartupOptions _startupOptions;
     private bool _completeCalled;
 
     private bool _started;
@@ -28,7 +28,7 @@ public class CriticalSectionContext : ICriticalSectionContext
     public CriticalSectionContext(ICriticalSectionRepository criticalSectionRepository,
         TaskExecutionInstance taskExecutionInstance,
         TaskExecutionOptions taskExecutionOptions,
-        CriticalSectionType criticalSectionType, StartupOptions startupOptions,
+        CriticalSectionTypeEnum criticalSectionType, StartupOptions startupOptions,
         ILogger<CriticalSectionContext> logger)
     {
         _logger = logger;
@@ -37,8 +37,6 @@ public class CriticalSectionContext : ICriticalSectionContext
         _taskExecutionOptions = taskExecutionOptions;
         _criticalSectionType = criticalSectionType;
         _startupOptions = startupOptions;
-
-
         ValidateOptions();
     }
 
@@ -128,14 +126,14 @@ public class CriticalSectionContext : ICriticalSectionContext
             _taskExecutionOptions.TaskDeathMode,
             _criticalSectionType);
 
-        if (_taskExecutionOptions.TaskDeathMode == TaskDeathMode.Override)
+        if (_taskExecutionOptions.TaskDeathMode == TaskDeathModeEnum.Override)
             startRequest.OverrideThreshold = _taskExecutionOptions.OverrideThreshold.Value;
 
-        if (_taskExecutionOptions.TaskDeathMode == TaskDeathMode.KeepAlive)
+        if (_taskExecutionOptions.TaskDeathMode == TaskDeathModeEnum.KeepAlive)
             startRequest.KeepAliveDeathThreshold = _taskExecutionOptions.KeepAliveDeathThreshold.Value;
 
         var response = await _criticalSectionRepository.StartAsync(startRequest).ConfigureAwait(false);
-        if (response.GrantStatus == GrantStatus.Denied)
+        if (response.GrantStatus == GrantStatusEnum.Denied)
         {
             _started = false;
             return false;
@@ -147,7 +145,7 @@ public class CriticalSectionContext : ICriticalSectionContext
     private void ValidateOptions()
     {
         _logger.LogDebug($"TaskDeathMode={_taskExecutionOptions.TaskDeathMode}");
-        if (_taskExecutionOptions.TaskDeathMode == TaskDeathMode.KeepAlive)
+        if (_taskExecutionOptions.TaskDeathMode == TaskDeathModeEnum.KeepAlive)
         {
             if (!_taskExecutionOptions.KeepAliveDeathThreshold.HasValue)
                 throw new ExecutionArgumentsException("KeepAliveElapsed must be set when using KeepAlive mode");
@@ -155,7 +153,7 @@ public class CriticalSectionContext : ICriticalSectionContext
             if (!_taskExecutionOptions.KeepAliveInterval.HasValue)
                 throw new ExecutionArgumentsException("KeepAliveInterval must be set when using KeepAlive mode");
         }
-        else if (_taskExecutionOptions.TaskDeathMode == TaskDeathMode.Override)
+        else if (_taskExecutionOptions.TaskDeathMode == TaskDeathModeEnum.Override)
         {
             if (!_taskExecutionOptions.OverrideThreshold.HasValue)
                 throw new ExecutionArgumentsException("SecondsOverride must be set when using Override mode");

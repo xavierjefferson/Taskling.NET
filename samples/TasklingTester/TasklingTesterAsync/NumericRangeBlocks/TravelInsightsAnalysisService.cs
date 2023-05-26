@@ -1,7 +1,7 @@
 ﻿using Taskling;
-using Taskling.Blocks.Common;
 using Taskling.Builders;
 using Taskling.Contexts;
+using Taskling.Enums;
 using TasklingTester.Common.Entities;
 using TasklingTesterAsync.Configuration;
 using TasklingTesterAsync.Repositories;
@@ -33,7 +33,8 @@ public class TravelInsightsAnalysisService
             .WithRange(async taskExecutionContext =>
             {
                 long startNumber;
-                var lastBlock = await taskExecutionContext.GetLastNumericRangeBlockAsync(LastBlockOrder.LastCreated);
+                var lastBlock =
+                    await taskExecutionContext.GetLastNumericRangeBlockAsync(LastBlockOrderEnum.LastCreated);
                 var maxJourneyId = await _travelDataService.GetMaxJourneyIdAsync();
 
                 // if this is the first run then just process the last 1000
@@ -41,7 +42,7 @@ public class TravelInsightsAnalysisService
                     startNumber = maxJourneyId - 1000;
                 // if there is no new data then just return any old blocks that have failed or died
                 else if (lastBlock.EndNumber == maxJourneyId)
-                    return await taskExecutionContext.GetNumericRangeBlocksAsync(x => x.OnlyOldNumericBlocks());
+                    return await taskExecutionContext.GetNumericRangeBlocksAsync(x => x.WithOnlyOldNumericBlocks());
                 // startNumber is the next unprocessed id
                 else
                     startNumber = lastBlock.EndNumber + 1;
@@ -54,7 +55,6 @@ public class TravelInsightsAnalysisService
 
         await builder.Build().Execute();
     }
-
 
     private async Task ProcessBlockAsync(INumericRangeBlockContext blockContext)
     {

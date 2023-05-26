@@ -1,9 +1,11 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Taskling.Blocks.Factories;
 using Taskling.CleanUp;
 using Taskling.Configuration;
 using Taskling.Contexts;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.CriticalSections;
@@ -27,11 +29,13 @@ public class TasklingClient : ITasklingClient
 
     private readonly ITaskExecutionRepository _taskExecutionRepository;
 
-    public TasklingClient(IServiceProvider serviceProvider, IConfigurationReader configurationReader)
+    public TasklingClient(IServiceProvider serviceProvider, ITaskConfigurationReader taskConfigurationReader)
     {
         _serviceProvider = serviceProvider;
-        _taskConfigurationRepository = new TaskConfigurationRepository(configurationReader,
-            serviceProvider.GetRequiredService<ILogger<TaskConfigurationRepository>>());
+        _taskConfigurationRepository = new TaskConfigurationRepository(taskConfigurationReader,
+            serviceProvider.GetRequiredService<ILogger<TaskConfigurationRepository>>(),
+            serviceProvider.GetRequiredService<IMemoryCache>(),
+            serviceProvider.GetRequiredService<StartupOptions>());
         _connectionStore = serviceProvider.GetRequiredService<IConnectionStore>() ??
                            throw new NullReferenceException(nameof(IConnectionStore));
 
@@ -65,16 +69,14 @@ public class TasklingClient : ITasklingClient
         return taskExecutionContext;
     }
 
-
     private void LoadConnectionSettings(TaskId taskId)
     {
         var taskConfiguration = _taskConfigurationRepository.GetTaskConfiguration(taskId);
-        var connectionSettings = new ClientConnectionSettings(taskConfiguration.DatabaseConnectionString,
+        var connectionSettings = new ClientConnectionSettings(taskConfiguration.ConnectionString,
             TimeSpan.FromSeconds(taskConfiguration.DatabaseTimeoutSeconds));
 
         _connectionStore.SetConnection(taskId, connectionSettings);
     }
-
 
     private TaskExecutionOptions LoadTaskExecutionOptions(TaskId taskId)
     {
@@ -82,7 +84,7 @@ public class TasklingClient : ITasklingClient
 
         var executionOptions = new TaskExecutionOptions();
         executionOptions.TaskDeathMode =
-            taskConfiguration.UsesKeepAliveMode ? TaskDeathMode.KeepAlive : TaskDeathMode.Override;
+            taskConfiguration.UseKeepAliveMode ? TaskDeathModeEnum.KeepAlive : TaskDeathModeEnum.Override;
         executionOptions.KeepAliveDeathThreshold =
             TimeSpan.FromMinutes(taskConfiguration.KeepAliveDeathThresholdMinutes);
         executionOptions.KeepAliveInterval = TimeSpan.FromMinutes(taskConfiguration.KeepAliveIntervalMinutes);

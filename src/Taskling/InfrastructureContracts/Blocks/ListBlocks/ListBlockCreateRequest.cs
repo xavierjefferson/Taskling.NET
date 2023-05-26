@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-using Taskling.Blocks.Common;
+using Taskling.Enums;
 
 namespace Taskling.InfrastructureContracts.Blocks.ListBlocks;
 
@@ -8,7 +8,7 @@ public class ListBlockCreateRequest : BlockRequestBase
     public ListBlockCreateRequest(TaskId taskId,
         long taskExecutionId,
         List<string> serializedValues)
-        : base(taskId, taskExecutionId, BlockType.List)
+        : base(taskId, taskExecutionId, BlockTypeEnum.List)
     {
         SerializedValues = serializedValues;
     }
@@ -18,7 +18,7 @@ public class ListBlockCreateRequest : BlockRequestBase
         List<string> serializedValues,
         string serializedHeader,
         int compressionThreshold)
-        : base(taskId, taskExecutionId, BlockType.List)
+        : base(taskId, taskExecutionId, BlockTypeEnum.List)
     {
         SerializedValues = serializedValues;
         SerializedHeader = serializedHeader;

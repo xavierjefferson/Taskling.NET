@@ -12,7 +12,7 @@ public class JsonGenericSerializer
         if (data == null)
             throw new ExecutionException("The object being serialized is null");
 
-        return JsonConvert.SerializeObject(data);
+        return JsonConvert.SerializeObject(data, Formatting.Indented);
     }
 
     public static T Deserialize<T>(string input, bool allowNullValues = false)

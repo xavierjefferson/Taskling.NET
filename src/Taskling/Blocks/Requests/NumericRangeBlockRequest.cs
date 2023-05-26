@@ -1,4 +1,4 @@
-﻿using Taskling.Blocks.Common;
+﻿using Taskling.Enums;
 using Taskling.InfrastructureContracts;
 
 namespace Taskling.Blocks.Requests;
@@ -7,7 +7,7 @@ public class NumericRangeBlockRequest : BlockRequest
 {
     public NumericRangeBlockRequest(TaskId taskId) : base(taskId)
     {
-        BlockType = BlockType.NumericRange;
+        BlockType = BlockTypeEnum.NumericRange;
     }
 
     public long? RangeBegin { get; set; }

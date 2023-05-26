@@ -49,6 +49,6 @@ WHERE TaskExecutionId IN (
     AND StartedAt < @OlderThanDate
 );
 
-DELETE FROM [Taskling].[ForceBlockQueue]
+DELETE FROM [Taskling].[ForcedBlockQueue]
 WHERE ForcedDate < @OlderThanDate;";
 }

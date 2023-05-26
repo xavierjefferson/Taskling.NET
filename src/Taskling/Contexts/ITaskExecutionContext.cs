@@ -1,12 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
 using Taskling.Blocks.ObjectBlocks;
 using Taskling.Blocks.RangeBlocks;
 using Taskling.Configuration;
-using Taskling.Fluent;
+using Taskling.Enums;
 using Taskling.Fluent.ListBlocks;
 using Taskling.Fluent.ObjectBlocks;
 using Taskling.Fluent.RangeBlocks;
@@ -22,7 +21,6 @@ public interface ITaskExecutionContext : IDisposable
     IList<IDateRangeBlockContext> GetDateRangeBlocks(
         Func<IFluentDateRangeBlockDescriptor, object> fluentBlockRequest);
 
-
     void SetOptions(TaskId taskId,
         TaskExecutionOptions taskExecutionOptions, ITaskConfigurationRepository taskConfigurationRepository);
 
@@ -36,9 +34,9 @@ public interface ITaskExecutionContext : IDisposable
     Task ErrorAsync(string errorMessage, bool treatTaskAsFailed);
     TExecutionHeader GetHeader<TExecutionHeader>();
     ICriticalSectionContext CreateCriticalSection();
-    Task<IDateRangeBlock> GetLastDateRangeBlockAsync(LastBlockOrder lastBlockOrder);
-    Task<INumericRangeBlock> GetLastNumericRangeBlockAsync(LastBlockOrder lastBlockOrder);
-    INumericRangeBlock GetLastNumericRangeBlock(LastBlockOrder lastBlockOrder);
+    Task<IDateRangeBlock> GetLastDateRangeBlockAsync(LastBlockOrderEnum lastBlockOrder);
+    Task<INumericRangeBlock> GetLastNumericRangeBlockAsync(LastBlockOrderEnum lastBlockOrder);
+    INumericRangeBlock GetLastNumericRangeBlock(LastBlockOrderEnum lastBlockOrder);
     Task<IListBlock<T>> GetLastListBlockAsync<T>();
     Task<IListBlock<TItem, THeader>> GetLastListBlockAsync<TItem, THeader>();
     Task<IObjectBlock<T>> GetLastObjectBlockAsync<T>();
@@ -65,7 +63,7 @@ public interface ITaskExecutionContext : IDisposable
     Task<IList<TaskExecutionMeta>> GetLastExecutionMetasAsync(int numberToRetrieve);
     Task<TaskExecutionMeta<TExecutionHeader>> GetLastExecutionMetaAsync<TExecutionHeader>();
     Task<IList<TaskExecutionMeta<TExecutionHeader>>> GetLastExecutionMetasAsync<TExecutionHeader>(int numberToRetrieve);
-    IDateRangeBlock GetLastDateRangeBlock(LastBlockOrder lastCreated);
+    IDateRangeBlock GetLastDateRangeBlock(LastBlockOrderEnum lastCreated);
     void Complete();
     void Error(string toString, bool b);
 

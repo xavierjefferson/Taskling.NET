@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
 using Taskling.EntityFrameworkCore.Models;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts;
 using Taskling.Serialization;
 
@@ -20,7 +20,7 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
         _logger = logger;
     }
 
-    public int GetListBlockItemCountByStatus(long blockId, ItemStatus status)
+    public int GetListBlockItemCountByStatus(long blockId, ItemStatusEnum status)
     {
         return RetryHelper.WithRetry(() =>
         {
@@ -45,7 +45,8 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
         });
     }
 
-    public List<ListBlockItem<T>> GetListBlockItems<T>(long blockId, ItemStatus status, ILoggerFactory loggerFactory)
+    public List<ListBlockItem<T>> GetListBlockItems<T>(long blockId, ItemStatusEnum status,
+        ILoggerFactory loggerFactory)
     {
         return RetryHelper.WithRetry(() =>
         {
@@ -59,7 +60,7 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
                     var item = new ListBlockItem<T>(loggerFactory.CreateLogger<ListBlockItem<T>>());
                     item.ListBlockItemId = reader.ListBlockItemId;
                     item.Value = JsonGenericSerializer.Deserialize<T>(reader.Value);
-                    item.Status = (ItemStatus)reader.Status;
+                    item.Status = (ItemStatusEnum)reader.Status;
                     item.StatusReason = reader.StatusReason;
                     item.Step = reader.Step;
 
@@ -77,14 +78,14 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
         {
             using (var dbContext = GetDbContext())
             {
-                var forceBlockQueue = new ForceBlockQueue
+                var forcedBlockQueue = new ForcedBlockQueue
                 {
                     BlockId = blockId,
                     ForcedBy = "Test",
                     ForcedDate = DateTime.UtcNow,
                     ProcessingStatus = "Pending"
                 };
-                dbContext.ForceBlockQueues.Add(forceBlockQueue);
+                dbContext.ForcedBlockQueues.Add(forcedBlockQueue);
                 dbContext.SaveChanges();
             }
         });
@@ -132,7 +133,7 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
                         var block = new Block
                         {
                             TaskDefinitionId = taskDefinitionId,
-                            BlockType = (int)BlockType.List,
+                            BlockType = (int)BlockTypeEnum.List,
                             IsPhantom = true,
                             CreatedDate = DateTime.UtcNow
                         };
@@ -171,8 +172,6 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
         });
     }
 
-    #region .: Get Block Counts :.
-
     public int GetBlockCount(TaskId taskId)
     {
         return RetryHelper.WithRetry(() =>
@@ -186,211 +185,6 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
             }
         });
     }
-
-    #endregion .: Get Block Counts :.
-
-    private void OnTaskDefinitionFound(TasklingDbContext dbContext, TaskId taskId,
-        TaskDefinitionDelegate action)
-    {
-        var taskDefinitionId = dbContext.TaskDefinitions
-            .Where(i => i.TaskName == taskId.TaskName && i.ApplicationName == taskId.ApplicationName)
-            .Select(i => i.TaskDefinitionId).FirstOrDefault();
-        if (taskDefinitionId != default) action(taskDefinitionId, dbContext);
-    }
-
-    private delegate void TaskDefinitionDelegate(long taskDefinitionId, TasklingDbContext dbContext);
-
-    #region .: Queries :.
-
-    private const string InsertDateRangeBlockQuery = @"INSERT INTO [Taskling].[Block]
-           ([TaskDefinitionId]
-           ,[FromDate]
-           ,[ToDate]
-           ,[CreatedDate]
-           ,[BlockType])
-     VALUES
-           (@TaskDefinitionId
-           ,@FromDate
-           ,@ToDate
-           ,@CreatedDate
-           ,@BlockType);
-
-SELECT CAST(SCOPE_IDENTITY() AS BIGINT);";
-
-    private const string InsertNumericRangeBlockQuery = @"INSERT INTO [Taskling].[Block]
-           ([TaskDefinitionId]
-           ,[FromNumber]
-           ,[ToNumber]
-           ,[CreatedDate]
-           ,[BlockType])
-     VALUES
-           (@TaskDefinitionId
-           ,@FromNumber
-           ,@ToNumber
-           ,@CreatedDate
-           ,@BlockType);
-
-SELECT CAST(SCOPE_IDENTITY() AS BIGINT);";
-
-    private const string InsertListBlockQuery = @"INSERT INTO [Taskling].[Block]
-           ([TaskDefinitionId]
-           ,[CreatedDate]
-           ,[BlockType]
-           ,[ObjectData])
-     VALUES
-           (@TaskDefinitionId
-           ,@CreatedDate
-           ,@BlockType
-           ,@ObjectData);
-
-SELECT CAST(SCOPE_IDENTITY() AS BIGINT);";
-
-    private const string InsertObjectBlockQuery = @"INSERT INTO [Taskling].[Block]
-           ([TaskDefinitionId]
-           ,[CreatedDate]
-           ,[BlockType]
-           ,[ObjectData])
-     VALUES
-           (@TaskDefinitionId
-           ,@CreatedDate
-           ,@BlockType
-           ,@ObjectData);
-
-SELECT CAST(SCOPE_IDENTITY() AS BIGINT);";
-
-    private const string InsertBlockExecutionQuery = @"INSERT INTO [Taskling].[BlockExecution]
-           ([TaskExecutionId]
-           ,[BlockId]
-           ,[CreatedAt]
-           ,[StartedAt]
-           ,[CompletedAt]
-           ,[BlockExecutionStatus]
-           ,[Attempt])
-     VALUES
-           (@TaskExecutionId
-           ,@BlockId
-           ,@CreatedAt
-           ,@StartedAt
-           ,@CompletedAt
-           ,@BlockExecutionStatus
-           ,@Attempt);
-
-SELECT CAST(SCOPE_IDENTITY() AS BIGINT);";
-
-    private const string GetBlockCountQuery = @"SELECT COUNT(*)
-FROM [Taskling].[Block] B
-JOIN [Taskling].[TaskDefinition]  T ON B.TaskDefinitionId = T.TaskDefinitionId
-WHERE T.ApplicationName = @ApplicationName
-AND T.TaskName = @TaskName;";
-
-    private const string GetBlockExecutionsCountByStatusQuery = @"SELECT COUNT(*)
-FROM [Taskling].[BlockExecution] BE
-JOIN [Taskling].[TaskExecution] TE ON BE.TaskExecutionId = TE.TaskExecutionId
-JOIN [Taskling].[TaskDefinition]  T ON TE.TaskDefinitionId = T.TaskDefinitionId
-WHERE T.ApplicationName = @ApplicationName
-AND T.TaskName = @TaskName
-AND BE.BlockExecutionStatus = @BlockExecutionStatus;";
-
-    private const string GetListBlockItemCountByStatusQuery = @"SELECT COUNT(*)
-FROM [Taskling].[ListBlockItem] LBI
-WHERE LBI.BlockId = @BlockId
-AND LBI.Status = @Status;";
-
-    private const string GetItemsCountQuery = @"SELECT [ItemsCount]
-FROM [Taskling].[BlockExecution]
-WHERE [BlockExecutionId] = @BlockExecutionId";
-
-    private const string GetLastBlockIdQuery = @"SELECT MAX(BlockId)
-FROM [Taskling].[Block] B
-JOIN [Taskling].[TaskDefinition] TD ON B.TaskDefinitionId = TD.TaskDefinitionId
-WHERE ApplicationName = @ApplicationName
-AND TaskName = @TaskName";
-
-    private const string GetListBlockItemsQuery = @"SELECT [ListBlockItemId]
-      ,[Value]
-      ,[Status]
-      ,[LastUpdated]
-      ,[StatusReason]
-      ,[Step]
-FROM [Taskling].[ListBlockItem]
-WHERE [BlockId] = @BlockId
-AND [Status] = @Status";
-
-    private const string InsertForcedBlockQueueQuery = @"INSERT INTO [Taskling].[ForceBlockQueue]
-           ([BlockId]
-           ,[ForcedBy]
-           ,[ForcedDate]
-           ,[ProcessingStatus])
-     VALUES
-           (@BlockId
-           ,'Test'
-           ,GETUTCDATE()
-           ,'Pending')";
-
-    private const string InsertPhantomNumericBlockQuery = @"DECLARE @TaskDefinitionId INT = (
-	SELECT TaskDefinitionId 
-	FROM [Taskling].[TaskDefinition]
-	WHERE ApplicationName = @ApplicationName
-	AND TaskName = @TaskName)
-
-INSERT INTO [Taskling].[Block]
-           ([TaskDefinitionId]
-           ,[FromNumber]
-           ,[ToNumber]
-           ,[BlockType]
-           ,[IsPhantom]
-           ,[CreatedDate])
-     VALUES
-           (@TaskDefinitionId
-           ,@FromNumber
-           ,@ToNumber
-           ,@BlockType
-           ,1
-           ,GETUTCDATE())";
-
-    private const string InsertPhantomDateBlockQuery = @"DECLARE @TaskDefinitionId INT = (
-	SELECT TaskDefinitionId 
-	FROM [Taskling].[TaskDefinition]
-	WHERE ApplicationName = @ApplicationName
-	AND TaskName = @TaskName)
-
-INSERT INTO [Taskling].[Block]
-           ([TaskDefinitionId]
-           ,[FromDate]
-           ,[ToDate]
-           ,[BlockType]
-           ,[IsPhantom]
-           ,[CreatedDate])
-     VALUES
-           (@TaskDefinitionId
-           ,@FromDate
-           ,@ToDate
-           ,@BlockType
-           ,1
-           ,GETUTCDATE())";
-
-    private const string InsertPhantomObjectBlockQuery = @"DECLARE @TaskDefinitionId INT = (
-	SELECT TaskDefinitionId 
-	FROM [Taskling].[TaskDefinition]
-	WHERE ApplicationName = @ApplicationName
-	AND TaskName = @TaskName)
-
-INSERT INTO [Taskling].[Block]
-           ([TaskDefinitionId]
-           ,[ObjectData]
-           ,[BlockType]
-           ,[IsPhantom]
-           ,[CreatedDate])
-     VALUES
-           (@TaskDefinitionId
-           ,@ObjectData
-           ,@BlockType
-           ,1
-           ,GETUTCDATE())";
-
-    #endregion .: Queries :.
-
-    #region .: Insert and Delete Blocks :.
 
     public long InsertDateRangeBlock(long taskDefinitionId, DateTime fromDate, DateTime toDate)
     {
@@ -408,24 +202,6 @@ INSERT INTO [Taskling].[Block]
         });
     }
 
-    private long AddDateRange(TasklingDbContext dbContext, long taskDefinitionId, DateTime fromDate,
-        DateTime toDate, DateTime createdAt,
-        bool isPhantom)
-    {
-        var objectBlock = new Block
-        {
-            TaskDefinitionId = taskDefinitionId,
-            CreatedDate = createdAt,
-            ToDate = toDate,
-            IsPhantom = isPhantom,
-            FromDate = fromDate, //ObjectData = JsonGenericSerializer.Serialize(objectData),
-            BlockType = (int)BlockType.DateRange
-        };
-        dbContext.Blocks.Add(objectBlock);
-        dbContext.SaveChanges();
-        return objectBlock.BlockId;
-    }
-
     public long InsertNumericRangeBlock(long taskDefinitionId, long fromNumber, long toNumber, DateTime createdDate)
     {
         return RetryHelper.WithRetry(() =>
@@ -437,25 +213,6 @@ INSERT INTO [Taskling].[Block]
         });
     }
 
-    private long AddNumericBlock(TasklingDbContext dbContext, long taskDefinitionId, long fromNumber,
-        long toNumber, DateTime createdDate,
-        bool isPhantom)
-    {
-        var objectBlock = new Block
-        {
-            TaskDefinitionId = taskDefinitionId,
-            CreatedDate = createdDate,
-            ToNumber = toNumber,
-            FromNumber = fromNumber,
-            IsPhantom = isPhantom,
-            //ObjectData = JsonGenericSerializer.Serialize(objectData),
-            BlockType = (int)BlockType.NumericRange
-        };
-        dbContext.Blocks.Add(objectBlock);
-        dbContext.SaveChanges();
-        return objectBlock.BlockId;
-    }
-
     public long InsertListBlock(long taskDefinitionId, DateTime createdDate, string objectData = null)
     {
         return RetryHelper.WithRetry(() =>
@@ -463,17 +220,17 @@ INSERT INTO [Taskling].[Block]
             using (var dbContext = GetDbContext())
             {
                 var isPhantom = false;
-                var objectBlock = new Block
+                var block = new Block
                 {
                     TaskDefinitionId = taskDefinitionId,
                     CreatedDate = createdDate,
                     ObjectData = objectData,
-                    BlockType = (int)BlockType.List,
+                    BlockType = (int)BlockTypeEnum.List,
                     IsPhantom = isPhantom
                 };
-                dbContext.Blocks.Add(objectBlock);
+                dbContext.Blocks.Add(block);
                 dbContext.SaveChanges();
-                return objectBlock.BlockId;
+                return block.BlockId;
             }
         });
     }
@@ -489,25 +246,8 @@ INSERT INTO [Taskling].[Block]
         });
     }
 
-    private long AddObjectBlock(TasklingDbContext dbContext, long taskDefinitionId, DateTime createdDate,
-        string objectData,
-        bool isPhantom)
-    {
-        var objectBlock = new Block
-        {
-            IsPhantom = isPhantom,
-            TaskDefinitionId = taskDefinitionId,
-            CreatedDate = createdDate,
-            ObjectData = JsonGenericSerializer.Serialize(objectData),
-            BlockType = (int)BlockType.Object
-        };
-        dbContext.Blocks.Add(objectBlock);
-        dbContext.SaveChanges();
-        return objectBlock.BlockId;
-    }
-
     public long InsertBlockExecution(long taskExecutionId, long blockId, DateTime createdAt, DateTime? startedAt,
-        DateTime? completedAt, BlockExecutionStatus executionStatus, int attempt = 1)
+        DateTime? completedAt, BlockExecutionStatusEnum executionStatus, int attempt = 1)
     {
         return RetryHelper.WithRetry(() =>
         {
@@ -544,7 +284,7 @@ INSERT INTO [Taskling].[Block]
                     dbContext.ListBlockItems.RemoveRange(dbContext.ListBlockItems.Include(i => i.Block)
                         .ThenInclude(i => i.TaskDefinition)
                         .Where(i => i.Block.TaskDefinition.ApplicationName == applicationName));
-                    dbContext.ForceBlockQueues.RemoveRange(dbContext.ForceBlockQueues.Include(i => i.Block)
+                    dbContext.ForcedBlockQueues.RemoveRange(dbContext.ForcedBlockQueues.Include(i => i.Block)
                         .ThenInclude(i => i.TaskDefinition)
                         .Where(i => i.Block.TaskDefinition.ApplicationName == applicationName));
                     dbContext.Blocks.RemoveRange(dbContext.Blocks.Include(i => i.TaskDefinition)
@@ -555,12 +295,8 @@ INSERT INTO [Taskling].[Block]
         );
     }
 
-    #endregion .: Insert and Delete Blocks :.
-
-    #region .: Get Block Execution Counts :.
-
     public int GetBlockExecutionCountByStatus(TaskId taskId,
-        BlockExecutionStatus blockExecutionStatus)
+        BlockExecutionStatusEnum blockExecutionStatus)
     {
         return RetryHelper.WithRetry(() =>
         {
@@ -586,5 +322,67 @@ INSERT INTO [Taskling].[Block]
         });
     }
 
-    #endregion .: Get Block Execution Counts :.
+    private void OnTaskDefinitionFound(TasklingDbContext dbContext, TaskId taskId,
+        TaskDefinitionDelegate action)
+    {
+        var taskDefinitionId = dbContext.TaskDefinitions
+            .Where(i => i.TaskName == taskId.TaskName && i.ApplicationName == taskId.ApplicationName)
+            .Select(i => i.TaskDefinitionId).FirstOrDefault();
+        if (taskDefinitionId != default) action(taskDefinitionId, dbContext);
+    }
+
+    private long AddDateRange(TasklingDbContext dbContext, long taskDefinitionId, DateTime fromDate,
+        DateTime toDate, DateTime createdAt,
+        bool isPhantom)
+    {
+        var objectBlock = new Block
+        {
+            TaskDefinitionId = taskDefinitionId,
+            CreatedDate = createdAt,
+            ToDate = toDate,
+            IsPhantom = isPhantom,
+            FromDate = fromDate, //ObjectData = JsonGenericSerializer.Serialize(objectData),
+            BlockType = (int)BlockTypeEnum.DateRange
+        };
+        dbContext.Blocks.Add(objectBlock);
+        dbContext.SaveChanges();
+        return objectBlock.BlockId;
+    }
+
+    private long AddNumericBlock(TasklingDbContext dbContext, long taskDefinitionId, long fromNumber,
+        long toNumber, DateTime createdDate,
+        bool isPhantom)
+    {
+        var block = new Block
+        {
+            TaskDefinitionId = taskDefinitionId,
+            CreatedDate = createdDate,
+            ToNumber = toNumber,
+            FromNumber = fromNumber,
+            IsPhantom = isPhantom,
+            BlockType = (int)BlockTypeEnum.NumericRange
+        };
+        dbContext.Blocks.Add(block);
+        dbContext.SaveChanges();
+        return block.BlockId;
+    }
+
+    private long AddObjectBlock(TasklingDbContext dbContext, long taskDefinitionId, DateTime createdDate,
+        string objectData,
+        bool isPhantom)
+    {
+        var block = new Block
+        {
+            IsPhantom = isPhantom,
+            TaskDefinitionId = taskDefinitionId,
+            CreatedDate = createdDate,
+            ObjectData = JsonGenericSerializer.Serialize(objectData),
+            BlockType = (int)BlockTypeEnum.Object
+        };
+        dbContext.Blocks.Add(block);
+        dbContext.SaveChanges();
+        return block.BlockId;
+    }
+
+    private delegate void TaskDefinitionDelegate(long taskDefinitionId, TasklingDbContext dbContext);
 }

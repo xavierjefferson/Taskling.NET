@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Taskling.Blocks.Common;
 using Taskling.Blocks.RangeBlocks;
 using Taskling.Contexts;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
@@ -25,7 +25,7 @@ public class ObjectBlockContext<T> : BlockContextBase, IObjectBlockContext<T>
         long taskExecutionId,
         ObjectBlock<T> block,
         long blockExecutionId,
-        int forcedBlockQueueId = 0) : base(taskId, blockExecutionId, taskExecutionId, retryService,
+        long forcedBlockQueueId = 0) : base(taskId, blockExecutionId, taskExecutionId, retryService,
         taskExecutionRepository, loggerFactory.CreateLogger<BlockContextBase>(),
         forcedBlockQueueId)
     {
@@ -34,16 +34,11 @@ public class ObjectBlockContext<T> : BlockContextBase, IObjectBlockContext<T>
         Block = block;
     }
 
-
     protected override Func<BlockExecutionChangeStatusRequest, Task> ChangeStatusFunc =>
         _objectBlockRepository.ChangeStatusAsync;
 
-
-    protected override BlockType BlockType => BlockType.Object;
-
-
+    protected override BlockTypeEnum BlockType => BlockTypeEnum.Object;
     public IObjectBlock<T> Block { get; }
-
 
     protected override string GetFailedErrorMessage(string message)
     {

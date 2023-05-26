@@ -1,28 +1,45 @@
-﻿using Newtonsoft.Json;
-using Taskling;
+﻿using Taskling;
 using Taskling.Configuration;
 using Taskling.InfrastructureContracts;
 
 namespace TasklingTesterAsync.Configuration;
 
-public class MyConfigReader : IConfigurationReader
+public class MyConfigReader : ITaskConfigurationReader
 {
-    private readonly Dictionary<string, string> _config;
+    private readonly Dictionary<string, IConfigurationOptions> _config;
 
     public MyConfigReader()
     {
-        _config = new Dictionary<string, string>();
-        _config.Add("MyApplication::MyDateBasedBatchJob",
-            "{DB: 'Server=(local);Database=MyAppDb;Trusted_Connection=True;', TO: 120, E: true, CON: 1, KPLT: 2, KPDT: 40, MCI: 1, KA: true, KAINT: 1, KADT: 10, TPDT: 0, RPC_FAIL: true, RPC_FAIL_MTS: 600, RPC_FAIL_RTYL: 3, RPC_DEAD: true, RPC_DEAD_MTS: 600, RPC_DEAD_RTYL: 3, MXBL: 2000}");
-        _config.Add("MyApplication::MyNumericBasedBatchJob",
-            "{DB: 'Server=(local);Database=MyAppDb;Trusted_Connection=True;', TO: 120, E: true, CON: 1, KPLT: 2, KPDT: 40, MCI: 1, KA: true, KAINT: 1, KADT: 10, TPDT: 0, RPC_FAIL: true, RPC_FAIL_MTS: 600, RPC_FAIL_RTYL: 3, RPC_DEAD: true, RPC_DEAD_MTS: 600, RPC_DEAD_RTYL: 3, MXBL: 2000}");
-        _config.Add("MyApplication::MyListBasedBatchJob",
-            "{DB: 'Server=(local);Database=MyAppDb;Trusted_Connection=True;', TO: 120, E: true, CON: 1, KPLT: 2, KPDT: 40, MCI: 1, KA: true, KAINT: 1, KADT: 10, TPDT: 0, RPC_FAIL: true, RPC_FAIL_MTS: 600, RPC_FAIL_RTYL: 3, RPC_DEAD: true, RPC_DEAD_MTS: 600, RPC_DEAD_RTYL: 3, MXBL: 2000}");
+        _config = new Dictionary<string, IConfigurationOptions>();
+        var configurationOptions = new ConfigurationOptions
+        {
+            ConnectionString = "Server=(local);Database=MyAppDb;Trusted_Connection=True;",
+            DatabaseTimeoutSeconds = 120,
+            Enabled = true,
+            ConcurrencyLimit = 1,
+            KeepListItemsForDays = 2,
+            KeepGeneralDataForDays = 40,
+            MinimumCleanUpIntervalHours = 1,
+            UseKeepAliveMode = true,
+            KeepAliveIntervalMinutes = 1,
+            KeepAliveDeathThresholdMinutes = 10,
+            TimePeriodDeathThresholdMinutes = 0,
+            ReprocessFailedTasks = true,
+            FailedTaskDetectionRangeMinutes = 600,
+            FailedTaskRetryLimit = 3,
+            ReprocessDeadTasks = true,
+            DeadTaskDetectionRangeMinutes = 600,
+            DeadTaskRetryLimit = 3,
+            MaxBlocksToGenerate = 2000
+        };
+        _config.Add("MyApplication::MyDateBasedBatchJob", configurationOptions);
+        _config.Add("MyApplication::MyNumericBasedBatchJob", configurationOptions);
+        _config.Add("MyApplication::MyListBasedBatchJob", configurationOptions);
     }
 
-    ConfigurationOptions IConfigurationReader.GetTaskConfigurationString(TaskId taskId)
+    IConfigurationOptions ITaskConfigurationReader.GetTaskConfiguration(TaskId taskId)
     {
         var key = taskId.GetUniqueKey();
-        return JsonConvert.DeserializeObject<ConfigurationOptions>(_config[key]);
+        return _config[key];
     }
 }

@@ -14,8 +14,6 @@ public abstract class JobBuilderBase<T, TJob, TBuilder>
     protected Func<T, Task> _processFunc;
     protected string _taskName;
     protected abstract TBuilder BuilderInstance { get; }
-
-
     public abstract TJob Build();
 
     public TBuilder WithRange(
@@ -30,7 +28,6 @@ public abstract class JobBuilderBase<T, TJob, TBuilder>
         _failTaskOnException = value;
         return BuilderInstance;
     }
-
 
     public TBuilder WithTaskName(string taskName)
     {

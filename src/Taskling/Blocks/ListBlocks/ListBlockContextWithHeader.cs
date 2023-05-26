@@ -1,6 +1,7 @@
 ﻿using System;
 using Microsoft.Extensions.Logging;
 using Taskling.Contexts;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.TaskExecution;
@@ -17,14 +18,14 @@ public class ListBlockContext<TItem, THeader> : ListBlockContextBase<TItem, THea
         ITaskExecutionRepository taskExecutionRepository,
         TaskId taskId,
         long taskExecutionId,
-        ListUpdateMode listUpdateMode,
+        ListUpdateModeEnum listUpdateMode,
         int uncommittedThreshold,
         ListBlock<TItem, THeader> listBlock,
         long blockExecutionId,
         int maxStatusReasonLength, IServiceProvider serviceProvider,
         ILoggerFactory loggerFactory,
         IRetryService retryService,
-        int forcedBlockQueueId = 0)
+        long forcedBlockQueueId = 0)
         : base(listBlockRepository,
             taskExecutionRepository,
             taskId,

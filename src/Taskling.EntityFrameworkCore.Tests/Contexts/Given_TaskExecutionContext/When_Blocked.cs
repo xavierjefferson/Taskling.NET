@@ -20,8 +20,6 @@ public class When_Blocked : TestBase
         _logger = logger;
         _executionsHelper = executionsHelper;
         _clientHelper = clientHelper;
-
-
         executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
 
         _taskDefinitionId = executionsHelper.InsertTask(CurrentTaskId);

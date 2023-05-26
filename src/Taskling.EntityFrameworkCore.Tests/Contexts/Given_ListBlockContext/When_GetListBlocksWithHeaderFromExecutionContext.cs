@@ -4,11 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Taskling.Blocks.Common;
 using Taskling.Blocks.ListBlocks;
 using Taskling.Contexts;
 using Taskling.EntityFrameworkCore.Tests.Helpers;
-using Taskling.Events;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Xunit;
 
@@ -74,13 +73,13 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                     // All three should be registered as not started
                     Assert.Equal(expectedNotStartedCount,
                         _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                            BlockExecutionStatus.NotStarted));
+                            BlockExecutionStatusEnum.NotStarted));
                     Assert.Equal(0,
                         _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                            BlockExecutionStatus.Started));
+                            BlockExecutionStatusEnum.Started));
                     Assert.Equal(expectedCompletedCount,
                         _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                            BlockExecutionStatus.Completed));
+                            BlockExecutionStatusEnum.Completed));
 
                     foreach (var listBlock in listBlocks)
                     {
@@ -94,18 +93,20 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                         // There should be one less NotStarted block and exactly 1 Started block
                         Assert.Equal(expectedNotStartedCount,
                             _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                                BlockExecutionStatus.NotStarted));
+                                BlockExecutionStatusEnum.NotStarted));
                         Assert.Equal(1,
-                            _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId, BlockExecutionStatus.Started));
+                            _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
+                                BlockExecutionStatusEnum.Started));
 
                         var expectedCompletedItems = 0;
-                        var expectedPendingItems = (await listBlock.GetItemsAsync(ItemStatus.Pending)).Count();
+                        var expectedPendingItems = (await listBlock.GetItemsAsync(ItemStatusEnum.Pending)).Count();
                         // All items should be Pending and 0 Completed
                         Assert.Equal(expectedPendingItems,
-                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId, ItemStatus.Pending));
+                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId, ItemStatusEnum.Pending));
                         Assert.Equal(expectedCompletedItems,
-                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId, ItemStatus.Completed));
-                        foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatus.Pending))
+                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId,
+                                ItemStatusEnum.Completed));
+                        foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatusEnum.Pending))
                         {
                             // do the processing
 
@@ -115,7 +116,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                             expectedCompletedItems++;
                             Assert.Equal(expectedCompletedItems,
                                 _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId,
-                                    ItemStatus.Completed));
+                                    ItemStatusEnum.Completed));
                         }
 
                         await listBlock.CompleteAsync();
@@ -124,7 +125,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                         expectedCompletedCount++;
                         Assert.Equal(expectedCompletedCount,
                             _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                                BlockExecutionStatus.Completed));
+                                BlockExecutionStatusEnum.Completed));
                     }
                 }
             }
@@ -158,7 +159,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                     await listBlock.StartAsync();
 
                     var counter = 0;
-                    foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatus.Pending))
+                    foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatusEnum.Pending))
                     {
                         await itemToProcess.FailedAsync("Exception");
 
@@ -169,7 +170,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                 }
             }
 
-            Assert.True(_blocksHelper.GetListBlockItems<PersonDto>(listBlockId, ItemStatus.Failed, _loggerFactory)
+            Assert.True(_blocksHelper.GetListBlockItems<PersonDto>(listBlockId, ItemStatusEnum.Failed, _loggerFactory)
                 .All(x => x.StatusReason == "Exception"));
         });
     }
@@ -200,7 +201,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                     listBlockId = listBlock.Block.ListBlockId;
                     await listBlock.StartAsync();
 
-                    foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatus.Pending))
+                    foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatusEnum.Pending))
                         await itemToProcess.FailedAsync("Exception");
 
                     await listBlock.CompleteAsync();
@@ -225,7 +226,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                     AssertSimilarDates(largeTestHeader.ToDate, listBlock.Block.Header.ToDate);
 
                     var itemsToProcess =
-                        (await listBlock.GetItemsAsync(ItemStatus.Pending, ItemStatus.Failed)).ToList();
+                        (await listBlock.GetItemsAsync(ItemStatusEnum.Pending, ItemStatusEnum.Failed)).ToList();
                     for (var i = 0; i < itemsToProcess.Count; i++)
                     {
                         AssertSimilarDates(values[i].DateOfBirth, itemsToProcess[i].Value.DateOfBirth);
@@ -264,13 +265,12 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                             x.WithSingleUnitCommit(values, testHeader, maxBlockSize));
                     Assert.False(listBlock.Any());
                     var execEvent = _executionsHelper.GetLastEvent(_taskDefinitionId);
-                    Assert.Equal(EventType.CheckPoint, execEvent.EventType);
+                    Assert.Equal(EventTypeEnum.CheckPoint, execEvent.EventType);
                     Assert.Equal("No values for generate the block. Emtpy Block context returned.", execEvent.Message);
                 }
             }
         });
     }
-
 
     [Fact]
     [Trait("Speed", "Fast")]
@@ -299,7 +299,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                     await listBlock.StartAsync();
 
                     var counter = 0;
-                    foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatus.Pending))
+                    foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatusEnum.Pending))
                     {
                         itemToProcess.Step = 2;
                         await itemToProcess.FailedAsync("Exception");
@@ -311,7 +311,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                 }
             }
 
-            Assert.True(_blocksHelper.GetListBlockItems<PersonDto>(listBlockId, ItemStatus.Failed, _loggerFactory)
+            Assert.True(_blocksHelper.GetListBlockItems<PersonDto>(listBlockId, ItemStatusEnum.Failed, _loggerFactory)
                 .All(x => x.StatusReason == "Exception" && x.Step == 2));
         });
     }
@@ -348,13 +348,13 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                     // All three should be registered as not started
                     Assert.Equal(expectedNotStartedCount,
                         _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                            BlockExecutionStatus.NotStarted));
+                            BlockExecutionStatusEnum.NotStarted));
                     Assert.Equal(0,
                         _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                            BlockExecutionStatus.Started));
+                            BlockExecutionStatusEnum.Started));
                     Assert.Equal(expectedCompletedCount,
                         _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                            BlockExecutionStatus.Completed));
+                            BlockExecutionStatusEnum.Completed));
 
                     foreach (var listBlock in listBlocks)
                     {
@@ -364,17 +364,19 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                         // There should be one less NotStarted block and exactly 1 Started block
                         Assert.Equal(expectedNotStartedCount,
                             _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                                BlockExecutionStatus.NotStarted));
+                                BlockExecutionStatusEnum.NotStarted));
                         Assert.Equal(1,
-                            _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId, BlockExecutionStatus.Started));
+                            _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
+                                BlockExecutionStatusEnum.Started));
 
-                        var expectedPendingItems = (await listBlock.GetItemsAsync(ItemStatus.Pending)).Count();
+                        var expectedPendingItems = (await listBlock.GetItemsAsync(ItemStatusEnum.Pending)).Count();
                         // All items should be Pending and 0 Completed
                         Assert.Equal(expectedPendingItems,
-                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId, ItemStatus.Pending));
+                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId, ItemStatusEnum.Pending));
                         Assert.Equal(0,
-                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId, ItemStatus.Completed));
-                        foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatus.Pending))
+                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId,
+                                ItemStatusEnum.Completed));
+                        foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatusEnum.Pending))
                         {
                             // do the processing
 
@@ -383,20 +385,21 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                             // There should be 0 Completed because we batch commit at the end
                             Assert.Equal(0,
                                 _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId,
-                                    ItemStatus.Completed));
+                                    ItemStatusEnum.Completed));
                         }
 
                         await listBlock.CompleteAsync();
 
                         // All items should be completed now
-                        Assert.Equal((await listBlock.GetItemsAsync(ItemStatus.Completed)).Count(),
-                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId, ItemStatus.Completed));
+                        Assert.Equal((await listBlock.GetItemsAsync(ItemStatusEnum.Completed)).Count(),
+                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId,
+                                ItemStatusEnum.Completed));
 
                         // One more block should be completed
                         expectedCompletedCount++;
                         Assert.Equal(expectedCompletedCount,
                             _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                                BlockExecutionStatus.Completed));
+                                BlockExecutionStatusEnum.Completed));
                     }
                 }
             }
@@ -425,7 +428,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                     var values = GetPersonList(26);
                     var maxBlockSize = 15;
                     var listBlocks = await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x =>
-                        x.WithPeriodicCommit(values, testHeader, maxBlockSize, BatchSize.Ten));
+                        x.WithPeriodicCommit(values, testHeader, maxBlockSize, BatchSizeEnum.Ten));
                     // There should be 2 blocks - 15, 11
                     Assert.Equal(2, _blocksHelper.GetBlockCount(CurrentTaskId));
                     var expectedNotStartedCount = 2;
@@ -434,13 +437,13 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                     // All three should be registered as not started
                     Assert.Equal(expectedNotStartedCount,
                         _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                            BlockExecutionStatus.NotStarted));
+                            BlockExecutionStatusEnum.NotStarted));
                     Assert.Equal(0,
                         _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                            BlockExecutionStatus.Started));
+                            BlockExecutionStatusEnum.Started));
                     Assert.Equal(expectedCompletedCount,
                         _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                            BlockExecutionStatus.Completed));
+                            BlockExecutionStatusEnum.Completed));
 
                     foreach (var listBlock in listBlocks)
                     {
@@ -450,20 +453,22 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                         // There should be one less NotStarted block and exactly 1 Started block
                         Assert.Equal(expectedNotStartedCount,
                             _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                                BlockExecutionStatus.NotStarted));
+                                BlockExecutionStatusEnum.NotStarted));
                         Assert.Equal(1,
-                            _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId, BlockExecutionStatus.Started));
+                            _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
+                                BlockExecutionStatusEnum.Started));
 
-                        var expectedPendingItems = (await listBlock.GetItemsAsync(ItemStatus.Pending)).Count();
+                        var expectedPendingItems = (await listBlock.GetItemsAsync(ItemStatusEnum.Pending)).Count();
                         var expectedCompletedItems = 0;
                         // All items should be Pending and 0 Completed
                         Assert.Equal(expectedPendingItems,
-                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId, ItemStatus.Pending));
+                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId, ItemStatusEnum.Pending));
                         Assert.Equal(expectedCompletedItems,
-                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId, ItemStatus.Completed));
+                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId,
+                                ItemStatusEnum.Completed));
                         var itemsProcessed = 0;
                         var itemsCommitted = 0;
-                        foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatus.Pending))
+                        foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatusEnum.Pending))
                         {
                             itemsProcessed++;
                             // do the processing
@@ -475,29 +480,29 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                             {
                                 Assert.Equal(10,
                                     _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId,
-                                        ItemStatus.Completed));
+                                        ItemStatusEnum.Completed));
                                 itemsCommitted += 10;
                             }
                             else
                             {
                                 Assert.Equal(itemsCommitted,
                                     _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId,
-                                        ItemStatus.Completed));
+                                        ItemStatusEnum.Completed));
                             }
                         }
-
 
                         await listBlock.CompleteAsync();
 
                         // All items should be completed now
                         Assert.Equal(itemsProcessed,
-                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId, ItemStatus.Completed));
+                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId,
+                                ItemStatusEnum.Completed));
 
                         // One more block should be completed
                         expectedCompletedCount++;
                         Assert.Equal(expectedCompletedCount,
                             _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                                BlockExecutionStatus.Completed));
+                                BlockExecutionStatusEnum.Completed));
                     }
                 }
             }
@@ -525,12 +530,12 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                     var values = GetPersonList(14);
                     var maxBlockSize = 20;
                     var listBlock = (await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x =>
-                        x.WithPeriodicCommit(values, testHeader, maxBlockSize, BatchSize.Ten))).First();
+                        x.WithPeriodicCommit(values, testHeader, maxBlockSize, BatchSizeEnum.Ten))).First();
                     listBlockId = listBlock.Block.ListBlockId;
                     await listBlock.StartAsync();
 
                     var counter = 0;
-                    foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatus.Pending))
+                    foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatusEnum.Pending))
                     {
                         await itemToProcess.FailedAsync("Exception");
 
@@ -541,7 +546,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                 }
             }
 
-            Assert.True(_blocksHelper.GetListBlockItems<PersonDto>(listBlockId, ItemStatus.Failed, _loggerFactory)
+            Assert.True(_blocksHelper.GetListBlockItems<PersonDto>(listBlockId, ItemStatusEnum.Failed, _loggerFactory)
                 .All(x => x.StatusReason == "Exception"));
         });
     }
@@ -567,12 +572,12 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                     var values = GetPersonList(14);
                     var maxBlockSize = 20;
                     var listBlock = (await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x =>
-                        x.WithPeriodicCommit(values, testHeader, maxBlockSize, BatchSize.Ten))).First();
+                        x.WithPeriodicCommit(values, testHeader, maxBlockSize, BatchSizeEnum.Ten))).First();
                     listBlockId = listBlock.Block.ListBlockId;
                     await listBlock.StartAsync();
 
                     var counter = 0;
-                    foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatus.Pending))
+                    foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatusEnum.Pending))
                     {
                         itemToProcess.Step = 2;
                         await itemToProcess.FailedAsync("Exception");
@@ -585,7 +590,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
             }
 
             var listBlockItems =
-                _blocksHelper.GetListBlockItems<PersonDto>(listBlockId, ItemStatus.Failed, _loggerFactory);
+                _blocksHelper.GetListBlockItems<PersonDto>(listBlockId, ItemStatusEnum.Failed, _loggerFactory);
             Assert.True(listBlockItems.All(x => x.StatusReason == "Exception" && x.Step == 2));
         });
     }
@@ -610,12 +615,12 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                     var values = GetPersonList(26);
                     var maxBlockSize = 15;
                     var listBlocks = await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x =>
-                        x.WithPeriodicCommit(values, testHeader, maxBlockSize, BatchSize.Ten));
+                        x.WithPeriodicCommit(values, testHeader, maxBlockSize, BatchSizeEnum.Ten));
 
                     foreach (var listBlock in listBlocks)
                     {
                         await listBlock.StartAsync();
-                        foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatus.Pending))
+                        foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatusEnum.Pending))
                             await itemToProcess.CompleteAsync();
 
                         await listBlock.CompleteAsync();
@@ -629,8 +634,6 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                 expectedLastBlock.Items.Add(
                     new ListBlockItem<PersonDto>(_loggerFactory.CreateLogger<ListBlockItem<PersonDto>>())
                         { Value = person });
-
-
             // ACT
             IListBlock<PersonDto, TestHeader> lastBlock = null;
             using (var executionContext = CreateTaskExecutionContext())
@@ -701,12 +704,12 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                     var values = GetPersonList(3);
                     var maxBlockSize = 15;
                     var listBlocks = await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x =>
-                        x.WithPeriodicCommit(values, testHeader, maxBlockSize, BatchSize.Ten));
+                        x.WithPeriodicCommit(values, testHeader, maxBlockSize, BatchSizeEnum.Ten));
 
                     foreach (var listBlock in listBlocks)
                     {
                         await listBlock.StartAsync();
-                        foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatus.Pending))
+                        foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatusEnum.Pending))
                             await itemToProcess.CompleteAsync();
 
                         await listBlock.CompleteAsync();
@@ -761,7 +764,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                     await listBlock.StartAsync();
 
                     var counter = 0;
-                    foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatus.Pending))
+                    foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatusEnum.Pending))
                     {
                         if (counter == 2)
                             await itemToProcess.FailedAsync("Exception");
@@ -777,10 +780,10 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
 
             Assert.Equal(1,
                 _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                    BlockExecutionStatus.Failed));
+                    BlockExecutionStatusEnum.Failed));
             Assert.Equal(0,
                 _blocksHelper.GetBlockExecutionCountByStatus(CurrentTaskId,
-                    BlockExecutionStatus.Completed));
+                    BlockExecutionStatusEnum.Completed));
         });
     }
 
@@ -803,13 +806,13 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                     var values = GetPersonList(9);
                     var maxBlockSize = 3;
                     var listBlocks = await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x =>
-                        x.WithPeriodicCommit(values, testHeader, maxBlockSize, BatchSize.Fifty));
+                        x.WithPeriodicCommit(values, testHeader, maxBlockSize, BatchSizeEnum.Fifty));
 
                     // block 0 has one failed item
                     await listBlocks[0].StartAsync();
 
                     var counter = 0;
-                    foreach (var itemToProcess in await listBlocks[0].GetItemsAsync(ItemStatus.Pending))
+                    foreach (var itemToProcess in await listBlocks[0].GetItemsAsync(ItemStatusEnum.Pending))
                     {
                         if (counter == 2)
                             await listBlocks[0].ItemFailedAsync(itemToProcess, "Exception", 1);
@@ -824,7 +827,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                     // block 1 succeeds
                     await listBlocks[1].StartAsync();
 
-                    foreach (var itemToProcess in await listBlocks[1].GetItemsAsync(ItemStatus.Pending))
+                    foreach (var itemToProcess in await listBlocks[1].GetItemsAsync(ItemStatusEnum.Pending))
                     {
                         await listBlocks[1].ItemCompletedAsync(itemToProcess);
 
@@ -843,7 +846,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                 if (startedOk)
                 {
                     var listBlocksToReprocess = await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x => x
-                        .ReprocessWithPeriodicCommit(BatchSize.Fifty)
+                        .WithReprocessPeriodicCommit(BatchSizeEnum.Fifty)
                         .PendingAndFailedBlocks()
                         .OfExecutionWith(referenceValue));
 
@@ -852,7 +855,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
 
                     // the block that failed has one failed item
                     var itemsOfB1 =
-                        (await listBlocksToReprocess[0].GetItemsAsync(ItemStatus.Failed, ItemStatus.Pending))
+                        (await listBlocksToReprocess[0].GetItemsAsync(ItemStatusEnum.Failed, ItemStatusEnum.Pending))
                         .ToList();
                     Assert.Single(itemsOfB1);
                     Assert.Equal("Exception", itemsOfB1[0].StatusReason);
@@ -860,7 +863,8 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                     Assert.Equal(expectedStep, itemsOfB1[0].Step);
 
                     // the block that never executed has 3 pending items
-                    var itemsOfB2 = await listBlocksToReprocess[1].GetItemsAsync(ItemStatus.Failed, ItemStatus.Pending);
+                    var itemsOfB2 = await listBlocksToReprocess[1]
+                        .GetItemsAsync(ItemStatusEnum.Failed, ItemStatusEnum.Pending);
                     Assert.Equal(3, itemsOfB2.Count());
 
                     await listBlocksToReprocess[0].CompleteAsync();
@@ -894,20 +898,20 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                     var listBlocks = await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x => x
                         .WithSingleUnitCommit(values, testHeader, maxBlockSize)
                         .OverrideConfiguration()
-                        .ReprocessFailedTasks(new TimeSpan(1, 0, 0, 0), 3)
-                        .ReprocessDeadTasks(new TimeSpan(1, 0, 0, 0), 3)
-                        .MaximumBlocksToGenerate(5));
+                        .WithReprocessFailedTasks(TimeSpans.OneDay, 3)
+                        .WithReprocessDeadTasks(TimeSpans.OneDay, 3)
+                        .WithMaximumBlocksToGenerate(5));
                     // There should be 5 blocks - 3, 3, 3, 3, 4
                     Assert.Equal(5, _blocksHelper.GetBlockCount(CurrentTaskId));
-                    Assert.True((await listBlocks[0].GetItemsAsync()).All(x => x.Status == ItemStatus.Failed));
+                    Assert.True((await listBlocks[0].GetItemsAsync()).All(x => x.Status == ItemStatusEnum.Failed));
                     Assert.Equal(3, (await listBlocks[0].GetItemsAsync()).Count());
-                    Assert.True((await listBlocks[1].GetItemsAsync()).All(x => x.Status == ItemStatus.Failed));
+                    Assert.True((await listBlocks[1].GetItemsAsync()).All(x => x.Status == ItemStatusEnum.Failed));
                     Assert.Equal(3, (await listBlocks[1].GetItemsAsync()).Count());
-                    Assert.True((await listBlocks[2].GetItemsAsync()).All(x => x.Status == ItemStatus.Pending));
+                    Assert.True((await listBlocks[2].GetItemsAsync()).All(x => x.Status == ItemStatusEnum.Pending));
                     Assert.Equal(3, (await listBlocks[2].GetItemsAsync()).Count());
-                    Assert.True((await listBlocks[3].GetItemsAsync()).All(x => x.Status == ItemStatus.Pending));
+                    Assert.True((await listBlocks[3].GetItemsAsync()).All(x => x.Status == ItemStatusEnum.Pending));
                     Assert.Equal(3, (await listBlocks[3].GetItemsAsync()).Count());
-                    Assert.True((await listBlocks[4].GetItemsAsync()).All(x => x.Status == ItemStatus.Pending));
+                    Assert.True((await listBlocks[4].GetItemsAsync()).All(x => x.Status == ItemStatusEnum.Pending));
                     Assert.Equal(4, (await listBlocks[4].GetItemsAsync()).Count());
                 }
             }
@@ -941,9 +945,9 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                             x.WithSingleUnitCommit(values, testHeader, maxBlockSize));
                     // There should be 2 blocks - 4, 4
                     Assert.Equal(2, listBlocks.Count);
-                    Assert.True((await listBlocks[0].GetItemsAsync()).All(x => x.Status == ItemStatus.Pending));
+                    Assert.True((await listBlocks[0].GetItemsAsync()).All(x => x.Status == ItemStatusEnum.Pending));
                     Assert.Equal(4, (await listBlocks[0].GetItemsAsync()).Count());
-                    Assert.True((await listBlocks[1].GetItemsAsync()).All(x => x.Status == ItemStatus.Pending));
+                    Assert.True((await listBlocks[1].GetItemsAsync()).All(x => x.Status == ItemStatusEnum.Pending));
                     Assert.Equal(4, (await listBlocks[1].GetItemsAsync()).Count());
                 }
             }
@@ -995,7 +999,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
     [Fact]
     [Trait("Speed", "Fast")]
     [Trait("Area", "Blocks")]
-    public async Task If_ForceBlockWithHeader_ThenBlockGetsReprocessedAndDequeued()
+    public async Task If_ForcedBlockWithHeader_ThenBlockGetsReprocessedAndDequeued()
     {
         var forcedBlockTestHeader = GetTestHeader();
         forcedBlockTestHeader.PurchaseCode = "X";
@@ -1011,12 +1015,12 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                     var values = GetPersonList(3);
                     var maxBlockSize = 15;
                     var listBlocks = await executionContext.GetListBlocksAsync<PersonDto, TestHeader>(x =>
-                        x.WithPeriodicCommit(values, forcedBlockTestHeader, maxBlockSize, BatchSize.Ten));
+                        x.WithPeriodicCommit(values, forcedBlockTestHeader, maxBlockSize, BatchSizeEnum.Ten));
 
                     foreach (var listBlock in listBlocks)
                     {
                         await listBlock.StartAsync();
-                        foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatus.Pending))
+                        foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatusEnum.Pending))
                             await listBlock.ItemCompletedAsync(itemToProcess);
 
                         await listBlock.CompleteAsync();
@@ -1122,12 +1126,12 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                 var values = GetPersonList(6);
                 var maxBlockSize = 3;
                 var listBlocks = await executionContext.GetListBlocksAsync<PersonDto>(x =>
-                    x.WithPeriodicCommit(values, maxBlockSize, BatchSize.Ten));
+                    x.WithPeriodicCommit(values, maxBlockSize, BatchSizeEnum.Ten));
 
                 foreach (var listBlock in listBlocks)
                 {
                     await listBlock.StartAsync();
-                    foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatus.Pending))
+                    foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatusEnum.Pending))
                         await listBlock.ItemFailedAsync(itemToProcess, "Exception");
 
                     await listBlock.FailedAsync("Something bad happened");
@@ -1146,7 +1150,7 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
                 var values = GetPersonList(6);
                 var maxBlockSize = 3;
                 var listBlocks = await executionContext.GetListBlocksAsync<PersonDto>(x =>
-                    x.WithPeriodicCommit(values, maxBlockSize, BatchSize.Ten));
+                    x.WithPeriodicCommit(values, maxBlockSize, BatchSizeEnum.Ten));
 
                 foreach (var listBlock in listBlocks) await listBlock.StartAsync();
             }
@@ -1158,6 +1162,8 @@ public class When_GetListBlocksWithHeaderFromExecutionContext : TestBase
 
     private ITaskExecutionContext CreateTaskExecutionContext(int maxBlocksToGenerate = 10)
     {
+        _logger.LogDebug($"Called with maxblocks={maxBlocksToGenerate}");
+
         return _clientHelper.GetExecutionContext(CurrentTaskId,
             _clientHelper.GetDefaultTaskConfigurationWithKeepAliveAndReprocessing(maxBlocksToGenerate));
     }

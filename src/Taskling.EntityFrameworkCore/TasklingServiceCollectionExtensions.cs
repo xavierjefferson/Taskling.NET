@@ -40,8 +40,6 @@ public static class TasklingServiceCollectionExtensions
         services.AddScoped<ICleanUpRepository, CleanUpRepository>();
         services.AddTransient<ITaskExecutionContext,
             TaskExecutionContext>();
-
-
         services.AddScoped<IBlockFactory, BlockFactory>();
         services.AddScoped<ICleanUpService, CleanUpService>();
         services.AddMemoryCache();

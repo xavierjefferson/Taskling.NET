@@ -1,4 +1,4 @@
-﻿using Taskling.Blocks.Common;
+﻿using Taskling.Enums;
 using Taskling.Fluent.Settings;
 
 namespace Taskling.Fluent.ObjectBlocks;
@@ -6,12 +6,12 @@ namespace Taskling.Fluent.ObjectBlocks;
 public class FluentObjectBlockSettings<T> : FluentBlockSettingsDescriptor, IObjectBlockSettings<T>
 {
     public FluentObjectBlockSettings()
-        : base(BlockType.Object)
+        : base(BlockTypeEnum.Object)
     {
     }
 
     public FluentObjectBlockSettings(T objectData)
-        : base(BlockType.Object)
+        : base(BlockTypeEnum.Object)
     {
         Object = objectData;
     }

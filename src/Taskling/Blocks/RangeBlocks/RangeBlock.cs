@@ -1,6 +1,6 @@
 ﻿using System;
 using Microsoft.Extensions.Logging;
-using Taskling.Blocks.Common;
+using Taskling.Enums;
 
 namespace Taskling.Blocks.RangeBlocks;
 
@@ -12,7 +12,7 @@ public class RangeBlock : IDateRangeBlock, INumericRangeBlock
         int attempt,
         long rangeBegin,
         long rangeEnd,
-        BlockType blockType, ILogger<RangeBlock> logger)
+        BlockTypeEnum blockType, ILogger<RangeBlock> logger)
     {
         _logger = logger;
 
@@ -26,7 +26,7 @@ public class RangeBlock : IDateRangeBlock, INumericRangeBlock
     private long RangeBegin { get; }
     private long RangeEnd { get; }
 
-    public BlockType RangeType { get; set; }
+    public BlockTypeEnum RangeType { get; set; }
 
     public long RangeBlockId { get; set; }
     public int Attempt { get; set; }

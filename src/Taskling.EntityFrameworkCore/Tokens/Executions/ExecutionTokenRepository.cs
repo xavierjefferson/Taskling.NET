@@ -1,10 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using Taskling.EntityFrameworkCore.AncilliaryServices;
 using Taskling.EntityFrameworkCore.Models;
-using Taskling.Extensions;
-using Taskling.InfrastructureContracts.TaskExecution;
-using TaskDefinition = Taskling.EntityFrameworkCore.Models.TaskDefinition;
+using Taskling.Enums;
 
 namespace Taskling.EntityFrameworkCore.Tokens.Executions;
 
@@ -46,21 +45,19 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
                 var assignableToken = await GetAssignableTokenAsync(tokens, dbContext).ConfigureAwait(false);
                 if (assignableToken == null)
                 {
-                    response.GrantStatus = GrantStatus.Denied;
+                    response.GrantStatus = GrantStatusEnum.Denied;
                     response.ExecutionTokenId = Guid.Empty;
                 }
                 else
                 {
                     AssignToken(assignableToken, tokenRequest.TaskExecutionId);
-                    response.GrantStatus = GrantStatus.Granted;
+                    response.GrantStatus = GrantStatusEnum.Granted;
                     response.ExecutionTokenId = assignableToken.TokenId;
                     adjusted = true;
                 }
 
                 if (adjusted)
                     await PersistTokensAsync(tokenRequest.TaskDefinitionId, tokens, dbContext).ConfigureAwait(false);
-
-
                 return response;
             }
         });
@@ -83,7 +80,6 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
             }
         }, 10, 60000);
     }
-
 
     private async Task AcquireRowLockAsync(long taskDefinitionId, long taskExecutionId,
         TasklingDbContext dbContext)
@@ -121,7 +117,7 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
         }
         finally
         {
-            _logger.LogDebug($"Retrieved tokens {Constants.Serialize(result)}");
+            _logger.LogDebug($"Retrieved tokens {JsonConvert.SerializeObject(result, Formatting.Indented)}");
         }
     }
 
@@ -207,8 +203,8 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
         if (HasAvailableToken(executionTokenList)) return GetAvailableToken(executionTokenList);
 
         var executionIds = executionTokenList
-            .Where(x => x.Status != ExecutionTokenStatus.Disabled && x.GrantedToExecution != 0)
-            .Select(x => x.GrantedToExecution)
+            .Where(x => x.Status != ExecutionTokenStatus.Disabled && x.GrantedTaskExecutionId != 0)
+            .Select(x => x.GrantedTaskExecutionId)
             .ToList();
 
         if (!executionIds.Any()) return null;
@@ -217,14 +213,14 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
         var expiredExecution = FindExpiredExecution(executionStates);
         if (expiredExecution == null) return null;
 
-        return executionTokenList.First(x => x.GrantedToExecution == expiredExecution.TaskExecutionId);
+        return executionTokenList.First(x => x.GrantedTaskExecutionId == expiredExecution.TaskExecutionId);
     }
 
     private bool HasAvailableToken(ExecutionTokenList executionTokenList)
     {
         var tmp = executionTokenList.Any(x => x.Status == ExecutionTokenStatus.Available
                                               || x.Status == ExecutionTokenStatus.Unlimited);
-        _logger.LogDebug($"{Constants.Serialize(executionTokenList)}");
+        _logger.LogDebug($"{JsonConvert.SerializeObject(executionTokenList, Formatting.Indented)}");
         _logger.LogDebug($"{nameof(HasAvailableToken)}={tmp}");
         return tmp;
     }
@@ -281,8 +277,6 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
     {
         var executionToken = executionTokenList.FirstOrDefault(x => x.TokenId == executionTokenId);
         if (executionToken != null && executionToken.Status == ExecutionTokenStatus.Unavailable)
-        {
             executionToken.Status = ExecutionTokenStatus.Available;
-        }
     }
 }

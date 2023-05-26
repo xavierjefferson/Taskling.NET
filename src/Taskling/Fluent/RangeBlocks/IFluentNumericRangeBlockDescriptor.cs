@@ -3,6 +3,6 @@
 public interface IFluentNumericRangeBlockDescriptor
 {
     IOverrideConfigurationDescriptor WithRange(long fromNumber, long toNumber, long maxBlockNumberRange);
-    IOverrideConfigurationDescriptor OnlyOldNumericBlocks();
-    IReprocessScopeDescriptor ReprocessNumericRange();
+    IOverrideConfigurationDescriptor WithOnlyOldNumericBlocks();
+    IReprocessScopeDescriptor WithReprocessNumericRange();
 }

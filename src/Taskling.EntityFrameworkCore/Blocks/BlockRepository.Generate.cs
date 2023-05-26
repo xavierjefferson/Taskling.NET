@@ -1,9 +1,10 @@
 ﻿using Microsoft.Extensions.Logging;
-using Taskling.Blocks.Common;
 using Taskling.Blocks.ObjectBlocks;
 using Taskling.Blocks.RangeBlocks;
 using Taskling.EntityFrameworkCore.Blocks.Models;
+using Taskling.EntityFrameworkCore.Blocks.QueryBuilders;
 using Taskling.EntityFrameworkCore.Blocks.Serialization;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.Blocks.ListBlocks;
 
@@ -18,13 +19,13 @@ public partial class BlockRepository
         var results = new List<RangeBlock>();
         foreach (var blockQueryItem in blockQueryItems)
         {
-            var blockType = (BlockType)blockQueryItem.BlockType;
+            var blockType = (BlockTypeEnum)blockQueryItem.BlockType;
             if (blockType != request.BlockType)
                 throw GetBlockTypeException(request, blockType);
 
             long rangeBegin;
             long rangeEnd;
-            if (request.BlockType == BlockType.DateRange)
+            if (request.BlockType == BlockTypeEnum.DateRange)
             {
                 rangeBegin = blockQueryItem.FromDate.Value.Ticks; //reader.GetDateTime("FromDate").Ticks;
                 rangeEnd = blockQueryItem.ToDate.Value.Ticks; //reader.GetDateTime("ToDate").Ticks;
@@ -34,7 +35,6 @@ public partial class BlockRepository
                 rangeBegin = blockQueryItem.FromNumber.Value;
                 rangeEnd = blockQueryItem.ToNumber.Value;
             }
-
 
             results.Add(new RangeBlock(blockQueryItem.BlockId, blockQueryItem.Attempt, rangeBegin, rangeEnd,
                 request.BlockType, logger));
@@ -49,7 +49,7 @@ public partial class BlockRepository
         var results = new List<ObjectBlock<T>>();
         foreach (var blockQueryItem in blockQueryItems)
         {
-            var blockType = (BlockType)blockQueryItem.BlockType;
+            var blockType = (BlockTypeEnum)blockQueryItem.BlockType;
             if (blockType != request.BlockType)
                 throw GetBlockTypeException(request, blockType);
 
@@ -71,11 +71,9 @@ public partial class BlockRepository
         var results = new List<ProtoListBlock>();
         foreach (var blockQueryItem in blockQueryItems)
         {
-            var blockType = (BlockType)blockQueryItem.BlockType;
+            var blockType = (BlockTypeEnum)blockQueryItem.BlockType;
             if (blockType != blocksOfTaskRequest.BlockType)
                 throw GetBlockTypeException(blocksOfTaskRequest, blockType);
-
-
             var listBlock = new ProtoListBlock();
             listBlock.ListBlockId = blockQueryItem.BlockId;
             listBlock.Attempt = blockQueryItem.Attempt;
@@ -86,5 +84,22 @@ public partial class BlockRepository
         }
 
         return results;
+    }
+
+    public static async Task<List<BlockQueryItem>> GetDeadBlocks(BlockItemRequestWrapper requestWrapper)
+    {
+        var items = await GetBlocksInner(requestWrapper);
+        //AND TE.StartedAt <= DATEADD(SECOND, -1 * DATEDIFF(SECOND, '00:00:00', OverrideThreshold), GETUTCDATE())
+        return Enumerable.Where<BlockQueryItem>(items, i => i.StartedAt < DateTime.UtcNow.Subtract(i.OverrideThreshold.Value))
+            .Take(requestWrapper.Limit).ToList();
+    }
+
+    static async Task<List<BlockQueryItem>> GetFailedBlocks(BlockItemRequestWrapper requestWrapper)
+    {
+        var items = await BlockRepository.GetBlocksInner(requestWrapper);
+        //AND TE.StartedAt <= DATEADD(SECOND, -1 * DATEDIFF(SECOND, '00:00:00', OverrideThreshold), GETUTCDATE())
+        return
+            items.Take(requestWrapper.Limit)
+                .ToList(); //.Where(i => i.StartedAt < DateTime.UtcNow.Subtract(i.OverrideThreshold.Value)).Take(limit).ToList();
     }
 }

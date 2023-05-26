@@ -1,9 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Taskling.Blocks.Common;
 using Taskling.Blocks.RangeBlocks;
 using Taskling.EntityFrameworkCore.AncilliaryServices;
-using Taskling.Extensions;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts.Blocks;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 using Taskling.InfrastructureContracts.TaskExecution;
@@ -31,10 +30,10 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
         _logger.LogDebug($"Called {nameof(ChangeStatusAsync)} where blocktype={changeStatusRequest.BlockType}");
         switch (changeStatusRequest.BlockType)
         {
-            case BlockType.DateRange:
+            case BlockTypeEnum.DateRange:
                 await ChangeStatusOfDateRangeExecutionAsync(changeStatusRequest).ConfigureAwait(false);
                 break;
-            case BlockType.NumericRange:
+            case BlockTypeEnum.NumericRange:
                 await ChangeStatusOfNumericRangeExecutionAsync(changeStatusRequest).ConfigureAwait(false);
                 break;
             default:
@@ -54,33 +53,33 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
                     i.IsPhantom == false && i.TaskDefinitionId == taskDefinition.TaskDefinitionId);
                 switch (lastRangeBlockRequest.BlockType)
                 {
-                    case BlockType.NumericRange:
+                    case BlockTypeEnum.NumericRange:
                         switch (lastRangeBlockRequest.LastBlockOrder)
                         {
                             default:
-                            case LastBlockOrder.LastCreated:
+                            case LastBlockOrderEnum.LastCreated:
                                 blockQueryable = blockQueryable.OrderByDescending(i => i.CreatedDate);
                                 break;
-                            case LastBlockOrder.MaxRangeEndValue:
+                            case LastBlockOrderEnum.MaxRangeEndValue:
                                 blockQueryable = blockQueryable.OrderByDescending(i => i.ToNumber);
                                 break;
-                            case LastBlockOrder.MaxRangeStartValue:
+                            case LastBlockOrderEnum.MaxRangeStartValue:
                                 blockQueryable = blockQueryable.OrderByDescending(i => i.FromNumber);
                                 break;
                         }
 
                         break;
-                    case BlockType.DateRange:
+                    case BlockTypeEnum.DateRange:
                         switch (lastRangeBlockRequest.LastBlockOrder)
                         {
                             default:
-                            case LastBlockOrder.LastCreated:
+                            case LastBlockOrderEnum.LastCreated:
                                 blockQueryable = blockQueryable.OrderByDescending(i => i.CreatedDate);
                                 break;
-                            case LastBlockOrder.MaxRangeEndValue:
+                            case LastBlockOrderEnum.MaxRangeEndValue:
                                 blockQueryable = blockQueryable.OrderByDescending(i => i.ToDate);
                                 break;
-                            case LastBlockOrder.MaxRangeStartValue:
+                            case LastBlockOrderEnum.MaxRangeStartValue:
                                 blockQueryable = blockQueryable.OrderByDescending(i => i.FromDate);
                                 break;
                         }
@@ -99,7 +98,7 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
                     long rangeBegin;
                     long rangeEnd;
 
-                    if (lastRangeBlockRequest.BlockType == BlockType.DateRange)
+                    if (lastRangeBlockRequest.BlockType == BlockTypeEnum.DateRange)
                     {
                         rangeBegin = block.FromDate.Value.Ticks; //reader.GetDateTime("FromDate").Ticks; 
                         rangeEnd = block.ToDate.Value.Ticks; //reader.GetDateTime("ToDate").Ticks;
@@ -119,7 +118,6 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
         });
     }
 
-
     private async Task ChangeStatusOfDateRangeExecutionAsync(BlockExecutionChangeStatusRequest changeStatusRequest)
     {
         await ChangeStatusOfNumericRangeExecutionAsync(changeStatusRequest);
@@ -127,7 +125,8 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
 
     private async Task ChangeStatusOfNumericRangeExecutionAsync(BlockExecutionChangeStatusRequest changeStatusRequest)
     {
-        _logger.LogDebug($"Called {nameof(ChangeStatusOfNumericRangeExecutionAsync)} to change blockexecutionid {changeStatusRequest.BlockExecutionId}, status={changeStatusRequest.BlockExecutionStatus}, itemsCount={changeStatusRequest.ItemsProcessed}");
+        _logger.LogDebug(
+            $"Called {nameof(ChangeStatusOfNumericRangeExecutionAsync)} to change blockexecutionid {changeStatusRequest.BlockExecutionId}, status={changeStatusRequest.BlockExecutionStatus}, itemsCount={changeStatusRequest.ItemsProcessed}");
         await RetryHelper.WithRetryAsync(async () =>
         {
             using (var dbContext = await GetDbContextAsync(changeStatusRequest.TaskId).ConfigureAwait(false))
@@ -139,8 +138,8 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
                     blockExecution.BlockExecutionStatus = (int)changeStatusRequest.BlockExecutionStatus;
                     switch (changeStatusRequest.BlockExecutionStatus)
                     {
-                        case BlockExecutionStatus.Completed:
-                        case BlockExecutionStatus.Failed:
+                        case BlockExecutionStatusEnum.Completed:
+                        case BlockExecutionStatusEnum.Failed:
                             blockExecution.ItemsCount = changeStatusRequest.ItemsProcessed;
                             blockExecution.CompletedAt = DateTime.UtcNow;
                             break;

@@ -36,8 +36,6 @@ BEGIN
 
 	SET @Current = @Current + 1
 END
-
-
 -------------------------------
 -- Create Taskling Tables
 -------------------------------
@@ -149,23 +147,21 @@ CREATE TABLE [Taskling].[TaskExecutionEvent](
 )) 
 GO
 
-CREATE TABLE [Taskling].[ForceBlockQueue](
-    [ForceBlockQueueId] [int] IDENTITY(1,1) NOT NULL,
+CREATE TABLE [Taskling].[ForcedBlockQueue](
+    [ForcedBlockQueueId] [int] IDENTITY(1,1) NOT NULL,
     [BlockId] [bigint] NOT NULL,
     [ForcedDate] [datetime] NOT NULL,
     [ForcedBy] [varchar](50) NOT NULL,
     [ProcessingStatus] [varchar](20) NOT NULL,
- CONSTRAINT [PK_ForceBlockQueue] PRIMARY KEY CLUSTERED 
+ CONSTRAINT [PK_ForcedBlockQueue] PRIMARY KEY CLUSTERED 
 (
-    [ForceBlockQueueId] ASC
+    [ForcedBlockQueueId] ASC
 )) 
 GO
-
-
-ALTER TABLE [Taskling].[ForceBlockQueue] ADD  DEFAULT (getutcdate()) FOR [ForcedDate]
+ALTER TABLE [Taskling].[ForcedBlockQueue] ADD  DEFAULT (getutcdate()) FOR [ForcedDate]
 GO
 
-ALTER TABLE [Taskling].[ForceBlockQueue] ADD  DEFAULT ('Pending') FOR [ProcessingStatus]
+ALTER TABLE [Taskling].[ForcedBlockQueue] ADD  DEFAULT ('Pending') FOR [ProcessingStatus]
 GO
 
 CREATE NONCLUSTERED INDEX [IX_Block_TaskDefinitionId] ON [Taskling].[Block] 
@@ -188,14 +184,10 @@ CREATE UNIQUE NONCLUSTERED INDEX [IX_TaskDefinition_Unique] ON [Taskling].[TaskD
     [ApplicationName] ASC,
     [TaskName] ASC
 )
-
-
 CREATE NONCLUSTERED INDEX [IX_TaskExecution_TaskDefinitionId] ON [Taskling].[TaskExecution] 
 (
     [TaskDefinitionId] ASC
 )
-
-
 COMMIT TRAN
 GO
 

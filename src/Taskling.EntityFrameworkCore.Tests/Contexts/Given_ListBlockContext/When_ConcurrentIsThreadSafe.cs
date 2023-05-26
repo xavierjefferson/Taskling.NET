@@ -4,8 +4,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Taskling.Blocks.ListBlocks;
 using Taskling.EntityFrameworkCore.Tests.Helpers;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts.TaskExecution;
 using Xunit;
 
@@ -61,7 +61,7 @@ public class When_ConcurrentIsThreadSafe : TestBase
                     foreach (var listBlock in listBlocks)
                     {
                         await listBlock.StartAsync();
-                        var items = await listBlock.GetItemsAsync(ItemStatus.Failed, ItemStatus.Pending);
+                        var items = await listBlock.GetItemsAsync(ItemStatusEnum.Failed, ItemStatusEnum.Pending);
 
                         await items.ParallelForEachAsync(async currentItem =>
                         {
@@ -71,8 +71,9 @@ public class When_ConcurrentIsThreadSafe : TestBase
                         await listBlock.CompleteAsync();
 
                         // All items should be completed now
-                        Assert.Equal((await listBlock.GetItemsAsync(ItemStatus.Completed)).Count(),
-                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId, ItemStatus.Completed));
+                        Assert.Equal((await listBlock.GetItemsAsync(ItemStatusEnum.Completed)).Count(),
+                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId,
+                                ItemStatusEnum.Completed));
                     }
                 }
             }
@@ -104,7 +105,7 @@ public class When_ConcurrentIsThreadSafe : TestBase
                     foreach (var listBlock in listBlocks)
                     {
                         await listBlock.StartAsync();
-                        var items = await listBlock.GetItemsAsync(ItemStatus.Failed, ItemStatus.Pending);
+                        var items = await listBlock.GetItemsAsync(ItemStatusEnum.Failed, ItemStatusEnum.Pending);
                         await items.ParallelForEachAsync(async currentItem =>
                         {
                             await listBlock.ItemCompletedAsync(currentItem);
@@ -113,8 +114,9 @@ public class When_ConcurrentIsThreadSafe : TestBase
                         await listBlock.CompleteAsync();
 
                         // All items should be completed now
-                        Assert.Equal((await listBlock.GetItemsAsync(ItemStatus.Completed)).Count(),
-                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId, ItemStatus.Completed));
+                        Assert.Equal((await listBlock.GetItemsAsync(ItemStatusEnum.Completed)).Count(),
+                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId,
+                                ItemStatusEnum.Completed));
                     }
                 }
             }
@@ -141,11 +143,11 @@ public class When_ConcurrentIsThreadSafe : TestBase
                     var values = GetList(ListSize);
                     var maxBlockSize = 1000;
                     var listBlocks = await executionContext.GetListBlocksAsync<PersonDto>(x =>
-                        x.WithPeriodicCommit(values, maxBlockSize, BatchSize.Hundred));
+                        x.WithPeriodicCommit(values, maxBlockSize, BatchSizeEnum.Hundred));
                     foreach (var listBlock in listBlocks)
                     {
                         await listBlock.StartAsync();
-                        var items = await listBlock.GetItemsAsync(ItemStatus.Failed, ItemStatus.Pending);
+                        var items = await listBlock.GetItemsAsync(ItemStatusEnum.Failed, ItemStatusEnum.Pending);
 
                         await items.ParallelForEachAsync(async currentItem =>
                         {
@@ -155,9 +157,10 @@ public class When_ConcurrentIsThreadSafe : TestBase
                         await listBlock.CompleteAsync();
 
                         // All items should be completed now
-                        var expectedCount = (await listBlock.GetItemsAsync(ItemStatus.Completed)).Count();
+                        var expectedCount = (await listBlock.GetItemsAsync(ItemStatusEnum.Completed)).Count();
                         var actualCount =
-                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId, ItemStatus.Completed);
+                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId,
+                                ItemStatusEnum.Completed);
 
                         Assert.Equal(expectedCount, actualCount);
                     }
@@ -193,15 +196,15 @@ public class When_ConcurrentIsThreadSafe : TestBase
                     {
                         await currentBlock.StartAsync();
 
-                        foreach (var currentItem in await currentBlock.GetItemsAsync(ItemStatus.Pending))
+                        foreach (var currentItem in await currentBlock.GetItemsAsync(ItemStatusEnum.Pending))
                             await currentBlock.ItemCompletedAsync(currentItem);
                         ;
 
                         await currentBlock.CompleteAsync();
                         // All items should be completed now
-                        Assert.Equal((await currentBlock.GetItemsAsync(ItemStatus.Completed)).Count(),
+                        Assert.Equal((await currentBlock.GetItemsAsync(ItemStatusEnum.Completed)).Count(),
                             _blocksHelper.GetListBlockItemCountByStatus(currentBlock.ListBlockId,
-                                ItemStatus.Completed));
+                                ItemStatusEnum.Completed));
                     });
                 }
             }

@@ -1,9 +1,9 @@
-﻿using Taskling.Blocks.Common;
+﻿using Taskling.Enums;
 
 namespace Taskling.InfrastructureContracts.Blocks.CommonRequests.ForcedBlocks;
 
 public class ForcedBlockQueueItem
 {
-    public BlockType BlockType { get; set; }
-    public int ForcedBlockQueueId { get; set; }
+    public BlockTypeEnum BlockType { get; set; }
+    public long ForcedBlockQueueId { get; set; }
 }

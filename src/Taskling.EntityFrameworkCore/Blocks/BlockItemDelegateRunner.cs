@@ -1,17 +1,17 @@
-﻿using Taskling.Blocks.Common;
-using Taskling.EntityFrameworkCore.Blocks.Models;
+﻿using Taskling.EntityFrameworkCore.Blocks.Models;
 using Taskling.EntityFrameworkCore.Blocks.QueryBuilders;
 using Taskling.EntityFrameworkCore.Models;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts.Blocks.CommonRequests;
 
 namespace Taskling.EntityFrameworkCore.Blocks;
 
 public class BlockItemDelegateRunner
 {
-    private readonly BlockType _blockType;
+    private readonly BlockTypeEnum _blockType;
     private readonly GetBlockItemsDelegate _getBlockItemsDelegate;
 
-    public BlockItemDelegateRunner(int limit, GetBlockItemsDelegate getBlockItemsDelegate, BlockType blockType)
+    public BlockItemDelegateRunner(int limit, GetBlockItemsDelegate getBlockItemsDelegate, BlockTypeEnum blockType)
     {
         _getBlockItemsDelegate = getBlockItemsDelegate;
         _blockType = blockType;

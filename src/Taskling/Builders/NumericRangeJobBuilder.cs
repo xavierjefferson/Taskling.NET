@@ -8,13 +8,11 @@ public class NumericRangeJobBuilder : JobBuilderBase<INumericRangeBlockContext, 
 {
     protected override NumericRangeJobBuilder BuilderInstance => this;
 
-
     public override NumericRangeJob Build()
     {
         return new NumericRangeJob(_client, _application, _taskName, _getBlocksFunc, _processFunc,
             _failTaskOnException);
     }
-
 
     public NumericRangeJobBuilder WithRange(Func<ITaskExecutionContext, Task<NumericRange>> rangeFunc)
     {

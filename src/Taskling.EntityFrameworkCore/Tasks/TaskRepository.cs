@@ -170,8 +170,6 @@ public class TaskRepository : DbOperationsService, ITaskRepository
                 { ApplicationName = taskId.ApplicationName, TaskName = taskId.TaskName };
             await dbContext.TaskDefinitions.AddAsync(modelsTaskDefinition);
             await dbContext.SaveChangesAsync();
-
-
             var taskDefinition = new TaskDefinition
             {
                 TaskDefinitionId = modelsTaskDefinition.TaskDefinitionId,
@@ -182,8 +180,6 @@ public class TaskRepository : DbOperationsService, ITaskRepository
             var key = taskId.GetUniqueKey();
 
             CacheSemaphore.Wrap(() => { CacheTaskDefinition(key, taskDefinition); });
-
-
             return taskDefinition;
         }
     }

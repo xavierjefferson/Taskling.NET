@@ -1,16 +1,16 @@
 ﻿using System.Collections.Generic;
-using Taskling.Blocks.ListBlocks;
+using Taskling.Enums;
 
 namespace Taskling.Fluent.ListBlocks;
 
 public interface IFluentListBlockDescriptorBase<T>
 {
     IOverrideConfigurationDescriptor WithSingleUnitCommit(List<T> values, int maxBlockSize);
-    IOverrideConfigurationDescriptor WithPeriodicCommit(List<T> values, int maxBlockSize, BatchSize batchSize);
+    IOverrideConfigurationDescriptor WithPeriodicCommit(List<T> values, int maxBlockSize, BatchSizeEnum batchSize);
     IOverrideConfigurationDescriptor WithBatchCommitAtEnd(List<T> values, int maxBlockSize);
-    IReprocessScopeDescriptor ReprocessWithSingleUnitCommit();
-    IReprocessScopeDescriptor ReprocessWithPeriodicCommit(BatchSize batchSize);
-    IReprocessScopeDescriptor ReprocessWithBatchCommitAtEnd();
+    IReprocessScopeDescriptor WithReprocessSingleUnitCommit();
+    IReprocessScopeDescriptor WithReprocessPeriodicCommit(BatchSizeEnum batchSize);
+    IReprocessScopeDescriptor WithReprocessBatchCommitAtEnd();
 }
 
 public interface IFluentListBlockDescriptorBase<TItem, THeader>
@@ -18,10 +18,10 @@ public interface IFluentListBlockDescriptorBase<TItem, THeader>
     IOverrideConfigurationDescriptor WithSingleUnitCommit(List<TItem> values, THeader header, int maxBlockSize);
 
     IOverrideConfigurationDescriptor WithPeriodicCommit(List<TItem> values, THeader header, int maxBlockSize,
-        BatchSize batchSize);
+        BatchSizeEnum batchSize);
 
     IOverrideConfigurationDescriptor WithBatchCommitAtEnd(List<TItem> values, THeader header, int maxBlockSize);
-    IReprocessScopeDescriptor ReprocessWithSingleUnitCommit();
-    IReprocessScopeDescriptor ReprocessWithPeriodicCommit(BatchSize batchSize);
-    IReprocessScopeDescriptor ReprocessWithBatchCommitAtEnd();
+    IReprocessScopeDescriptor WithReprocessSingleUnitCommit();
+    IReprocessScopeDescriptor WithReprocessPeriodicCommit(BatchSizeEnum batchSize);
+    IReprocessScopeDescriptor WithReprocessBatchCommitAtEnd();
 }

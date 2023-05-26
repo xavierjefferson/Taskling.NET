@@ -1,6 +1,6 @@
-﻿namespace Taskling.Events;
+﻿namespace Taskling.Enums;
 
-public enum EventType
+public enum EventTypeEnum
 {
     NotDefined = 0,
     Start = 1,

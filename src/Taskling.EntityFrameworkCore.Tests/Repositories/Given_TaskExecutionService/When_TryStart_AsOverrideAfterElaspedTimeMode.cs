@@ -4,8 +4,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Taskling.EntityFrameworkCore.Tests.Helpers;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.Tasks;
 using Xunit;
 
 namespace Taskling.EntityFrameworkCore.Tests.Repositories.Given_TaskExecutionService;
@@ -37,9 +37,9 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
     private TaskExecutionStartRequest CreateOverrideStartRequest(int concurrencyLimit = 1)
     {
         return new TaskExecutionStartRequest(CurrentTaskId,
-            TaskDeathMode.Override, concurrencyLimit, 3, 3)
+            TaskDeathModeEnum.Override, concurrencyLimit, 3, 3)
         {
-            OverrideThreshold = new TimeSpan(0, 1, 0),
+            OverrideThreshold = TimeSpans.OneMinute,
             TasklingVersion = "N/A"
         };
     }
@@ -87,7 +87,7 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
             var response = await sut.StartAsync(startRequest);
 
             // ASSERT
-            Assert.Equal(GrantStatus.Granted, response.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, response.GrantStatus);
             Assert.NotEqual(Guid.Empty, response.ExecutionTokenId);
         });
     }
@@ -114,8 +114,8 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
             var secondResponse = await sut.StartAsync(secondStartRequest);
 
             // ASSERT
-            Assert.Equal(GrantStatus.Granted, firstResponse.GrantStatus);
-            Assert.Equal(GrantStatus.Denied, secondResponse.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, firstResponse.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Denied, secondResponse.GrantStatus);
         });
     }
 
@@ -146,8 +146,8 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
             var secondStartResponse = await sut.StartAsync(secondStartRequest);
 
             // ASSERT
-            Assert.Equal(GrantStatus.Granted, firstStartResponse.GrantStatus);
-            Assert.Equal(GrantStatus.Granted, secondStartResponse.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, firstStartResponse.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, secondStartResponse.GrantStatus);
         });
     }
 
@@ -180,11 +180,11 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
             var fifthResponse = await sut.StartAsync(fifthStartRequest);
 
             // ASSERT
-            Assert.Equal(GrantStatus.Granted, firstResponse.GrantStatus);
-            Assert.Equal(GrantStatus.Granted, secondResponse.GrantStatus);
-            Assert.Equal(GrantStatus.Granted, thirdResponse.GrantStatus);
-            Assert.Equal(GrantStatus.Granted, fourthResponse.GrantStatus);
-            Assert.Equal(GrantStatus.Denied, fifthResponse.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, firstResponse.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, secondResponse.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, thirdResponse.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, fourthResponse.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Denied, fifthResponse.GrantStatus);
         });
     }
 
@@ -233,7 +233,7 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
 
             var firstStartResponse = await sut.StartAsync(firstStartRequest);
 
-            if (firstStartResponse.GrantStatus == GrantStatus.Granted)
+            if (firstStartResponse.GrantStatus == GrantStatusEnum.Granted)
             {
                 var firstCompleteRequest = new TaskExecutionCompleteRequest(
                     CurrentTaskId,
@@ -257,9 +257,9 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
             _executionsHelper.InsertAvailableExecutionToken(taskDefinitionId);
 
             var startRequest = CreateOverrideStartRequest();
-            startRequest.OverrideThreshold = new TimeSpan(0, 0, 5);
+            startRequest.OverrideThreshold = TimeSpans.FiveSeconds;
             var secondRequest = CreateOverrideStartRequest();
-            secondRequest.OverrideThreshold = new TimeSpan(0, 0, 5);
+            secondRequest.OverrideThreshold = TimeSpans.FiveSeconds;
 
             // ACT
             var sut = CreateSut();
@@ -270,8 +270,8 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
             var secondResponse = await sut.StartAsync(secondRequest);
 
             // ASSERT
-            Assert.Equal(GrantStatus.Granted, firstResponse.GrantStatus);
-            Assert.Equal(GrantStatus.Granted, secondResponse.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, firstResponse.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, secondResponse.GrantStatus);
             Assert.NotEqual(Guid.Empty, secondResponse.ExecutionTokenId);
         });
     }
@@ -301,9 +301,9 @@ public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
             var secondResponse = await sut.StartAsync(secondRequest);
 
             // ASSERT
-            Assert.Equal(GrantStatus.Granted, firstResponse.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Granted, firstResponse.GrantStatus);
             Assert.NotEqual(Guid.Empty, firstResponse.ExecutionTokenId);
-            Assert.Equal(GrantStatus.Denied, secondResponse.GrantStatus);
+            Assert.Equal(GrantStatusEnum.Denied, secondResponse.GrantStatus);
             Assert.Equal(Guid.Empty, secondResponse.ExecutionTokenId);
         });
     }

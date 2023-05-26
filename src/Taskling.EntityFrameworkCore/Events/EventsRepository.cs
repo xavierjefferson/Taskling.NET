@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using Taskling.EntityFrameworkCore.AncilliaryServices;
 using Taskling.EntityFrameworkCore.Models;
-using Taskling.Events;
+using Taskling.Enums;
 using Taskling.InfrastructureContracts;
 
 namespace Taskling.EntityFrameworkCore.Events;
@@ -14,7 +14,7 @@ public class EventsRepository : DbOperationsService, IEventsRepository
     {
     }
 
-    public async Task LogEventAsync(TaskId taskId, long taskExecutionId, EventType eventType, string? message)
+    public async Task LogEventAsync(TaskId taskId, long taskExecutionId, EventTypeEnum eventType, string? message)
     {
         await RetryHelper.WithRetryAsync(async () =>
         {

@@ -1,6 +1,6 @@
-﻿namespace Taskling.Blocks.ListBlocks;
+﻿namespace Taskling.Enums;
 
-public enum ItemStatus
+public enum ItemStatusEnum
 {
     NotDefined = 0,
     Pending = 1,

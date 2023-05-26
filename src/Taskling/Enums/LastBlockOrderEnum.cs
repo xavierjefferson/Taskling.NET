@@ -1,6 +1,6 @@
-﻿namespace Taskling.Blocks.Common;
+﻿namespace Taskling.Enums;
 
-public enum LastBlockOrder
+public enum LastBlockOrderEnum
 {
     LastCreated,
     MaxRangeStartValue,
