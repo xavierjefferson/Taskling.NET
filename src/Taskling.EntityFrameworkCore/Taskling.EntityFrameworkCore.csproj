@@ -14,12 +14,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="microsoft.entityframeworkcore.design" Version="6.0.0">
+    <PackageReference Include="microsoft.entityframeworkcore.design" Version="6.0.16">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="microsoft.entityframeworkcore.sqlserver" Version="6.0.0" />
-    <PackageReference Include="microsoft.entityframeworkcore.tools" Version="6.0.0">
+    <PackageReference Include="microsoft.entityframeworkcore.sqlserver" Version="6.0.16" />
+    <PackageReference Include="microsoft.entityframeworkcore.tools" Version="6.0.16">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
@@ -30,6 +30,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Taskling\Taskling.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Builders\" />
+    <Folder Include="Extensions\" />
   </ItemGroup>
 
 </Project>

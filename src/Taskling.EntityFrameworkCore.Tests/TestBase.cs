@@ -38,4 +38,6 @@ public abstract class TestBase
         //_logger.LogDebug($"{System.Reflection.MethodBase.GetCurrentMethod().Name} {Constants.CheckpointName}");
         await Semaphore.WrapAsync(func);
     }
+
+    public const string CollectionName = "DefaultCollection";
 }

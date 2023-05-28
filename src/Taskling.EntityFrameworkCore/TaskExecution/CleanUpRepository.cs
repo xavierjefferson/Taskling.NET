@@ -11,10 +11,9 @@ public class CleanUpRepository : DbOperationsService, ICleanUpRepository
     private readonly ILogger<CleanUpRepository> _logger;
     private readonly ITaskRepository _taskRepository;
 
-    public CleanUpRepository(ITaskRepository taskRepository, IConnectionStore connectionStore,
+    public CleanUpRepository(ITaskRepository taskRepository, 
         ILogger<CleanUpRepository> logger,
-        IDbContextFactoryEx dbContextFactoryEx, ILoggerFactory loggerFactory) : base(connectionStore,
-        dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
+        IDbContextFactoryEx dbContextFactoryEx, ILoggerFactory loggerFactory) : base(dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
     {
         _taskRepository = taskRepository;
         _logger = logger;

@@ -8,9 +8,8 @@ namespace Taskling.EntityFrameworkCore.Events;
 
 public class EventsRepository : DbOperationsService, IEventsRepository
 {
-    public EventsRepository(IConnectionStore connectionStore, IDbContextFactoryEx dbContextFactoryEx,
-        ILoggerFactory loggerFactory) : base(
-        connectionStore, dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
+    public EventsRepository( IDbContextFactoryEx dbContextFactoryEx,
+        ILoggerFactory loggerFactory) : base(dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
     {
     }
 

@@ -10,7 +10,7 @@ using Xunit;
 
 namespace Taskling.EntityFrameworkCore.Tests.Repositories.Given_ObjectBlockRepository;
 
-[Collection(TestConstants.CollectionName)]
+[Collection(CollectionName)]
 public class When_ChangeStatus : TestBase
 {
     private readonly IBlocksHelper _blocksHelper;
@@ -32,7 +32,7 @@ public class When_ChangeStatus : TestBase
         _blocksHelper = blocksHelper;
         _clientHelper = clientHelper;
         _objectBlockRepository = objectBlockRepository;
-        _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
+        _blocksHelper.DeleteBlocks(CurrentTaskId);
         _executionsHelper = executionsHelper;
         _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
 
@@ -46,10 +46,10 @@ public class When_ChangeStatus : TestBase
     {
         _taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId);
 
-        _baseDateTime = new DateTime(2016, 1, 1);
-        var block1 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, DateTime.UtcNow, Guid.NewGuid().ToString());
+        _baseDateTime = DateTimeHelper.CreateUtcDate(2016, 1, 1);
+        var block1 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, DateTime.UtcNow, Guid.NewGuid().ToString(), CurrentTaskId);
         _blockExecutionId = _blocksHelper.InsertBlockExecution(_taskExecution1, block1, _baseDateTime.AddMinutes(-20),
-            _baseDateTime.AddMinutes(-20), _baseDateTime.AddMinutes(-25), BlockExecutionStatusEnum.Started);
+            _baseDateTime.AddMinutes(-20), _baseDateTime.AddMinutes(-25), BlockExecutionStatusEnum.Started, CurrentTaskId);
     }
 
     [Fact]
@@ -73,7 +73,7 @@ public class When_ChangeStatus : TestBase
             var sut = _objectBlockRepository;
             await sut.ChangeStatusAsync(request);
 
-            var itemCount = _blocksHelper.GetBlockExecutionItemCount(_blockExecutionId);
+            var itemCount = _blocksHelper.GetBlockExecutionItemCount(_blockExecutionId, CurrentTaskId);
 
             // ASSERT
             Assert.Equal(10000, itemCount);

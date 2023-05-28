@@ -9,7 +9,7 @@ using Xunit;
 
 namespace Taskling.EntityFrameworkCore.Tests.Repositories.Given_CriticalSectionService;
 
-[Collection(TestConstants.CollectionName)]
+[Collection(CollectionName)]
 public class When_TryStart_AsKeepAliveMode : TestBase
 {
     private readonly ICriticalSectionRepository _criticalSectionRepository;

@@ -3,13 +3,14 @@ using System.Linq;
 using Bogus;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Taskling.Configuration;
+using Taskling.EntityFrameworkCore.AncilliaryServices;
 using Taskling.EntityFrameworkCore.Tests.Repositories.Given_BlockRepository;
 using Taskling.EntityFrameworkCore.Tokens.CriticalSections;
 using Taskling.EntityFrameworkCore.Tokens.Executions;
 using Taskling.Enums;
 using Taskling.InfrastructureContracts;
 using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.Tasks;
 using TaskDefinition = Taskling.EntityFrameworkCore.Models.TaskDefinition;
 
 namespace Taskling.EntityFrameworkCore.Tests.Helpers;
@@ -17,24 +18,36 @@ namespace Taskling.EntityFrameworkCore.Tests.Helpers;
 public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
 {
     private static bool _ranFirstExecution;
-    private readonly IConnectionStore _connectionStore;
+    private readonly IDbContextFactoryEx _dbContextFactory;
     private readonly Faker<TestTaskInfo> _faker;
     private readonly ILogger<ExecutionsHelper> _logger;
 
-    public ExecutionsHelper(IConnectionStore connectionStore, ITaskRepository taskRepository,
-        ILogger<ExecutionsHelper> logger)
+    public ExecutionsHelper(ITaskRepository taskRepository,
+        ILogger<ExecutionsHelper> logger, IDbContextFactoryEx dbContextFactory,
+        ITaskConfigurationReader taskConfigurationReader)
     {
         _logger = logger;
-        _connectionStore = connectionStore;
-
+        _dbContextFactory = dbContextFactory;
         taskRepository.ClearCache();
         _faker = new Faker<TestTaskInfo>().RuleFor(i => i.ApplicationName, i => i.Database.Column())
             .RuleFor(i => i.TaskName, i => Guid.NewGuid().ToString());
         var testTaskInfo = _faker.Generate();
         CurrentTaskId = new TaskId(testTaskInfo.ApplicationName, testTaskInfo.TaskName);
+        var testTaskConfigurationReader = taskConfigurationReader as TestTaskConfigurationReader;
+
+
         if (_ranFirstExecution == false)
         {
-            using (var dbContext = DbContextOptionsHelper.GetDbContext())
+            var dummy = new TaskId(Guid.NewGuid().ToString(), Guid.NewGuid().ToString());
+
+            testTaskConfigurationReader.Add(dummy,
+                new ConfigurationOptions
+                {
+                    ConnectionString = Startup.GetConnectionString(),
+                    CommandTimeoutSeconds = 120, ExpiresInSeconds = 0
+                });
+
+            using (var dbContext = _dbContextFactory.GetDbContext(dummy))
             {
                 dbContext.Database.EnsureCreated();
                 dbContext.TaskExecutionEvents.RemoveRange(dbContext.TaskExecutionEvents);
@@ -49,9 +62,6 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
 
             _ranFirstExecution = true;
         }
-
-        _connectionStore.SetConnection(CurrentTaskId,
-            new ClientConnectionSettings(TestConstants.GetTestConnectionString(), TestConstants.QueryTimeout));
     }
 
     public TaskId CurrentTaskId { get; }
@@ -60,7 +70,7 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
     {
         RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(CurrentTaskId))
             {
                 dbContext.TaskExecutionEvents
                     .RemoveRange(dbContext.TaskExecutionEvents.Include(i => i.TaskExecution)
@@ -96,7 +106,7 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
     {
         RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(CurrentTaskId))
             {
                 try
                 {
@@ -116,7 +126,7 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
     {
         return RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(CurrentTaskId))
             {
                 var tmp = dbContext.TaskExecutions.Where(i => i.TaskDefinitionId == taskDefinitionId)
                     .Select(i => new { i.LastKeepAlive }).FirstOrDefault();
@@ -133,7 +143,7 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
     {
         return RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(CurrentTaskId))
             {
                 var tmp = dbContext.TaskExecutionEvents.OrderByDescending(i => i.TaskExecutionEventId)
                     .Where(i => i.TaskExecution.TaskDefinitionId == taskDefinitionId)
@@ -149,7 +159,7 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
     {
         return RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(CurrentTaskId))
             {
                 var taskDefinition = new TaskDefinition
                 {
@@ -200,7 +210,7 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
         RetryHelper.WithRetry(() =>
         {
             var tokenString = GenerateTokensString(tokens);
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(CurrentTaskId))
             {
                 try
                 {
@@ -223,7 +233,7 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
     {
         return RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(CurrentTaskId))
             {
                 var tmp = dbContext.TaskDefinitions
                     .Where(i => i.ApplicationName == taskId.ApplicationName && i.TaskName == taskId.TaskName)
@@ -237,7 +247,7 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
     {
         return RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(CurrentTaskId))
             {
                 var result = dbContext.TaskDefinitions
                     .Where(i => i.ApplicationName == taskId.ApplicationName && i.TaskName == taskId.TaskName)
@@ -271,7 +281,7 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
     {
         return RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(CurrentTaskId))
             {
                 var taskExecution = new Models.TaskExecution
                 {
@@ -306,7 +316,7 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
     {
         return RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(CurrentTaskId))
             {
                 var taskExecution = new Models.TaskExecution
                 {
@@ -334,7 +344,7 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
     {
         RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(CurrentTaskId))
             {
                 try
                 {
@@ -355,7 +365,7 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
     {
         RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(CurrentTaskId))
             {
                 var a = dbContext.TaskExecutions.GroupBy(i => 1).Select(i => i.Max(j => j.TaskExecutionId));
                 var taskExecution = a
@@ -377,7 +387,7 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
     {
         return RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(CurrentTaskId))
             {
                 return dbContext.TaskExecutions.OrderByDescending(i => i.TaskExecutionId)
                     .Where(i => i.TaskDefinitionId == taskDefinitionId).Select(i => i.Blocked).FirstOrDefault();
@@ -389,7 +399,7 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
     {
         return RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(CurrentTaskId))
             {
                 return dbContext.TaskExecutions.OrderByDescending(i => i.TaskExecutionId)
                     .Where(i => i.TaskDefinitionId == taskDefinitionId).Select(i => i.TasklingVersion).FirstOrDefault();
@@ -401,7 +411,7 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
     {
         return RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(CurrentTaskId))
             {
                 return dbContext.TaskExecutions.Include(i => i.TaskDefinition)
                     .Where(i => i.TaskDefinitionId == taskDefinitionId).Select(i => i.ExecutionHeader).FirstOrDefault();
@@ -423,7 +433,7 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
     {
         return RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(CurrentTaskId))
             {
                 var userCsQueuesAsString = dbContext.TaskDefinitions.Select(i => i.UserCsQueue).ToList();
                 var countMatching = userCsQueuesAsString.Count(i =>
@@ -437,7 +447,7 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
     {
         RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(CurrentTaskId))
             {
                 var taskDefinitions = dbContext.TaskDefinitions.Where(i => i.TaskDefinitionId == taskDefinitionId)
                     .ToList();
@@ -459,7 +469,7 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
     {
         return RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(CurrentTaskId))
             {
                 var a = dbContext.TaskExecutions.Include(i => i.TaskDefinition)
                     .Where(i => i.TaskDefinition.ApplicationName == taskId.ApplicationName &&
@@ -479,7 +489,7 @@ public class ExecutionsHelper : RepositoryBase, IExecutionsHelper
     {
         RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(CurrentTaskId))
             {
                 try
                 {

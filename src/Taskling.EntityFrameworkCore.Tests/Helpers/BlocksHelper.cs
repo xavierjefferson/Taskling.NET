@@ -4,6 +4,7 @@ using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Taskling.Blocks.ListBlocks;
+using Taskling.EntityFrameworkCore.AncilliaryServices;
 using Taskling.EntityFrameworkCore.Models;
 using Taskling.Enums;
 using Taskling.InfrastructureContracts;
@@ -14,17 +15,19 @@ namespace Taskling.EntityFrameworkCore.Tests.Helpers;
 public class BlocksHelper : RepositoryBase, IBlocksHelper
 {
     private readonly ILogger<BlocksHelper> _logger;
+    private readonly IDbContextFactoryEx _dbContextFactory;
 
-    public BlocksHelper(ILogger<BlocksHelper> logger)
+    public BlocksHelper(ILogger<BlocksHelper> logger, IDbContextFactoryEx dbContextFactory)
     {
         _logger = logger;
+        _dbContextFactory = dbContextFactory;
     }
 
-    public int GetListBlockItemCountByStatus(long blockId, ItemStatusEnum status)
+    public int GetListBlockItemCountByStatus(long blockId, ItemStatusEnum status, TaskId taskId)
     {
         return RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(taskId))
             {
                 return dbContext.ListBlockItems.Count(i => i.BlockId == blockId && i.Status == (int)status);
             }
@@ -35,7 +38,7 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
     {
         return RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(taskId))
             {
                 return dbContext.Blocks.Include(i => i.TaskDefinition).Where(i =>
                         i.TaskDefinition.TaskName == taskId.TaskName &&
@@ -46,12 +49,12 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
     }
 
     public List<ListBlockItem<T>> GetListBlockItems<T>(long blockId, ItemStatusEnum status,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory, TaskId taskId)
     {
         return RetryHelper.WithRetry(() =>
         {
             var items = new List<ListBlockItem<T>>();
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(taskId))
             {
                 var tmp = dbContext.ListBlockItems.Where(i => i.BlockId == blockId && i.Status == (int)status)
                     .Select(i => new { i.ListBlockItemId, i.Value, i.Status, i.StatusReason, i.Step }).ToList();
@@ -72,11 +75,11 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
         });
     }
 
-    public void EnqueueForcedBlock(long blockId)
+    public void EnqueueForcedBlock(long blockId, TaskId taskId)
     {
         RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(taskId))
             {
                 var forcedBlockQueue = new ForcedBlockQueue
                 {
@@ -95,7 +98,7 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
     {
         RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(taskId))
             {
                 OnTaskDefinitionFound(dbContext, taskId,
                     (taskDefinitionId, context) =>
@@ -110,7 +113,7 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
     {
         RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(taskId))
             {
                 OnTaskDefinitionFound(dbContext, taskId,
                     (taskDefinitionId, context) =>
@@ -125,7 +128,7 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
     {
         RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(taskId))
             {
                 OnTaskDefinitionFound(dbContext, taskId,
                     (taskDefinitionId, context) =>
@@ -159,7 +162,7 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
     {
         RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(taskId))
             {
                 OnTaskDefinitionFound(dbContext, taskId,
                     (taskDefinitionId, context) =>
@@ -176,7 +179,7 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
     {
         return RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(taskId))
             {
                 return dbContext.Blocks.Include(i =>
                         i.TaskDefinition)
@@ -186,38 +189,40 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
         });
     }
 
-    public long InsertDateRangeBlock(long taskDefinitionId, DateTime fromDate, DateTime toDate)
+    public long InsertDateRangeBlock(long taskDefinitionId, DateTime fromDate, DateTime toDate, TaskId taskId)
     {
-        return InsertDateRangeBlock(taskDefinitionId, fromDate, toDate, fromDate);
+        return InsertDateRangeBlock(taskDefinitionId, fromDate, toDate, fromDate, taskId);
     }
 
-    public long InsertDateRangeBlock(long taskDefinitionId, DateTime fromDate, DateTime toDate, DateTime createdAt)
+    public long InsertDateRangeBlock(long taskDefinitionId, DateTime fromDate, DateTime toDate, DateTime createdAt,
+        TaskId taskId)
     {
         return RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(taskId))
             {
                 return AddDateRange(dbContext, taskDefinitionId, fromDate, toDate, createdAt, false);
             }
         });
     }
 
-    public long InsertNumericRangeBlock(long taskDefinitionId, long fromNumber, long toNumber, DateTime createdDate)
+    public long InsertNumericRangeBlock(long taskDefinitionId, long fromNumber, long toNumber, DateTime createdDate,
+        TaskId taskId)
     {
         return RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(taskId))
             {
                 return AddNumericBlock(dbContext, taskDefinitionId, fromNumber, toNumber, createdDate, false);
             }
         });
     }
 
-    public long InsertListBlock(long taskDefinitionId, DateTime createdDate, string objectData = null)
+    public long InsertListBlock(long taskDefinitionId, DateTime createdDate, TaskId taskId, string objectData = null)
     {
         return RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(taskId))
             {
                 var isPhantom = false;
                 var block = new Block
@@ -235,11 +240,11 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
         });
     }
 
-    public long InsertObjectBlock(long taskDefinitionId, DateTime createdDate, string objectData)
+    public long InsertObjectBlock(long taskDefinitionId, DateTime createdDate, string objectData, TaskId taskId)
     {
         return RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(taskId))
             {
                 return AddObjectBlock(dbContext, taskDefinitionId, createdDate, objectData, false);
             }
@@ -247,11 +252,11 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
     }
 
     public long InsertBlockExecution(long taskExecutionId, long blockId, DateTime createdAt, DateTime? startedAt,
-        DateTime? completedAt, BlockExecutionStatusEnum executionStatus, int attempt = 1)
+        DateTime? completedAt, BlockExecutionStatusEnum executionStatus, TaskId taskId, int attempt = 1)
     {
         return RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(taskId))
             {
                 var blockExecution = new BlockExecution
                 {
@@ -270,11 +275,12 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
         });
     }
 
-    public void DeleteBlocks(string applicationName)
+    public void DeleteBlocks(TaskId taskId)
     {
+        var applicationName = taskId.ApplicationName;
         RetryHelper.WithRetry(() =>
             {
-                using (var dbContext = GetDbContext())
+                using (var dbContext = _dbContextFactory.GetDbContext(taskId))
                 {
                     dbContext.BlockExecutions.RemoveRange(dbContext.BlockExecutions.Include(i => i.Block)
                         .ThenInclude(i => i.TaskDefinition).Include(i => i.TaskExecution)
@@ -300,7 +306,7 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
     {
         return RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(taskId))
             {
                 return dbContext.BlockExecutions.Include(i => i.TaskExecution).ThenInclude(i => i.TaskDefinition)
                     .Count(i => i.TaskExecution.TaskDefinition.ApplicationName == taskId.ApplicationName &&
@@ -310,11 +316,11 @@ public class BlocksHelper : RepositoryBase, IBlocksHelper
         });
     }
 
-    public int GetBlockExecutionItemCount(long blockExecutionId)
+    public int GetBlockExecutionItemCount(long blockExecutionId, TaskId taskId)
     {
         return RetryHelper.WithRetry(() =>
         {
-            using (var dbContext = GetDbContext())
+            using (var dbContext = _dbContextFactory.GetDbContext(taskId))
             {
                 return dbContext.BlockExecutions.Where(i => i.BlockExecutionId == blockExecutionId)
                     .Select(i => i.ItemsCount ?? 0).FirstOrDefault();

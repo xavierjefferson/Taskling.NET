@@ -11,7 +11,7 @@ using Xunit;
 
 namespace Taskling.EntityFrameworkCore.Tests.Contexts.Given_ListBlockContext;
 
-[Collection(TestConstants.CollectionName)]
+[Collection(CollectionName)]
 public class When_ConcurrentIsThreadSafe : TestBase
 {
     private const int ListSize = 10000;
@@ -28,7 +28,7 @@ public class When_ConcurrentIsThreadSafe : TestBase
         _blocksHelper = blocksHelper;
         _clientHelper = clientHelper;
 
-        _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
+        _blocksHelper.DeleteBlocks(CurrentTaskId);
         _executionsHelper = executionsHelper;
         _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
 
@@ -73,7 +73,7 @@ public class When_ConcurrentIsThreadSafe : TestBase
                         // All items should be completed now
                         Assert.Equal((await listBlock.GetItemsAsync(ItemStatusEnum.Completed)).Count(),
                             _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId,
-                                ItemStatusEnum.Completed));
+                                ItemStatusEnum.Completed, CurrentTaskId));
                     }
                 }
             }
@@ -116,7 +116,7 @@ public class When_ConcurrentIsThreadSafe : TestBase
                         // All items should be completed now
                         Assert.Equal((await listBlock.GetItemsAsync(ItemStatusEnum.Completed)).Count(),
                             _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId,
-                                ItemStatusEnum.Completed));
+                                ItemStatusEnum.Completed, CurrentTaskId));
                     }
                 }
             }
@@ -160,7 +160,7 @@ public class When_ConcurrentIsThreadSafe : TestBase
                         var expectedCount = (await listBlock.GetItemsAsync(ItemStatusEnum.Completed)).Count();
                         var actualCount =
                             _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId,
-                                ItemStatusEnum.Completed);
+                                ItemStatusEnum.Completed, CurrentTaskId);
 
                         Assert.Equal(expectedCount, actualCount);
                     }
@@ -204,7 +204,7 @@ public class When_ConcurrentIsThreadSafe : TestBase
                         // All items should be completed now
                         Assert.Equal((await currentBlock.GetItemsAsync(ItemStatusEnum.Completed)).Count(),
                             _blocksHelper.GetListBlockItemCountByStatus(currentBlock.ListBlockId,
-                                ItemStatusEnum.Completed));
+                                ItemStatusEnum.Completed, CurrentTaskId));
                     });
                 }
             }
@@ -217,7 +217,7 @@ public class When_ConcurrentIsThreadSafe : TestBase
         var list = new List<PersonDto>();
 
         for (var i = 0; i < count; i++)
-            list.Add(new PersonDto { DateOfBirth = new DateTime(1980, 1, 1), Id = i, Name = "Terrence" + i });
+            list.Add(new PersonDto { DateOfBirth = DateTimeHelper.CreateUtcDate(1980, 1, 1), Id = i, Name = "Terrence" + i });
 
         return list;
     }

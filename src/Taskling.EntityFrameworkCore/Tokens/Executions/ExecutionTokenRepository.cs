@@ -13,11 +13,10 @@ public class ExecutionTokenRepository : DbOperationsService, IExecutionTokenRepo
     private readonly IExecutionTokenHelper _executionTokenHelper;
     private readonly ILogger<ExecutionTokenRepository> _logger;
 
-    public ExecutionTokenRepository(ICommonTokenRepository commonTokenRepository, IConnectionStore connectionStore,
+    public ExecutionTokenRepository(ICommonTokenRepository commonTokenRepository, 
         IExecutionTokenHelper executionTokenHelper,
         IDbContextFactoryEx dbContextFactoryEx, ILogger<ExecutionTokenRepository> logger, ILoggerFactory loggerFactory)
-        : base(connectionStore,
-            dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
+        : base(dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
     {
         _logger = logger;
         _commonTokenRepository = commonTokenRepository;

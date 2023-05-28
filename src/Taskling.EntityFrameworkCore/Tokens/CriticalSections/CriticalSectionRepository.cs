@@ -19,10 +19,9 @@ public class CriticalSectionRepository : DbOperationsService, ICriticalSectionRe
     private readonly ITaskRepository _taskRepository;
 
     public CriticalSectionRepository(ITaskRepository taskRepository, StartupOptions startupOptions,
-        ICommonTokenRepository commonTokenRepository, IConnectionStore connectionStore,
+        ICommonTokenRepository commonTokenRepository, 
         ILogger<CriticalSectionRepository> logger,
-        IDbContextFactoryEx dbContextFactoryEx, ILoggerFactory loggerFactory) : base(connectionStore,
-        dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
+        IDbContextFactoryEx dbContextFactoryEx, ILoggerFactory loggerFactory) : base(dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
     {
         _taskRepository = taskRepository;
         _commonTokenRepository = commonTokenRepository;

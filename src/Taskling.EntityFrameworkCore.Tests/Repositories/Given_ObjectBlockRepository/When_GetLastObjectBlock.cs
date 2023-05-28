@@ -10,7 +10,7 @@ using Xunit;
 
 namespace Taskling.EntityFrameworkCore.Tests.Repositories.Given_ObjectBlockRepository;
 
-[Collection(TestConstants.CollectionName)]
+[Collection(CollectionName)]
 public class When_GetLastObjectBlock : TestBase
 {
     private readonly IBlocksHelper _blocksHelper;
@@ -37,7 +37,7 @@ public class When_GetLastObjectBlock : TestBase
         _logger = logger;
         _blocksHelper = blocksHelper;
         _clientHelper = clientHelper;
-        _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
+        _blocksHelper.DeleteBlocks(CurrentTaskId);
         _executionsHelper = executionsHelper;
         _objectBlockRepository = objectBlockRepository;
 
@@ -53,26 +53,26 @@ public class When_GetLastObjectBlock : TestBase
     {
         _taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId);
 
-        _baseDateTime = new DateTime(2016, 1, 1);
-        _block1 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, DateTime.UtcNow, "Testing1");
+        _baseDateTime = DateTimeHelper.CreateUtcDate(2016, 1, 1);
+        _block1 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, DateTime.UtcNow, "Testing1", CurrentTaskId);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block1, _baseDateTime.AddMinutes(-20),
-            _baseDateTime.AddMinutes(-20), _baseDateTime.AddMinutes(-25), BlockExecutionStatusEnum.Failed);
+            _baseDateTime.AddMinutes(-20), _baseDateTime.AddMinutes(-25), BlockExecutionStatusEnum.Failed, CurrentTaskId);
         Thread.Sleep(10);
-        _block2 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, DateTime.UtcNow, "Testing2");
+        _block2 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, DateTime.UtcNow, "Testing2", CurrentTaskId);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block2, _baseDateTime.AddMinutes(-30),
-            _baseDateTime.AddMinutes(-30), _baseDateTime.AddMinutes(-35), BlockExecutionStatusEnum.Started);
+            _baseDateTime.AddMinutes(-30), _baseDateTime.AddMinutes(-35), BlockExecutionStatusEnum.Started, CurrentTaskId);
         Thread.Sleep(10);
-        _block3 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, DateTime.UtcNow, "Testing3");
+        _block3 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, DateTime.UtcNow, "Testing3", CurrentTaskId);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block3, _baseDateTime.AddMinutes(-40),
-            _baseDateTime.AddMinutes(-40), _baseDateTime.AddMinutes(-45), BlockExecutionStatusEnum.NotStarted);
+            _baseDateTime.AddMinutes(-40), _baseDateTime.AddMinutes(-45), BlockExecutionStatusEnum.NotStarted, CurrentTaskId);
         Thread.Sleep(10);
-        _block4 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, DateTime.UtcNow, "Testing4");
+        _block4 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, DateTime.UtcNow, "Testing4", CurrentTaskId);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block4, _baseDateTime.AddMinutes(-50),
-            _baseDateTime.AddMinutes(-50), _baseDateTime.AddMinutes(-55), BlockExecutionStatusEnum.Completed);
+            _baseDateTime.AddMinutes(-50), _baseDateTime.AddMinutes(-55), BlockExecutionStatusEnum.Completed, CurrentTaskId);
         Thread.Sleep(10);
-        _block5 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, DateTime.UtcNow, "Testing5");
+        _block5 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, DateTime.UtcNow, "Testing5", CurrentTaskId);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block5, _baseDateTime.AddMinutes(-60),
-            _baseDateTime.AddMinutes(-60), _baseDateTime.AddMinutes(-65), BlockExecutionStatusEnum.Started);
+            _baseDateTime.AddMinutes(-60), _baseDateTime.AddMinutes(-65), BlockExecutionStatusEnum.Started, CurrentTaskId);
     }
 
     [Fact]

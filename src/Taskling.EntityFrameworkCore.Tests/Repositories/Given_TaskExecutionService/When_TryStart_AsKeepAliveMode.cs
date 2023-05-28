@@ -13,7 +13,7 @@ using Xunit;
 
 namespace Taskling.EntityFrameworkCore.Tests.Repositories.Given_TaskExecutionService;
 
-[Collection(TestConstants.CollectionName)]
+[Collection(CollectionName)]
 public class When_TryStart_AsKeepAliveMode : TestBase
 {
     private readonly IClientHelper _clientHelper;

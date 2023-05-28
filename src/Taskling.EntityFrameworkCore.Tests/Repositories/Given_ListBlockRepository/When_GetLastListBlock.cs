@@ -11,7 +11,7 @@ using Xunit;
 
 namespace Taskling.EntityFrameworkCore.Tests.Repositories.Given_ListBlockRepository;
 
-[Collection(TestConstants.CollectionName)]
+[Collection(CollectionName)]
 public class When_GetLastListBlock : TestBase
 {
     private readonly IBlocksHelper _blocksHelper;
@@ -38,7 +38,7 @@ public class When_GetLastListBlock : TestBase
         _blocksHelper = blocksHelper;
         _clientHelper = clientHelper;
         _listBlockRepository = listBlockRepository;
-        _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
+        _blocksHelper.DeleteBlocks(CurrentTaskId);
         _executionsHelper = executionsHelper;
 
         _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
@@ -53,40 +53,40 @@ public class When_GetLastListBlock : TestBase
     {
         _taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId);
 
-        _baseDateTime = new DateTime(2016, 1, 1);
+        _baseDateTime = DateTimeHelper.CreateUtcDate(2016, 1, 1);
         var dateRange1 = new DateRange { FromDate = _baseDateTime.AddMinutes(-20), ToDate = _baseDateTime };
-        _block1 = _blocksHelper.InsertListBlock(_taskDefinitionId, DateTime.UtcNow,
+        _block1 = _blocksHelper.InsertListBlock(_taskDefinitionId, DateTime.UtcNow, CurrentTaskId,
             JsonGenericSerializer.Serialize(dateRange1));
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block1, _baseDateTime.AddMinutes(-20),
-            _baseDateTime.AddMinutes(-20), _baseDateTime.AddMinutes(-25), BlockExecutionStatusEnum.Failed);
+            _baseDateTime.AddMinutes(-20), _baseDateTime.AddMinutes(-25), BlockExecutionStatusEnum.Failed, CurrentTaskId);
 
         Thread.Sleep(10);
         var dateRange2 = new DateRange { FromDate = _baseDateTime.AddMinutes(-30), ToDate = _baseDateTime };
-        _block2 = _blocksHelper.InsertListBlock(_taskDefinitionId, DateTime.UtcNow,
+        _block2 = _blocksHelper.InsertListBlock(_taskDefinitionId, DateTime.UtcNow, CurrentTaskId,
             JsonGenericSerializer.Serialize(dateRange2));
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block2, _baseDateTime.AddMinutes(-30),
-            _baseDateTime.AddMinutes(-30), _baseDateTime.AddMinutes(-35), BlockExecutionStatusEnum.Started);
+            _baseDateTime.AddMinutes(-30), _baseDateTime.AddMinutes(-35), BlockExecutionStatusEnum.Started, CurrentTaskId);
 
         Thread.Sleep(10);
         var dateRange3 = new DateRange { FromDate = _baseDateTime.AddMinutes(-40), ToDate = _baseDateTime };
-        _block3 = _blocksHelper.InsertListBlock(_taskDefinitionId, DateTime.UtcNow,
+        _block3 = _blocksHelper.InsertListBlock(_taskDefinitionId, DateTime.UtcNow, CurrentTaskId,
             JsonGenericSerializer.Serialize(dateRange3));
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block3, _baseDateTime.AddMinutes(-40),
-            _baseDateTime.AddMinutes(-40), _baseDateTime.AddMinutes(-45), BlockExecutionStatusEnum.NotStarted);
+            _baseDateTime.AddMinutes(-40), _baseDateTime.AddMinutes(-45), BlockExecutionStatusEnum.NotStarted, CurrentTaskId);
 
         Thread.Sleep(10);
         var dateRange4 = new DateRange { FromDate = _baseDateTime.AddMinutes(-50), ToDate = _baseDateTime };
-        _block4 = _blocksHelper.InsertListBlock(_taskDefinitionId, DateTime.UtcNow,
+        _block4 = _blocksHelper.InsertListBlock(_taskDefinitionId, DateTime.UtcNow, CurrentTaskId,
             JsonGenericSerializer.Serialize(dateRange4));
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block4, _baseDateTime.AddMinutes(-50),
-            _baseDateTime.AddMinutes(-50), _baseDateTime.AddMinutes(-55), BlockExecutionStatusEnum.Completed);
+            _baseDateTime.AddMinutes(-50), _baseDateTime.AddMinutes(-55), BlockExecutionStatusEnum.Completed, CurrentTaskId);
 
         Thread.Sleep(10);
         var dateRange5 = new DateRange { FromDate = _baseDateTime.AddMinutes(-60), ToDate = _baseDateTime };
-        _block5 = _blocksHelper.InsertListBlock(_taskDefinitionId, DateTime.UtcNow,
+        _block5 = _blocksHelper.InsertListBlock(_taskDefinitionId, DateTime.UtcNow, CurrentTaskId,
             JsonGenericSerializer.Serialize(dateRange5));
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block5, _baseDateTime.AddMinutes(-60),
-            _baseDateTime.AddMinutes(-60), _baseDateTime.AddMinutes(-65), BlockExecutionStatusEnum.Started);
+            _baseDateTime.AddMinutes(-60), _baseDateTime.AddMinutes(-65), BlockExecutionStatusEnum.Started, CurrentTaskId);
     }
 
     [Fact]
@@ -105,9 +105,9 @@ public class When_GetLastListBlock : TestBase
 
             // ASSERT
             Assert.Equal(_block5, block.ListBlockId);
-            AssertSimilarDates(new DateTime(2016, 1, 1).AddMinutes(-60),
+            AssertSimilarDates(DateTimeHelper.CreateUtcDate(2016, 1, 1).AddMinutes(-60),
                 JsonGenericSerializer.Deserialize<DateRange>(block.Header).FromDate);
-            AssertSimilarDates(new DateTime(2016, 1, 1),
+            AssertSimilarDates(DateTimeHelper.CreateUtcDate(2016, 1, 1),
                 JsonGenericSerializer.Deserialize<DateRange>(block.Header).ToDate);
         });
     }

@@ -9,7 +9,7 @@ using Xunit;
 
 namespace Taskling.EntityFrameworkCore.Tests.Repositories.Given_CriticalSectionService;
 
-[Collection(TestConstants.CollectionName)]
+[Collection(CollectionName)]
 public class When_TryStart_AsOverrideAfterElapsedTimeMode : TestBase
 {
     private readonly ICriticalSectionRepository _criticalSectionRepository;

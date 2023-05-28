@@ -10,7 +10,7 @@ using Xunit;
 
 namespace Taskling.EntityFrameworkCore.Tests.Repositories.Given_TaskExecutionService;
 
-[Collection(TestConstants.CollectionName)]
+[Collection(CollectionName)]
 public class When_TryStart_AsOverrideAfterElaspedTimeMode : TestBase
 {
     private readonly IExecutionsHelper _executionsHelper;

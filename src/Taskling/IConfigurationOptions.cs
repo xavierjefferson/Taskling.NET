@@ -3,7 +3,7 @@
 public interface IConfigurationOptions
 {
     string ConnectionString { get; }
-    int DatabaseTimeoutSeconds { get; }
+    int CommandTimeoutSeconds { get; }
     bool Enabled { get; }
     int ConcurrencyLimit { get; }
     int KeepListItemsForDays { get; }

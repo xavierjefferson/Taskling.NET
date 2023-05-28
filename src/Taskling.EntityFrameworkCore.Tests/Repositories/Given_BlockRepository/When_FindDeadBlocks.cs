@@ -10,7 +10,7 @@ using Xunit;
 
 namespace Taskling.EntityFrameworkCore.Tests.Repositories.Given_BlockRepository;
 
-[Collection(TestConstants.CollectionName)]
+[Collection(CollectionName)]
 public class When_FindDeadBlocks : TestBase
 {
     private readonly IBlockRepository _blockRepository;
@@ -36,7 +36,7 @@ public class When_FindDeadBlocks : TestBase
         _logger = logger;
         _blockRepository = blockRepository;
         _blocksHelper = blocksHelper;
-        _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
+        _blocksHelper.DeleteBlocks(CurrentTaskId);
         _executionsHelper = executionsHelper;
         _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
 
@@ -62,21 +62,21 @@ public class When_FindDeadBlocks : TestBase
     private void InsertDateRangeBlocksTestData()
     {
         var now = DateTime.UtcNow;
-        _block1 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-180), now.AddMinutes(-179));
-        _block2 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-200), now.AddMinutes(-199));
-        _block3 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-220), now.AddMinutes(-219));
-        _block4 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-240), now.AddMinutes(-239));
-        _block5 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-250), now.AddMinutes(-249));
+        _block1 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-180), now.AddMinutes(-179), CurrentTaskId);
+        _block2 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-200), now.AddMinutes(-199), CurrentTaskId);
+        _block3 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-220), now.AddMinutes(-219), CurrentTaskId);
+        _block4 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-240), now.AddMinutes(-239), CurrentTaskId);
+        _block5 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, now.AddMinutes(-250), now.AddMinutes(-249), CurrentTaskId);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block1, now.AddMinutes(-180), now.AddMinutes(-180),
-            now.AddMinutes(-175), BlockExecutionStatusEnum.Failed, 2);
+            now.AddMinutes(-175), BlockExecutionStatusEnum.Failed, CurrentTaskId, 2);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block2, now.AddMinutes(-200), now.AddMinutes(-200), null,
-            BlockExecutionStatusEnum.Started);
+            BlockExecutionStatusEnum.Started, CurrentTaskId);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block3, now.AddMinutes(-220), null, null,
-            BlockExecutionStatusEnum.NotStarted);
+            BlockExecutionStatusEnum.NotStarted, CurrentTaskId);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block4, now.AddMinutes(-240), now.AddMinutes(-240),
-            now.AddMinutes(-235), BlockExecutionStatusEnum.Completed, 2);
+            now.AddMinutes(-235), BlockExecutionStatusEnum.Completed, CurrentTaskId, 2);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block5, now.AddMinutes(-250), now.AddMinutes(-250), null,
-            BlockExecutionStatusEnum.Started, 3);
+            BlockExecutionStatusEnum.Started, CurrentTaskId, 3);
     }
 
     private void InsertNumericRangeTestData(TaskDeathModeEnum taskDeathMode)
@@ -95,21 +95,21 @@ public class When_FindDeadBlocks : TestBase
     private void InsertNumericRangeBlocksTestData()
     {
         var now = DateTime.UtcNow;
-        _block1 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 1, 100, now.AddMinutes(-100));
-        _block2 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 101, 200, now.AddMinutes(-90));
-        _block3 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 201, 300, now.AddMinutes(-80));
-        _block4 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 301, 400, now.AddMinutes(-70));
-        _block5 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 401, 500, now.AddMinutes(-60));
+        _block1 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 1, 100, now.AddMinutes(-100), CurrentTaskId);
+        _block2 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 101, 200, now.AddMinutes(-90), CurrentTaskId);
+        _block3 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 201, 300, now.AddMinutes(-80), CurrentTaskId);
+        _block4 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 301, 400, now.AddMinutes(-70), CurrentTaskId);
+        _block5 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 401, 500, now.AddMinutes(-60), CurrentTaskId);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block1, now.AddMinutes(-180), now.AddMinutes(-180),
-            now.AddMinutes(-175), BlockExecutionStatusEnum.Failed, 2);
+            now.AddMinutes(-175), BlockExecutionStatusEnum.Failed, CurrentTaskId, 2);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block2, now.AddMinutes(-200), now.AddMinutes(-200), null,
-            BlockExecutionStatusEnum.Started);
+            BlockExecutionStatusEnum.Started, CurrentTaskId);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block3, now.AddMinutes(-220), null, null,
-            BlockExecutionStatusEnum.NotStarted);
+            BlockExecutionStatusEnum.NotStarted, CurrentTaskId);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block4, now.AddMinutes(-240), now.AddMinutes(-240),
-            now.AddMinutes(-235), BlockExecutionStatusEnum.Completed);
+            now.AddMinutes(-235), BlockExecutionStatusEnum.Completed, CurrentTaskId);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block5, now.AddMinutes(-250), now.AddMinutes(-250), null,
-            BlockExecutionStatusEnum.Started, 3);
+            BlockExecutionStatusEnum.Started, CurrentTaskId, 3);
     }
 
     private void InsertListTestData(TaskDeathModeEnum taskDeathMode)
@@ -128,21 +128,21 @@ public class When_FindDeadBlocks : TestBase
     private void InsertListBlocksTestData()
     {
         var now = DateTime.UtcNow;
-        _block1 = _blocksHelper.InsertListBlock(_taskDefinitionId, now.AddMinutes(-246));
-        _block2 = _blocksHelper.InsertListBlock(_taskDefinitionId, now.AddMinutes(-247));
-        _block3 = _blocksHelper.InsertListBlock(_taskDefinitionId, now.AddMinutes(-248));
-        _block4 = _blocksHelper.InsertListBlock(_taskDefinitionId, now.AddMinutes(-249));
-        _block5 = _blocksHelper.InsertListBlock(_taskDefinitionId, now.AddMinutes(-250));
+        _block1 = _blocksHelper.InsertListBlock(_taskDefinitionId, now.AddMinutes(-246), CurrentTaskId);
+        _block2 = _blocksHelper.InsertListBlock(_taskDefinitionId, now.AddMinutes(-247), CurrentTaskId);
+        _block3 = _blocksHelper.InsertListBlock(_taskDefinitionId, now.AddMinutes(-248), CurrentTaskId);
+        _block4 = _blocksHelper.InsertListBlock(_taskDefinitionId, now.AddMinutes(-249), CurrentTaskId);
+        _block5 = _blocksHelper.InsertListBlock(_taskDefinitionId, now.AddMinutes(-250), CurrentTaskId);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block1, now.AddMinutes(-180), now.AddMinutes(-180),
-            now.AddMinutes(-175), BlockExecutionStatusEnum.Failed, 2);
+            now.AddMinutes(-175), BlockExecutionStatusEnum.Failed, CurrentTaskId, 2);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block2, now.AddMinutes(-200), now.AddMinutes(-200), null,
-            BlockExecutionStatusEnum.Started);
+            BlockExecutionStatusEnum.Started, CurrentTaskId);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block3, now.AddMinutes(-220), null, null,
-            BlockExecutionStatusEnum.NotStarted);
+            BlockExecutionStatusEnum.NotStarted, CurrentTaskId);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block4, now.AddMinutes(-240), now.AddMinutes(-240),
-            now.AddMinutes(-235), BlockExecutionStatusEnum.Completed);
+            now.AddMinutes(-235), BlockExecutionStatusEnum.Completed, CurrentTaskId);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block5, now.AddMinutes(-250), now.AddMinutes(-250), null,
-            BlockExecutionStatusEnum.Started, 3);
+            BlockExecutionStatusEnum.Started, CurrentTaskId, 3);
     }
 
     private void InsertObjectTestData(TaskDeathModeEnum taskDeathMode)
@@ -161,21 +161,21 @@ public class When_FindDeadBlocks : TestBase
     private void InsertObjectBlocksTestData()
     {
         var now = DateTime.UtcNow;
-        _block1 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-246), Guid.NewGuid().ToString());
-        _block2 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-247), Guid.NewGuid().ToString());
-        _block3 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-248), Guid.NewGuid().ToString());
-        _block4 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-249), Guid.NewGuid().ToString());
-        _block5 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-250), Guid.NewGuid().ToString());
+        _block1 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-246), Guid.NewGuid().ToString(), CurrentTaskId);
+        _block2 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-247), Guid.NewGuid().ToString(), CurrentTaskId);
+        _block3 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-248), Guid.NewGuid().ToString(), CurrentTaskId);
+        _block4 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-249), Guid.NewGuid().ToString(), CurrentTaskId);
+        _block5 = _blocksHelper.InsertObjectBlock(_taskDefinitionId, now.AddMinutes(-250), Guid.NewGuid().ToString(), CurrentTaskId);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block1, now.AddMinutes(-180), now.AddMinutes(-180),
-            now.AddMinutes(-175), BlockExecutionStatusEnum.Failed, 2);
+            now.AddMinutes(-175), BlockExecutionStatusEnum.Failed, CurrentTaskId, 2);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block2, now.AddMinutes(-200), now.AddMinutes(-200), null,
-            BlockExecutionStatusEnum.Started);
+            BlockExecutionStatusEnum.Started, CurrentTaskId);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block3, now.AddMinutes(-220), null, null,
-            BlockExecutionStatusEnum.NotStarted);
+            BlockExecutionStatusEnum.NotStarted, CurrentTaskId);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block4, now.AddMinutes(-240), now.AddMinutes(-240),
-            now.AddMinutes(-235), BlockExecutionStatusEnum.Completed);
+            now.AddMinutes(-235), BlockExecutionStatusEnum.Completed, CurrentTaskId);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block5, now.AddMinutes(-250), now.AddMinutes(-250), null,
-            BlockExecutionStatusEnum.Started, 3);
+            BlockExecutionStatusEnum.Started, CurrentTaskId, 3);
     }
 
     private FindDeadBlocksRequest CreateDeadBlockRequest(BlockTypeEnum blockType, TaskDeathModeEnum taskDeathMode,

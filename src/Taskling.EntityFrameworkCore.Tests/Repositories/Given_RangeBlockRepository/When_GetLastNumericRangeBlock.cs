@@ -11,7 +11,7 @@ using Xunit.Abstractions;
 
 namespace Taskling.EntityFrameworkCore.Tests.Repositories.Given_RangeBlockRepository;
 
-[Collection(TestConstants.CollectionName)]
+[Collection(CollectionName)]
 public class When_GetLastNumericRangeBlock : TestBase
 {
     private readonly IBlocksHelper _blocksHelper;
@@ -41,7 +41,7 @@ public class When_GetLastNumericRangeBlock : TestBase
         _blocksHelper = blocksHelper;
 
         _clientHelper = clientHelper;
-        _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
+        _blocksHelper.DeleteBlocks(CurrentTaskId);
         _executionsHelper = executionsHelper;
         _rangeBlockRepository = rangeBlockRepository;
         _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
@@ -61,26 +61,26 @@ public class When_GetLastNumericRangeBlock : TestBase
     {
         _taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId);
 
-        _baseDateTime = new DateTime(2016, 1, 1);
-        _block1 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 1000, 1100, DateTime.UtcNow);
+        _baseDateTime = DateTimeHelper.CreateUtcDate(2016, 1, 1);
+        _block1 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 1000, 1100, DateTime.UtcNow, CurrentTaskId);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block1, _baseDateTime.AddMinutes(-20),
-            _baseDateTime.AddMinutes(-20), _baseDateTime.AddMinutes(-25), BlockExecutionStatusEnum.Failed);
+            _baseDateTime.AddMinutes(-20), _baseDateTime.AddMinutes(-25), BlockExecutionStatusEnum.Failed, CurrentTaskId);
         Thread.Sleep(10);
-        _block2 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 900, 1200, DateTime.UtcNow);
+        _block2 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 900, 1200, DateTime.UtcNow, CurrentTaskId);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block2, _baseDateTime.AddMinutes(-30),
-            _baseDateTime.AddMinutes(-30), _baseDateTime.AddMinutes(-35), BlockExecutionStatusEnum.Started);
+            _baseDateTime.AddMinutes(-30), _baseDateTime.AddMinutes(-35), BlockExecutionStatusEnum.Started, CurrentTaskId);
         Thread.Sleep(10);
-        _block3 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 800, 900, DateTime.UtcNow);
+        _block3 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 800, 900, DateTime.UtcNow, CurrentTaskId);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block3, _baseDateTime.AddMinutes(-40),
-            _baseDateTime.AddMinutes(-40), _baseDateTime.AddMinutes(-45), BlockExecutionStatusEnum.NotStarted);
+            _baseDateTime.AddMinutes(-40), _baseDateTime.AddMinutes(-45), BlockExecutionStatusEnum.NotStarted, CurrentTaskId);
         Thread.Sleep(10);
-        _block4 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 700, 800, DateTime.UtcNow);
+        _block4 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 700, 800, DateTime.UtcNow, CurrentTaskId);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block4, _baseDateTime.AddMinutes(-50),
-            _baseDateTime.AddMinutes(-50), _baseDateTime.AddMinutes(-55), BlockExecutionStatusEnum.Completed);
+            _baseDateTime.AddMinutes(-50), _baseDateTime.AddMinutes(-55), BlockExecutionStatusEnum.Completed, CurrentTaskId);
         Thread.Sleep(10);
-        _block5 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 600, 700, DateTime.UtcNow);
+        _block5 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 600, 700, DateTime.UtcNow, CurrentTaskId);
         _blocksHelper.InsertBlockExecution(_taskExecution1, _block5, _baseDateTime.AddMinutes(-60),
-            _baseDateTime.AddMinutes(-60), _baseDateTime.AddMinutes(-65), BlockExecutionStatusEnum.Started);
+            _baseDateTime.AddMinutes(-60), _baseDateTime.AddMinutes(-65), BlockExecutionStatusEnum.Started, CurrentTaskId);
     }
 
     [Fact]

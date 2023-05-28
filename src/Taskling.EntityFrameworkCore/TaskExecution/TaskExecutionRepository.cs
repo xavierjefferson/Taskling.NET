@@ -20,9 +20,9 @@ public class TaskExecutionRepository : DbOperationsService, ITaskExecutionReposi
 
     public TaskExecutionRepository(ITaskRepository taskRepository,
         IExecutionTokenRepository executionTokenRepository,
-        IEventsRepository eventsRepository, IConnectionStore connectionStore, IDbContextFactoryEx dbContextFactoryEx,
+        IEventsRepository eventsRepository,  IDbContextFactoryEx dbContextFactoryEx,
         ILogger<TaskExecutionRepository> logger, ILoggerFactory loggerFactory) :
-        base(connectionStore, dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
+        base(dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
     {
         _taskRepository = taskRepository;
         _executionTokenRepository = executionTokenRepository;

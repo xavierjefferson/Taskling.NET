@@ -10,7 +10,7 @@ public class ConfigurationOptions : IConfigurationOptions
 
     public ConfigurationOptions()
     {
-        DatabaseTimeoutSeconds = 120;
+        CommandTimeoutSeconds = 120;
         Enabled = true;
         ConcurrencyLimit = -1;
         KeepListItemsForDays = 14;
@@ -35,7 +35,7 @@ public class ConfigurationOptions : IConfigurationOptions
     public TimeSpan DeadTaskDetectionRange => _deadTaskDetectionRange;
 
     public string ConnectionString { get; set; }
-    public int DatabaseTimeoutSeconds { get; set; }
+    public int CommandTimeoutSeconds { get; set; }
 
     /// <summary>
     ///     concurrency
@@ -134,4 +134,6 @@ public class ConfigurationOptions : IConfigurationOptions
     ///     blocks
     /// </summary>
     public int MaxStatusReason { get; set; }
+
+    public int ExpiresInSeconds { get; set; } = 10 * 60;
 }

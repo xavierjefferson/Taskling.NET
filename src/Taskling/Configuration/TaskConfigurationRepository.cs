@@ -39,22 +39,22 @@ public class TaskConfigurationRepository : ITaskConfigurationRepository
         lock (_cacheSync)
         {
             var key = GetCacheKey(taskId);
-            var loadFromConfigFile = false;
+            var loadFromReader = false;
             if (!_taskConfigurations.ContainsKey(key))
-                loadFromConfigFile = true;
-            else if ((DateTime.UtcNow - _taskConfigurations[key].DateLoaded).Minutes > 10)
-                loadFromConfigFile = true;
+                loadFromReader = true;
+            else if (DateTime.UtcNow - _taskConfigurations[key].DateLoaded > TimeSpan.FromSeconds(_taskConfigurations[key].ExpiresInSeconds))
+                loadFromReader = true;
 
-            if (loadFromConfigFile)
+            if (loadFromReader)
             {
                 var configuration = LoadConfiguration(taskId);
-                //configuration.TaskId = taskId;
-                configuration.DateLoaded = DateTime.UtcNow;
-
-                if (!_taskConfigurations.ContainsKey(key))
-                    _taskConfigurations.Add(key, configuration);
-                else
-                    _taskConfigurations[key] = configuration;
+                if (configuration.ExpiresInSeconds > 0)
+                {
+                    if (!_taskConfigurations.ContainsKey(key))
+                        _taskConfigurations.Add(key, configuration);
+                    else
+                        _taskConfigurations[key] = configuration;
+                }
             }
             else
             {
@@ -70,10 +70,8 @@ public class TaskConfigurationRepository : ITaskConfigurationRepository
     {
         var key = GetCacheKey(taskId);
         _logger.LogDebug($"Loading config for {key} from persistence");
-        var configString = _taskConfigurationReader.GetTaskConfiguration(taskId);
-
-        var taskConfiguration = ParseConfig(configString, taskId);
-        return taskConfiguration;
+        var configurationOptions = _taskConfigurationReader.GetTaskConfiguration(taskId);
+        return new TaskConfiguration(taskId, configurationOptions);
     }
 
     private string GetCacheKey(TaskId taskId)
@@ -81,35 +79,4 @@ public class TaskConfigurationRepository : ITaskConfigurationRepository
         return $"config_{taskId.GetUniqueKey()}";
     }
 
-    private TaskConfiguration ParseConfig(IConfigurationOptions source, TaskId taskId)
-    {
-        var connectionString =
-            source.ConnectionString ??
-            throw new ArgumentNullException(nameof(IConfigurationOptions.ConnectionString));
-        var taskConfiguration = new TaskConfiguration(taskId)
-        {
-            ConnectionString = source.ConnectionString,
-            DatabaseTimeoutSeconds = source.DatabaseTimeoutSeconds,
-            Enabled = source.Enabled,
-            ConcurrencyLimit = source.ConcurrencyLimit,
-            KeepListItemsForDays = source.KeepListItemsForDays,
-            KeepGeneralDataForDays = source.KeepGeneralDataForDays,
-            MinimumCleanUpIntervalHours = source.MinimumCleanUpIntervalHours,
-            UseKeepAliveMode = source.UseKeepAliveMode,
-            KeepAliveIntervalMinutes = source.KeepAliveIntervalMinutes,
-            KeepAliveDeathThresholdMinutes = source.KeepAliveDeathThresholdMinutes,
-            TimePeriodDeathThresholdMinutes = source.TimePeriodDeathThresholdMinutes,
-            ReprocessFailedTasks = source.ReprocessFailedTasks,
-            FailedTaskDetectionRangeMinutes = source.FailedTaskDetectionRangeMinutes,
-            FailedTaskRetryLimit = source.FailedTaskRetryLimit,
-            ReprocessDeadTasks = source.ReprocessDeadTasks,
-            DeadTaskDetectionRangeMinutes = source.DeadTaskDetectionRangeMinutes,
-            DeadTaskRetryLimit = source.DeadTaskRetryLimit,
-            MaxBlocksToGenerate = source.MaxBlocksToGenerate,
-            MaxLengthForNonCompressedData = source.MaxLengthForNonCompressedData,
-            MaxStatusReason = source.MaxStatusReason
-        };
-
-        return taskConfiguration;
-    }
 }

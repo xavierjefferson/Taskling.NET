@@ -1,6 +1,7 @@
 ﻿using System;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Taskling.Configuration;
 using Taskling.Contexts;
 using Taskling.InfrastructureContracts;
 
@@ -16,9 +17,7 @@ public class ClientHelper : IClientHelper
     public ClientHelper(IServiceProvider serviceProvider, ILogger<ClientHelper> logger)
     {
         _logger = logger;
-
         _serviceProvider = serviceProvider;
-
         _logger.LogDebug($"{nameof(ClientHelper)} constructor was called");
     }
 
@@ -27,8 +26,8 @@ public class ClientHelper : IClientHelper
     {
         return new ConfigurationOptions
         {
-            ConnectionString = TestConstants.GetTestConnectionString(),
-            DatabaseTimeoutSeconds = 120,
+            ConnectionString = Startup.GetConnectionString(),
+            CommandTimeoutSeconds = 120,
             Enabled = true,
             ConcurrencyLimit = 1,
             KeepListItemsForDays = 2000,
@@ -51,7 +50,10 @@ public class ClientHelper : IClientHelper
     public ITaskExecutionContext GetExecutionContext(TaskId taskId,
         ConfigurationOptions configurationOptions)
     {
-        var client = CreateClient(configurationOptions);
+        var reader = _serviceProvider.GetRequiredService<ITaskConfigurationReader>() as TestTaskConfigurationReader;
+        if (reader == null) throw new InvalidOperationException("can't find reader");
+        reader.Add(taskId, configurationOptions);
+        var client = new TasklingClient(_serviceProvider, reader);
         return client.CreateTaskExecutionContext(taskId);
     }
 
@@ -59,8 +61,8 @@ public class ClientHelper : IClientHelper
     {
         return new ConfigurationOptions
         {
-            ConnectionString = TestConstants.GetTestConnectionString(),
-            DatabaseTimeoutSeconds = 120,
+            ConnectionString = Startup.GetConnectionString(),
+            CommandTimeoutSeconds = 120,
             Enabled = true,
             ConcurrencyLimit = 1,
             KeepListItemsForDays = 2000,
@@ -83,10 +85,10 @@ public class ClientHelper : IClientHelper
     public ConfigurationOptions GetDefaultTaskConfigurationWithKeepAliveAndNoReprocessing(
         int maxBlocksToGenerate = 2000)
     {
-        var a = new ConfigurationOptions
+        var tmp = new ConfigurationOptions
         {
-            ConnectionString = TestConstants.GetTestConnectionString(),
-            DatabaseTimeoutSeconds = 120,
+            ConnectionString = Startup.GetConnectionString(),
+            CommandTimeoutSeconds = 120,
             Enabled = true,
             ConcurrencyLimit = 1,
             KeepListItemsForDays = 2000,
@@ -104,7 +106,7 @@ public class ClientHelper : IClientHelper
             DeadTaskRetryLimit = 0,
             MaxBlocksToGenerate = maxBlocksToGenerate
         };
-        return a;
+        return tmp;
     }
 
     public ConfigurationOptions GetDefaultTaskConfigurationWithTimePeriodOverrideAndReprocessing(
@@ -112,8 +114,8 @@ public class ClientHelper : IClientHelper
     {
         return new ConfigurationOptions
         {
-            ConnectionString = TestConstants.GetTestConnectionString(),
-            DatabaseTimeoutSeconds = 120,
+            ConnectionString = Startup.GetConnectionString(),
+            CommandTimeoutSeconds = 120,
             Enabled = true,
             ConcurrencyLimit = 1,
             KeepListItemsForDays = 2000,
@@ -131,15 +133,5 @@ public class ClientHelper : IClientHelper
             DeadTaskRetryLimit = 3,
             MaxBlocksToGenerate = maxBlocksToGenerate
         };
-    }
-
-    private TasklingClient CreateClient(ConfigurationOptions configurationOptions)
-    {
-        lock (_mutex)
-        {
-            return new TasklingClient(_serviceProvider,
-                new TestTaskConfigurationReader(configurationOptions,
-                    _serviceProvider.GetRequiredService<ILogger<TestTaskConfigurationReader>>()));
-        }
     }
 }

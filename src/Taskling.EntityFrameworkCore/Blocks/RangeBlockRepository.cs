@@ -15,10 +15,9 @@ public class RangeBlockRepository : DbOperationsService, IRangeBlockRepository
     private readonly ILoggerFactory _loggerFactory;
     private readonly ITaskRepository _taskRepository;
 
-    public RangeBlockRepository(ITaskRepository taskRepository, IConnectionStore connectionStore,
+    public RangeBlockRepository(ITaskRepository taskRepository, 
         ILogger<RangeBlockRepository> logger,
-        IDbContextFactoryEx dbContextFactoryEx, ILoggerFactory loggerFactory) : base(connectionStore,
-        dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
+        IDbContextFactoryEx dbContextFactoryEx, ILoggerFactory loggerFactory) : base(dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
     {
         _taskRepository = taskRepository;
         _logger = logger;

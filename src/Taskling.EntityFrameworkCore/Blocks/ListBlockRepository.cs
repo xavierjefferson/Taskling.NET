@@ -16,9 +16,8 @@ public class ListBlockRepository : DbOperationsService, IListBlockRepository
 {
     private readonly ITaskRepository _taskRepository;
 
-    public ListBlockRepository(ITaskRepository taskRepository, IConnectionStore connectionStore,
-        IDbContextFactoryEx dbContextFactoryEx, ILoggerFactory loggerFactory) : base(connectionStore,
-        dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
+    public ListBlockRepository(ITaskRepository taskRepository, 
+        IDbContextFactoryEx dbContextFactoryEx, ILoggerFactory loggerFactory) : base(dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
     {
         _taskRepository = taskRepository;
     }

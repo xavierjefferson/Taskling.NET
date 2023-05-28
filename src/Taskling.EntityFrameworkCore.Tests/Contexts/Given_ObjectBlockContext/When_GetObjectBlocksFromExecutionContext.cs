@@ -12,7 +12,7 @@ using Xunit;
 
 namespace Taskling.EntityFrameworkCore.Tests.Contexts.Given_ObjectBlockContext;
 
-[Collection(TestConstants.CollectionName)]
+[Collection(CollectionName)]
 public class When_GetObjectBlocksFromExecutionContext : TestBase
 {
     private readonly IBlocksHelper _blocksHelper;
@@ -29,7 +29,7 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
         _blocksHelper = blocksHelper;
         _clientHelper = clientHelper;
 
-        _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
+        _blocksHelper.DeleteBlocks(CurrentTaskId);
         _executionsHelper = executionsHelper;
         _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
 
@@ -136,7 +136,7 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
                     {
                         Id = 10,
                         Name = "Rupert",
-                        DateOfBirth = new DateTime(1955, 1, 1),
+                        DateOfBirth = DateTimeHelper.CreateUtcDate(1955, 1, 1),
                         SomeOtherData = new MyOtherComplexClass
                         {
                             Value = 12.6m,
@@ -181,7 +181,7 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
                     {
                         Id = 10,
                         Name = "Rupert",
-                        DateOfBirth = new DateTime(1955, 1, 1),
+                        DateOfBirth = DateTimeHelper.CreateUtcDate(1955, 1, 1),
                         SomeOtherData = new MyOtherComplexClass
                         {
                             Value = 12.6m,
@@ -575,7 +575,7 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
 
             // add this processed block to the forced queue
             var lastBlockId = _blocksHelper.GetLastBlockId(CurrentTaskId);
-            _blocksHelper.EnqueueForcedBlock(lastBlockId);
+            _blocksHelper.EnqueueForcedBlock(lastBlockId, CurrentTaskId);
 
             // ACT - reprocess the forced block
             using (var executionContext = CreateTaskExecutionContext())
@@ -646,8 +646,8 @@ public class When_GetObjectBlocksFromExecutionContext : TestBase
             var startedOk = await executionContext.TryStartAsync();
             if (startedOk)
             {
-                var from = new DateTime(2016, 1, 4);
-                var to = new DateTime(2016, 1, 7);
+                var from = DateTimeHelper.CreateUtcDate(2016, 1, 4);
+                var to = DateTimeHelper.CreateUtcDate(2016, 1, 7);
                 var maxBlockSize = TimeSpans.OneDay;
                 var blocks = await executionContext.GetObjectBlocksAsync<string>(x => x.WithObject("Dead Task"));
 

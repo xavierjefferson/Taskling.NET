@@ -11,7 +11,7 @@ using Xunit;
 
 namespace Taskling.EntityFrameworkCore.Tests.Contexts.Given_RangeBlockContext;
 
-[Collection(TestConstants.CollectionName)]
+[Collection(CollectionName)]
 public class When_GetRangeBlocksFromExecutionContext : TestBase
 {
     private readonly IBlocksHelper _blocksHelper;
@@ -30,7 +30,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
         _blocksHelper = blocksHelper;
         _clientHelper = clientHelper;
 
-        _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
+        _blocksHelper.DeleteBlocks(CurrentTaskId);
         _executionsHelper = executionsHelper;
         _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
 
@@ -275,8 +275,8 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                 if (startedOk)
                 {
                     var rangeBlocks = await executionContext.GetDateRangeBlocksAsync(x => x
-                        .WithRange(new DateTime(2016, 1, 1),
-                            new DateTime(2016, 1, 31, 23, 59, 59, 999).AddMilliseconds(-1),
+                        .WithRange(DateTimeHelper.CreateUtcDate(2016, 1, 1),
+                            DateTimeHelper.CreateUtcDate(2016, 1, 31, 23, 59, 59, 999).AddMilliseconds(-1),
                             TimeSpans.OneDay)
                         .OverrideConfiguration()
                         .WithMaximumBlocksToGenerate(50));
@@ -289,8 +289,8 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                 }
             }
 
-            IDateRangeBlock expectedLastBlock = new RangeBlock(0, 1, new DateTime(2016, 1, 31).Ticks,
-                new DateTime(2016, 1, 31, 23, 59, 59, 997).Ticks, BlockTypeEnum.DateRange,
+            IDateRangeBlock expectedLastBlock = new RangeBlock(0, 1, DateTimeHelper.CreateUtcDate(2016, 1, 31).Ticks,
+                DateTimeHelper.CreateUtcDate(2016, 1, 31, 23, 59, 59, 997).Ticks, BlockTypeEnum.DateRange,
                 _loggerFactory.CreateLogger<RangeBlock>());
 
             // ACT
@@ -347,7 +347,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                 if (startedOk)
                 {
                     var rangeBlocks = await executionContext.GetDateRangeBlocksAsync(x => x
-                        .WithRange(new DateTime(2016, 1, 1), new DateTime(2016, 1, 2), TimeSpans.TwoDays)
+                        .WithRange(DateTimeHelper.CreateUtcDate(2016, 1, 1), DateTimeHelper.CreateUtcDate(2016, 1, 2), TimeSpans.TwoDays)
                         .OverrideConfiguration()
                         .WithMaximumBlocksToGenerate(50));
 
@@ -360,7 +360,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
             }
 
             _blocksHelper.InsertPhantomDateRangeBlock(CurrentTaskId,
-                new DateTime(2015, 1, 1), new DateTime(2015, 1, 2));
+                DateTimeHelper.CreateUtcDate(2015, 1, 1), DateTimeHelper.CreateUtcDate(2015, 1, 2));
 
             // ACT
             IDateRangeBlock lastBlock = null;
@@ -372,8 +372,8 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
             }
 
             // ASSERT
-            AssertSimilarDates(new DateTime(2016, 1, 1), lastBlock.StartDate);
-            AssertSimilarDates(new DateTime(2016, 1, 2), lastBlock.EndDate);
+            AssertSimilarDates(DateTimeHelper.CreateUtcDate(2016, 1, 1), lastBlock.StartDate);
+            AssertSimilarDates(DateTimeHelper.CreateUtcDate(2016, 1, 2), lastBlock.EndDate);
         });
     }
 
@@ -731,8 +731,8 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                 Assert.True(startedOk);
                 if (startedOk)
                 {
-                    var from = new DateTime(2016, 1, 7);
-                    var to = new DateTime(2016, 1, 7);
+                    var from = DateTimeHelper.CreateUtcDate(2016, 1, 7);
+                    var to = DateTimeHelper.CreateUtcDate(2016, 1, 7);
                     var maxBlockSize = TimeSpans.OneDay;
                     var dateBlocks = await executionContext.GetDateRangeBlocksAsync(x => x
                         .WithRange(from, to, maxBlockSize)
@@ -777,8 +777,8 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                 Assert.True(startedOk);
                 if (startedOk)
                 {
-                    var from = new DateTime(2016, 1, 7);
-                    var to = new DateTime(2016, 1, 31);
+                    var from = DateTimeHelper.CreateUtcDate(2016, 1, 7);
+                    var to = DateTimeHelper.CreateUtcDate(2016, 1, 31);
                     var maxBlockSize = TimeSpans.OneDay;
                     var dateBlocks = await executionContext.GetDateRangeBlocksAsync(x => x
                         .WithRange(from, to, maxBlockSize)
@@ -788,14 +788,14 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                         .WithMaximumBlocksToGenerate(8));
 
                     Assert.Equal(8, dateBlocks.Count());
-                    Assert.Contains(dateBlocks, x => x.DateRangeBlock.StartDate == new DateTime(2016, 1, 1));
-                    Assert.Contains(dateBlocks, x => x.DateRangeBlock.StartDate == new DateTime(2016, 1, 2));
-                    Assert.Contains(dateBlocks, x => x.DateRangeBlock.StartDate == new DateTime(2016, 1, 3));
-                    Assert.Contains(dateBlocks, x => x.DateRangeBlock.StartDate == new DateTime(2016, 1, 4));
-                    Assert.Contains(dateBlocks, x => x.DateRangeBlock.StartDate == new DateTime(2016, 1, 5));
-                    Assert.Contains(dateBlocks, x => x.DateRangeBlock.StartDate == new DateTime(2016, 1, 6));
-                    Assert.Contains(dateBlocks, x => x.DateRangeBlock.StartDate == new DateTime(2016, 1, 7));
-                    Assert.Contains(dateBlocks, x => x.DateRangeBlock.StartDate == new DateTime(2016, 1, 8));
+                    Assert.Contains(dateBlocks, x => x.DateRangeBlock.StartDate == DateTimeHelper.CreateUtcDate(2016, 1, 1));
+                    Assert.Contains(dateBlocks, x => x.DateRangeBlock.StartDate == DateTimeHelper.CreateUtcDate(2016, 1, 2));
+                    Assert.Contains(dateBlocks, x => x.DateRangeBlock.StartDate == DateTimeHelper.CreateUtcDate(2016, 1, 3));
+                    Assert.Contains(dateBlocks, x => x.DateRangeBlock.StartDate == DateTimeHelper.CreateUtcDate(2016, 1, 4));
+                    Assert.Contains(dateBlocks, x => x.DateRangeBlock.StartDate == DateTimeHelper.CreateUtcDate(2016, 1, 5));
+                    Assert.Contains(dateBlocks, x => x.DateRangeBlock.StartDate == DateTimeHelper.CreateUtcDate(2016, 1, 6));
+                    Assert.Contains(dateBlocks, x => x.DateRangeBlock.StartDate == DateTimeHelper.CreateUtcDate(2016, 1, 7));
+                    Assert.Contains(dateBlocks, x => x.DateRangeBlock.StartDate == DateTimeHelper.CreateUtcDate(2016, 1, 8));
                 }
             }
         });
@@ -821,8 +821,8 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
                 Assert.True(startedOk);
                 if (startedOk)
                 {
-                    var from = new DateTime(2016, 1, 7);
-                    var to = new DateTime(2016, 1, 31);
+                    var from = DateTimeHelper.CreateUtcDate(2016, 1, 7);
+                    var to = DateTimeHelper.CreateUtcDate(2016, 1, 31);
                     var maxBlockSize = TimeSpans.OneDay;
                     var numericBlocks =
                         await executionContext.GetDateRangeBlocksAsync(x => x.WithRange(from, to, maxBlockSize));
@@ -940,7 +940,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
 
             // add this processed block to the forced queue
             var lastBlockId = _blocksHelper.GetLastBlockId(CurrentTaskId);
-            _blocksHelper.EnqueueForcedBlock(lastBlockId);
+            _blocksHelper.EnqueueForcedBlock(lastBlockId, CurrentTaskId);
 
             // ACT - reprocess the forced block
             using (var executionContext = CreateTaskExecutionContext())
@@ -1007,7 +1007,7 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
 
             // add this processed block to the forced queue
             var lastBlockId = _blocksHelper.GetLastBlockId(CurrentTaskId);
-            _blocksHelper.EnqueueForcedBlock(lastBlockId);
+            _blocksHelper.EnqueueForcedBlock(lastBlockId, CurrentTaskId);
 
             // ACT - reprocess the forced block
             using (var executionContext = CreateTaskExecutionContext())
@@ -1063,8 +1063,8 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
             var startedOk = await executionContext.TryStartAsync();
             if (startedOk)
             {
-                var from = new DateTime(2016, 1, 1);
-                var to = new DateTime(2016, 1, 4);
+                var from = DateTimeHelper.CreateUtcDate(2016, 1, 1);
+                var to = DateTimeHelper.CreateUtcDate(2016, 1, 4);
                 var maxBlockSize = TimeSpans.OneDay;
                 var dateBlocks =
                     await executionContext.GetDateRangeBlocksAsync(x => x.WithRange(from, to, maxBlockSize));
@@ -1085,8 +1085,8 @@ public class When_GetRangeBlocksFromExecutionContext : TestBase
             var startedOk = await executionContext.TryStartAsync();
             if (startedOk)
             {
-                var from = new DateTime(2016, 1, 4);
-                var to = new DateTime(2016, 1, 7);
+                var from = DateTimeHelper.CreateUtcDate(2016, 1, 4);
+                var to = DateTimeHelper.CreateUtcDate(2016, 1, 7);
                 var maxBlockSize = TimeSpans.OneDay;
                 var dateBlocks =
                     await executionContext.GetDateRangeBlocksAsync(x => x.WithRange(from, to, maxBlockSize));

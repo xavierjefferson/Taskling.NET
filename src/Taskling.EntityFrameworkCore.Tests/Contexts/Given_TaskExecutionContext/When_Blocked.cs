@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Taskling.EntityFrameworkCore.Tests.Contexts.Given_TaskExecutionContext;
 
-[Collection(TestConstants.CollectionName)]
+[Collection(CollectionName)]
 public class When_Blocked : TestBase
 {
     private readonly IClientHelper _clientHelper;

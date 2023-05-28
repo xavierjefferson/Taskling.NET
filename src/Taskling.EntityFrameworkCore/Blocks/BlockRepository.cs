@@ -38,10 +38,8 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
     private readonly ILoggerFactory _loggerFactory;
     private readonly ITaskRepository _taskRepository;
 
-    public BlockRepository(ITaskRepository taskRepository, IConnectionStore connectionStore,
-        ILogger<BlockRepository> logger, IDbContextFactoryEx dbContextFactoryEx, ILoggerFactory loggerFactory) : base(
-        connectionStore,
-        dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
+    public BlockRepository(ITaskRepository taskRepository, 
+        ILogger<BlockRepository> logger, IDbContextFactoryEx dbContextFactoryEx, ILoggerFactory loggerFactory) : base(dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
     {
         _taskRepository = taskRepository;
         _logger = logger;
@@ -110,8 +108,8 @@ public partial class BlockRepository : DbOperationsService, IBlockRepository
                         block = new Block
                         {
                             TaskDefinitionId = taskDefinition.TaskDefinitionId,
-                            FromDate = new DateTime(rangeBlockCreateRequest.From),
-                            ToDate = new DateTime(rangeBlockCreateRequest.To),
+                            FromDate = new DateTime(rangeBlockCreateRequest.From, DateTimeKind.Utc),
+                            ToDate = new DateTime(rangeBlockCreateRequest.To, DateTimeKind.Utc),
                             BlockType = (int)BlockTypeEnum.DateRange,
                             CreatedDate = DateTime.UtcNow
                         };

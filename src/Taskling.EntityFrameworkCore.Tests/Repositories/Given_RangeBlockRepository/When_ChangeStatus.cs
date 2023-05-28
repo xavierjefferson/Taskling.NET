@@ -10,7 +10,7 @@ using Xunit;
 
 namespace Taskling.EntityFrameworkCore.Tests.Repositories.Given_RangeBlockRepository;
 
-[Collection(TestConstants.CollectionName)]
+[Collection(CollectionName)]
 public class When_ChangeStatus : TestBase
 {
     private readonly IBlocksHelper _blocksHelper;
@@ -31,7 +31,7 @@ public class When_ChangeStatus : TestBase
         _blocksHelper = blocksHelper;
 
         _rangeBlockRepository = rangeBlockRepository;
-        _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
+        _blocksHelper.DeleteBlocks(CurrentTaskId);
         _executionsHelper = executionsHelper;
         _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
 
@@ -50,21 +50,21 @@ public class When_ChangeStatus : TestBase
     {
         _taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId);
 
-        _baseDateTime = new DateTime(2016, 1, 1);
+        _baseDateTime = DateTimeHelper.CreateUtcDate(2016, 1, 1);
         var block1 = _blocksHelper.InsertDateRangeBlock(_taskDefinitionId, _baseDateTime.AddMinutes(-20),
-            _baseDateTime.AddMinutes(-30), DateTime.UtcNow);
+            _baseDateTime.AddMinutes(-30), DateTime.UtcNow, CurrentTaskId);
         _blockExecutionId = _blocksHelper.InsertBlockExecution(_taskExecution1, block1, _baseDateTime.AddMinutes(-20),
-            _baseDateTime.AddMinutes(-20), _baseDateTime.AddMinutes(-25), BlockExecutionStatusEnum.Started);
+            _baseDateTime.AddMinutes(-20), _baseDateTime.AddMinutes(-25), BlockExecutionStatusEnum.Started, CurrentTaskId);
     }
 
     private void InsertNumericRangeBlock()
     {
         _taskExecution1 = _executionsHelper.InsertOverrideTaskExecution(_taskDefinitionId);
 
-        _baseDateTime = new DateTime(2016, 1, 1);
-        var block1 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 1, 100, DateTime.UtcNow);
+        _baseDateTime = DateTimeHelper.CreateUtcDate(2016, 1, 1);
+        var block1 = _blocksHelper.InsertNumericRangeBlock(_taskDefinitionId, 1, 100, DateTime.UtcNow, CurrentTaskId);
         _blockExecutionId = _blocksHelper.InsertBlockExecution(_taskExecution1, block1, _baseDateTime.AddMinutes(-20),
-            _baseDateTime.AddMinutes(-20), _baseDateTime.AddMinutes(-25), BlockExecutionStatusEnum.Started);
+            _baseDateTime.AddMinutes(-20), _baseDateTime.AddMinutes(-25), BlockExecutionStatusEnum.Started, CurrentTaskId);
     }
 
     [Fact]
@@ -88,7 +88,7 @@ public class When_ChangeStatus : TestBase
             var sut = CreateSut();
             await sut.ChangeStatusAsync(request);
 
-            var itemCount = _blocksHelper.GetBlockExecutionItemCount(_blockExecutionId);
+            var itemCount = _blocksHelper.GetBlockExecutionItemCount(_blockExecutionId, CurrentTaskId);
 
             // ASSERT
             Assert.Equal(10000, itemCount);
@@ -116,7 +116,7 @@ public class When_ChangeStatus : TestBase
             var sut = CreateSut();
             await sut.ChangeStatusAsync(request);
 
-            var itemCount = _blocksHelper.GetBlockExecutionItemCount(_blockExecutionId);
+            var itemCount = _blocksHelper.GetBlockExecutionItemCount(_blockExecutionId, CurrentTaskId);
 
             // ASSERT
             Assert.Equal(10000, itemCount);

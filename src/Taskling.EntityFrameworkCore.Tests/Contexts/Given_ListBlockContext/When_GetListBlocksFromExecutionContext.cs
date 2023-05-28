@@ -13,7 +13,7 @@ using Xunit;
 
 namespace Taskling.EntityFrameworkCore.Tests.Contexts.Given_ListBlockContext;
 
-[Collection(TestConstants.CollectionName)]
+[Collection(CollectionName)]
 public class When_GetListBlocksFromExecutionContext : TestBase
 {
     private readonly IBlocksHelper _blocksHelper;
@@ -32,7 +32,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
         _clientHelper = clientHelper;
 
         _loggerFactory = loggerFactory;
-        _blocksHelper.DeleteBlocks(CurrentTaskId.ApplicationName);
+        _blocksHelper.DeleteBlocks(CurrentTaskId);
         _executionsHelper = executionsHelper;
         _executionsHelper.DeleteRecordsOfApplication(CurrentTaskId.ApplicationName);
 
@@ -95,10 +95,10 @@ public class When_GetListBlocksFromExecutionContext : TestBase
                         var expectedPendingItems = (await listBlock.GetItemsAsync(ItemStatusEnum.Pending)).Count();
                         // All items should be Pending and 0 Completed
                         Assert.Equal(expectedPendingItems,
-                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId, ItemStatusEnum.Pending));
+                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId, ItemStatusEnum.Pending, CurrentTaskId));
                         Assert.Equal(expectedCompletedItems,
                             _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId,
-                                ItemStatusEnum.Completed));
+                                ItemStatusEnum.Completed, CurrentTaskId));
                         foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatusEnum.Pending))
                         {
                             // do the processing
@@ -109,7 +109,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
                             expectedCompletedItems++;
                             Assert.Equal(expectedCompletedItems,
                                 _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId,
-                                    ItemStatusEnum.Completed));
+                                    ItemStatusEnum.Completed, CurrentTaskId));
                         }
 
                         await listBlock.CompleteAsync();
@@ -162,7 +162,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
                 }
             }
 
-            Assert.True(_blocksHelper.GetListBlockItems<PersonDto>(listBlockId, ItemStatusEnum.Failed, _loggerFactory)
+            Assert.True(_blocksHelper.GetListBlockItems<PersonDto>(listBlockId, ItemStatusEnum.Failed, _loggerFactory, CurrentTaskId)
                 .All(x => x.StatusReason == "Exception"));
         });
     }
@@ -296,7 +296,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
                 }
             }
 
-            Assert.True(_blocksHelper.GetListBlockItems<PersonDto>(listBlockId, ItemStatusEnum.Failed, _loggerFactory)
+            Assert.True(_blocksHelper.GetListBlockItems<PersonDto>(listBlockId, ItemStatusEnum.Failed, _loggerFactory, CurrentTaskId)
                 .All(x => x.StatusReason == "Exception" && x.Step == 2));
         });
     }
@@ -355,10 +355,10 @@ public class When_GetListBlocksFromExecutionContext : TestBase
                         var expectedPendingItems = (await listBlock.GetItemsAsync(ItemStatusEnum.Pending)).Count();
                         // All items should be Pending and 0 Completed
                         Assert.Equal(expectedPendingItems,
-                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId, ItemStatusEnum.Pending));
+                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId, ItemStatusEnum.Pending, CurrentTaskId));
                         Assert.Equal(0,
                             _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId,
-                                ItemStatusEnum.Completed));
+                                ItemStatusEnum.Completed, CurrentTaskId));
                         foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatusEnum.Pending))
                         {
                             // do the processing
@@ -368,7 +368,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
                             // There should be 0 Completed because we batch commit at the end
                             Assert.Equal(0,
                                 _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId,
-                                    ItemStatusEnum.Completed));
+                                    ItemStatusEnum.Completed, CurrentTaskId));
                         }
 
                         await listBlock.CompleteAsync();
@@ -376,7 +376,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
                         // All items should be completed now
                         Assert.Equal((await listBlock.GetItemsAsync(ItemStatusEnum.Completed)).Count(),
                             _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId,
-                                ItemStatusEnum.Completed));
+                                ItemStatusEnum.Completed, CurrentTaskId));
 
                         // One more block should be completed
                         expectedCompletedCount++;
@@ -443,10 +443,10 @@ public class When_GetListBlocksFromExecutionContext : TestBase
                         var expectedCompletedItems = 0;
                         // All items should be Pending and 0 Completed
                         Assert.Equal(expectedPendingItems,
-                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId, ItemStatusEnum.Pending));
+                            _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId, ItemStatusEnum.Pending, CurrentTaskId));
                         Assert.Equal(expectedCompletedItems,
                             _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId,
-                                ItemStatusEnum.Completed));
+                                ItemStatusEnum.Completed, CurrentTaskId));
                         var itemsProcessed = 0;
                         var itemsCommitted = 0;
                         foreach (var itemToProcess in await listBlock.GetItemsAsync(ItemStatusEnum.Pending))
@@ -461,14 +461,14 @@ public class When_GetListBlocksFromExecutionContext : TestBase
                             {
                                 Assert.Equal(10,
                                     _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId,
-                                        ItemStatusEnum.Completed));
+                                        ItemStatusEnum.Completed, CurrentTaskId));
                                 itemsCommitted += 10;
                             }
                             else
                             {
                                 Assert.Equal(itemsCommitted,
                                     _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId,
-                                        ItemStatusEnum.Completed));
+                                        ItemStatusEnum.Completed, CurrentTaskId));
                             }
                         }
 
@@ -477,7 +477,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
                         // All items should be completed now
                         Assert.Equal(itemsProcessed,
                             _blocksHelper.GetListBlockItemCountByStatus(listBlock.ListBlockId,
-                                ItemStatusEnum.Completed));
+                                ItemStatusEnum.Completed, CurrentTaskId));
 
                         // One more block should be completed
                         expectedCompletedCount++;
@@ -527,7 +527,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
                 }
             }
 
-            Assert.True(_blocksHelper.GetListBlockItems<PersonDto>(listBlockId, ItemStatusEnum.Failed, _loggerFactory)
+            Assert.True(_blocksHelper.GetListBlockItems<PersonDto>(listBlockId, ItemStatusEnum.Failed, _loggerFactory, CurrentTaskId)
                 .All(x => x.StatusReason == "Exception"));
         });
     }
@@ -571,7 +571,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
             }
 
             var listBlockItems =
-                _blocksHelper.GetListBlockItems<PersonDto>(listBlockId, ItemStatusEnum.Failed, _loggerFactory);
+                _blocksHelper.GetListBlockItems<PersonDto>(listBlockId, ItemStatusEnum.Failed, _loggerFactory, CurrentTaskId);
             Assert.True(listBlockItems.All(x => x.StatusReason == "Exception" && x.Step == 2));
         });
     }
@@ -1010,7 +1010,7 @@ public class When_GetListBlocksFromExecutionContext : TestBase
 
             // add this processed block to the forced queue
             var lastBlockId = _blocksHelper.GetLastBlockId(CurrentTaskId);
-            _blocksHelper.EnqueueForcedBlock(lastBlockId);
+            _blocksHelper.EnqueueForcedBlock(lastBlockId, CurrentTaskId);
 
             // ACT - reprocess the forced block
             using (var executionContext = CreateTaskExecutionContext())
@@ -1155,33 +1155,33 @@ public class When_GetListBlocksFromExecutionContext : TestBase
     {
         var people = new List<PersonDto>
         {
-            new() { DateOfBirth = new DateTime(1980, 1, 1), Id = 1, Name = "Terrence" },
-            new() { DateOfBirth = new DateTime(1981, 1, 1), Id = 2, Name = "Boris" },
-            new() { DateOfBirth = new DateTime(1982, 1, 1), Id = 3, Name = "Bob" },
-            new() { DateOfBirth = new DateTime(1983, 1, 1), Id = 4, Name = "Jane" },
-            new() { DateOfBirth = new DateTime(1984, 1, 1), Id = 5, Name = "Rachel" },
-            new() { DateOfBirth = new DateTime(1985, 1, 1), Id = 6, Name = "Sarah" },
-            new() { DateOfBirth = new DateTime(1986, 1, 1), Id = 7, Name = "Brad" },
-            new() { DateOfBirth = new DateTime(1987, 1, 1), Id = 8, Name = "Phillip" },
-            new() { DateOfBirth = new DateTime(1988, 1, 1), Id = 9, Name = "Cory" },
-            new() { DateOfBirth = new DateTime(1989, 1, 1), Id = 10, Name = "Burt" },
-            new() { DateOfBirth = new DateTime(1990, 1, 1), Id = 11, Name = "Gladis" },
-            new() { DateOfBirth = new DateTime(1991, 1, 1), Id = 12, Name = "Ethel" },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1980, 1, 1), Id = 1, Name = "Terrence" },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1981, 1, 1), Id = 2, Name = "Boris" },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1982, 1, 1), Id = 3, Name = "Bob" },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1983, 1, 1), Id = 4, Name = "Jane" },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1984, 1, 1), Id = 5, Name = "Rachel" },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1985, 1, 1), Id = 6, Name = "Sarah" },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1986, 1, 1), Id = 7, Name = "Brad" },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1987, 1, 1), Id = 8, Name = "Phillip" },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1988, 1, 1), Id = 9, Name = "Cory" },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1989, 1, 1), Id = 10, Name = "Burt" },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1990, 1, 1), Id = 11, Name = "Gladis" },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1991, 1, 1), Id = 12, Name = "Ethel" },
 
-            new() { DateOfBirth = new DateTime(1992, 1, 1), Id = 13, Name = "Terry" },
-            new() { DateOfBirth = new DateTime(1993, 1, 1), Id = 14, Name = "Bernie" },
-            new() { DateOfBirth = new DateTime(1994, 1, 1), Id = 15, Name = "Will" },
-            new() { DateOfBirth = new DateTime(1995, 1, 1), Id = 16, Name = "Jim" },
-            new() { DateOfBirth = new DateTime(1996, 1, 1), Id = 17, Name = "Eva" },
-            new() { DateOfBirth = new DateTime(1997, 1, 1), Id = 18, Name = "Susan" },
-            new() { DateOfBirth = new DateTime(1998, 1, 1), Id = 19, Name = "Justin" },
-            new() { DateOfBirth = new DateTime(1999, 1, 1), Id = 20, Name = "Gerry" },
-            new() { DateOfBirth = new DateTime(2000, 1, 1), Id = 21, Name = "Fitz" },
-            new() { DateOfBirth = new DateTime(2001, 1, 1), Id = 22, Name = "Ellie" },
-            new() { DateOfBirth = new DateTime(2002, 1, 1), Id = 23, Name = "Gordon" },
-            new() { DateOfBirth = new DateTime(2003, 1, 1), Id = 24, Name = "Gail" },
-            new() { DateOfBirth = new DateTime(2004, 1, 1), Id = 25, Name = "Gary" },
-            new() { DateOfBirth = new DateTime(2005, 1, 1), Id = 26, Name = "Gabby" }
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1992, 1, 1), Id = 13, Name = "Terry" },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1993, 1, 1), Id = 14, Name = "Bernie" },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1994, 1, 1), Id = 15, Name = "Will" },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1995, 1, 1), Id = 16, Name = "Jim" },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1996, 1, 1), Id = 17, Name = "Eva" },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1997, 1, 1), Id = 18, Name = "Susan" },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1998, 1, 1), Id = 19, Name = "Justin" },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1999, 1, 1), Id = 20, Name = "Gerry" },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(2000, 1, 1), Id = 21, Name = "Fitz" },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(2001, 1, 1), Id = 22, Name = "Ellie" },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(2002, 1, 1), Id = 23, Name = "Gordon" },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(2003, 1, 1), Id = 24, Name = "Gail" },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(2004, 1, 1), Id = 25, Name = "Gary" },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(2005, 1, 1), Id = 26, Name = "Gabby" }
         };
 
         return people.Skip(skip).Take(count).ToList();
@@ -1191,33 +1191,33 @@ public class When_GetListBlocksFromExecutionContext : TestBase
     {
         var people = new List<PersonDto>
         {
-            new() { DateOfBirth = new DateTime(1980, 1, 1), Id = 1, Name = GetLongName("Terrence") },
-            new() { DateOfBirth = new DateTime(1981, 1, 1), Id = 2, Name = GetLongName("Boris") },
-            new() { DateOfBirth = new DateTime(1982, 1, 1), Id = 3, Name = GetLongName("Bob") },
-            new() { DateOfBirth = new DateTime(1983, 1, 1), Id = 4, Name = GetLongName("Jane") },
-            new() { DateOfBirth = new DateTime(1984, 1, 1), Id = 5, Name = GetLongName("Rachel") },
-            new() { DateOfBirth = new DateTime(1985, 1, 1), Id = 6, Name = GetLongName("Sarah") },
-            new() { DateOfBirth = new DateTime(1986, 1, 1), Id = 7, Name = GetLongName("Brad") },
-            new() { DateOfBirth = new DateTime(1987, 1, 1), Id = 8, Name = GetLongName("Phillip") },
-            new() { DateOfBirth = new DateTime(1988, 1, 1), Id = 9, Name = GetLongName("Cory") },
-            new() { DateOfBirth = new DateTime(1989, 1, 1), Id = 10, Name = GetLongName("Burt") },
-            new() { DateOfBirth = new DateTime(1990, 1, 1), Id = 11, Name = GetLongName("Gladis") },
-            new() { DateOfBirth = new DateTime(1991, 1, 1), Id = 12, Name = GetLongName("Ethel") },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1980, 1, 1), Id = 1, Name = GetLongName("Terrence") },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1981, 1, 1), Id = 2, Name = GetLongName("Boris") },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1982, 1, 1), Id = 3, Name = GetLongName("Bob") },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1983, 1, 1), Id = 4, Name = GetLongName("Jane") },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1984, 1, 1), Id = 5, Name = GetLongName("Rachel") },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1985, 1, 1), Id = 6, Name = GetLongName("Sarah") },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1986, 1, 1), Id = 7, Name = GetLongName("Brad") },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1987, 1, 1), Id = 8, Name = GetLongName("Phillip") },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1988, 1, 1), Id = 9, Name = GetLongName("Cory") },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1989, 1, 1), Id = 10, Name = GetLongName("Burt") },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1990, 1, 1), Id = 11, Name = GetLongName("Gladis") },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1991, 1, 1), Id = 12, Name = GetLongName("Ethel") },
 
-            new() { DateOfBirth = new DateTime(1992, 1, 1), Id = 13, Name = GetLongName("Terry") },
-            new() { DateOfBirth = new DateTime(1993, 1, 1), Id = 14, Name = GetLongName("Bernie") },
-            new() { DateOfBirth = new DateTime(1994, 1, 1), Id = 15, Name = GetLongName("Will") },
-            new() { DateOfBirth = new DateTime(1995, 1, 1), Id = 16, Name = GetLongName("Jim") },
-            new() { DateOfBirth = new DateTime(1996, 1, 1), Id = 17, Name = GetLongName("Eva") },
-            new() { DateOfBirth = new DateTime(1997, 1, 1), Id = 18, Name = GetLongName("Susan") },
-            new() { DateOfBirth = new DateTime(1998, 1, 1), Id = 19, Name = GetLongName("Justin") },
-            new() { DateOfBirth = new DateTime(1999, 1, 1), Id = 20, Name = GetLongName("Gerry") },
-            new() { DateOfBirth = new DateTime(2000, 1, 1), Id = 21, Name = GetLongName("Fitz") },
-            new() { DateOfBirth = new DateTime(2001, 1, 1), Id = 22, Name = GetLongName("Ellie") },
-            new() { DateOfBirth = new DateTime(2002, 1, 1), Id = 23, Name = GetLongName("Gordon") },
-            new() { DateOfBirth = new DateTime(2003, 1, 1), Id = 24, Name = GetLongName("Gail") },
-            new() { DateOfBirth = new DateTime(2004, 1, 1), Id = 25, Name = GetLongName("Gary") },
-            new() { DateOfBirth = new DateTime(2005, 1, 1), Id = 26, Name = GetLongName("Gabby") }
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1992, 1, 1), Id = 13, Name = GetLongName("Terry") },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1993, 1, 1), Id = 14, Name = GetLongName("Bernie") },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1994, 1, 1), Id = 15, Name = GetLongName("Will") },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1995, 1, 1), Id = 16, Name = GetLongName("Jim") },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1996, 1, 1), Id = 17, Name = GetLongName("Eva") },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1997, 1, 1), Id = 18, Name = GetLongName("Susan") },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1998, 1, 1), Id = 19, Name = GetLongName("Justin") },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(1999, 1, 1), Id = 20, Name = GetLongName("Gerry") },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(2000, 1, 1), Id = 21, Name = GetLongName("Fitz") },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(2001, 1, 1), Id = 22, Name = GetLongName("Ellie") },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(2002, 1, 1), Id = 23, Name = GetLongName("Gordon") },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(2003, 1, 1), Id = 24, Name = GetLongName("Gail") },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(2004, 1, 1), Id = 25, Name = GetLongName("Gary") },
+            new() { DateOfBirth = DateTimeHelper.CreateUtcDate(2005, 1, 1), Id = 26, Name = GetLongName("Gabby") }
         };
 
         return people.Skip(skip).Take(count).ToList();

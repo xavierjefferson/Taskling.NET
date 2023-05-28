@@ -16,9 +16,8 @@ public class TaskRepository : DbOperationsService, ITaskRepository
     private static readonly Dictionary<string, CachedTaskDefinition> CachedTaskDefinitions = new();
     private readonly ILogger<TaskRepository> _logger;
 
-    public TaskRepository(IConnectionStore connectionStore, IDbContextFactoryEx dbContextFactoryEx,
-        ILogger<TaskRepository> logger, ILoggerFactory loggerFactory) : base(
-        connectionStore, dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
+    public TaskRepository( IDbContextFactoryEx dbContextFactoryEx,
+        ILogger<TaskRepository> logger, ILoggerFactory loggerFactory) : base(dbContextFactoryEx, loggerFactory.CreateLogger<DbOperationsService>())
     {
         _logger = logger;
     }

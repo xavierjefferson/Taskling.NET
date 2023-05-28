@@ -1,49 +1,40 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Taskling.Blocks.Factories;
-using Taskling.CleanUp;
-using Taskling.Contexts;
-using Taskling.EntityFrameworkCore.Blocks;
-using Taskling.EntityFrameworkCore.Events;
-using Taskling.EntityFrameworkCore.TaskExecution;
-using Taskling.EntityFrameworkCore.Tasks;
-using Taskling.EntityFrameworkCore.Tokens;
-using Taskling.EntityFrameworkCore.Tokens.CriticalSections;
-using Taskling.EntityFrameworkCore.Tokens.Executions;
-using Taskling.ExecutionContext;
-using Taskling.InfrastructureContracts.Blocks;
-using Taskling.InfrastructureContracts.CleanUp;
-using Taskling.InfrastructureContracts.CriticalSections;
-using Taskling.InfrastructureContracts.TaskExecution;
-using Taskling.Retries;
+﻿using Microsoft.EntityFrameworkCore;
+using Taskling.EntityFrameworkCore.Models;
+using Taskling.InfrastructureContracts;
 
 namespace Taskling.EntityFrameworkCore;
 
-public static class TasklingServiceCollectionExtensions
+public interface IDbContextConfigurator
 {
-    public static IServiceCollection AddTaskling(this IServiceCollection services)
+    public void Configure(TasklingDbContextEventArgs args);
+}
+
+public class DelegatingDbContextConfigurator : IDbContextConfigurator
+{
+    private readonly Action<TasklingDbContextEventArgs> _func;
+
+    public DelegatingDbContextConfigurator(Action<TasklingDbContextEventArgs> func)
     {
-        services.AddSingleton(new StartupOptions());
-        services.AddSingleton<IRetryService, RetryService>();
-        services.AddSingleton<ITaskRepository, TaskRepository>();
-        services.AddScoped<ITaskExecutionRepository, TaskExecutionRepository>();
-        services.AddScoped<IExecutionTokenRepository, ExecutionTokenRepository>();
-        services.AddScoped<IExecutionTokenHelper, ExecutionTokenHelper>();
-        services.AddScoped<IListBlockRepository, ListBlockRepository>();
-        services.AddScoped<ICommonTokenRepository, CommonTokenRepository>();
-        services.AddScoped<IEventsRepository, EventsRepository>();
-        services.AddScoped<ICriticalSectionRepository, CriticalSectionRepository>();
-        services.AddScoped<IBlockRepository, BlockRepository>();
-        services.AddScoped<IRangeBlockRepository, RangeBlockRepository>();
-        services.AddScoped<IListBlockRepository, ListBlockRepository>();
-        ;
-        services.AddScoped<IObjectBlockRepository, ObjectBlockRepository>();
-        services.AddScoped<ICleanUpRepository, CleanUpRepository>();
-        services.AddTransient<ITaskExecutionContext,
-            TaskExecutionContext>();
-        services.AddScoped<IBlockFactory, BlockFactory>();
-        services.AddScoped<ICleanUpService, CleanUpService>();
-        services.AddMemoryCache();
-        services.AddSingleton<IConnectionStore, ConnectionStore>();
-        return services;
+        _func = func;
     }
+
+    public void Configure(TasklingDbContextEventArgs args)
+    {
+        _func(args);
+    }
+}
+
+public class TasklingDbContextEventArgs : EventArgs
+{
+    public TasklingDbContextEventArgs(DbContextOptionsBuilder<TasklingDbContext> builder, TaskId taskId,
+        string connectionString)
+    {
+        Builder = builder;
+        TaskId = taskId;
+        ConnectionString = connectionString;
+    }
+
+    public DbContextOptionsBuilder<TasklingDbContext> Builder { get; }
+    public TaskId TaskId { get; }
+    public string ConnectionString { get; }
 }

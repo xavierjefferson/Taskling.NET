@@ -1,4 +1,5 @@
-﻿using Taskling;
+﻿using System.Threading.Tasks;
+using Taskling;
 using Taskling.Configuration;
 using Taskling.InfrastructureContracts;
 
@@ -14,7 +15,7 @@ public class MyConfigReader : ITaskConfigurationReader
         var configurationOptions = new ConfigurationOptions
         {
             ConnectionString = "Server=(local);Database=MyAppDb;Trusted_Connection=True;",
-            DatabaseTimeoutSeconds = 120,
+            CommandTimeoutSeconds = 120,
             Enabled = true,
             ConcurrencyLimit = 1,
             KeepListItemsForDays = 2,

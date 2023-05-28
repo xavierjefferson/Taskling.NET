@@ -1,6 +1,8 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Taskling.Configuration;
 using Taskling.EntityFrameworkCore;
+using Taskling.EntityFrameworkCore.Extensions;
 using TasklingTesterAsync.Configuration;
 using TasklingTesterAsync.ListBlocks;
 using TasklingTesterAsync.Repositories;
@@ -15,7 +17,11 @@ internal class Program
         //setup our DI
         var serviceCollection = new ServiceCollection()
             .AddLogging()
-            .AddTaskling();
+            .AddTaskling(builder =>
+            {
+                builder.WithReader<MyConfigReader>().WithDbContextOptions(i => i.Builder.UseSqlServer(i.ConnectionString));
+            });
+     
         serviceCollection.AddSingleton<ITaskConfigurationReader, MyConfigReader>();
         var serviceProvider = serviceCollection
             .BuildServiceProvider();
